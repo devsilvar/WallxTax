@@ -1318,48 +1318,53 @@ export default function Landing() {
             </p>
           </ScrollReveal>
 
-          <div className='grid md:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-stretch'>
+          <div className='grid md:grid-cols-2 gap-10 sm:gap-12 lg:gap-14 items-stretch'>
             {[
-              { icon: Calculator, title: 'Smart Tax Calculation', description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No guesswork.', image: '/images/analytics-feature.jpg', accent: 'primary' },
-              { icon: Lock, title: 'Bank-Grade Security', description: 'Your financial data is encrypted and protected with enterprise-grade security standards.', image: '/images/compliance-secure.jpg', accent: 'emerald' },
-              { icon: PieChart, title: 'Real-Time Analytics', description: 'Get instant insights into your business finances with interactive charts and reports.', image: '/images/dashboard-hero.jpg', accent: 'blue' },
-              { icon: CheckCheck, title: 'Compliance Ready', description: 'Generate professional tax reports that meet all FIRS requirements in seconds.', image: '/images/mobile-interface.jpg', accent: 'amber' },
+              { icon: Calculator, title: 'Smart Tax Calculation', description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No complex formulas needed.', image: '/images/analytics-feature.jpg', accent: 'from-primary-400 to-purple-500', position: 'left' },
+              { icon: Lock, title: 'Bank-Grade Security', description: 'Military-grade encryption protects every transaction. Your data is your responsibility—we treat it like our own.', image: '/images/compliance-secure.jpg', accent: 'from-emerald-400 to-teal-500', position: 'right' },
+              { icon: PieChart, title: 'Real-Time Insights', description: 'Beautiful, actionable financial dashboards that give you clarity on your business at a glance.', image: '/images/dashboard-hero.jpg', accent: 'from-blue-400 to-cyan-500', position: 'left' },
+              { icon: CheckCheck, title: 'Compliance Ready', description: 'Professional reports that meet every FIRS requirement. Just review, sign, and submit with confidence.', image: '/images/mobile-interface.jpg', accent: 'from-amber-400 to-orange-500', position: 'right' },
             ].map((feature, i) => (
-              <ScrollReveal key={feature.title} delay={i * 100} className='group'>
-                <div className='flex flex-col h-full rounded-xl border border-gray-300 overflow-hidden bg-white/70 backdrop-blur transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/15 hover:border-primary-300 hover:-translate-y-2 relative'>
-                  {/* Accent Line */}
-                  <div
-                    className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
-                      feature.accent === 'primary' ? 'from-primary-400 to-purple-500' :
-                      feature.accent === 'emerald' ? 'from-emerald-400 to-teal-500' :
-                      feature.accent === 'blue' ? 'from-blue-400 to-cyan-500' :
-                      'from-amber-400 to-orange-500'
-                    }`}
-                  />
+              <ScrollReveal key={feature.title} delay={i * 100} className='group relative'>
+                <div className='flex flex-col h-full rounded-2xl border border-gray-300 overflow-hidden bg-white shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-3'>
+                  {/* Top Accent Line */}
+                  <div className={`h-1.5 bg-gradient-to-r ${feature.accent}`} />
 
-                  {/* Feature Image */}
-                  <div className='relative h-44 sm:h-52 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50'>
+                  {/* Feature Image - Large and Compelling */}
+                  <div className='relative h-56 sm:h-64 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50'>
                     <img
                       src={feature.image}
                       alt={feature.title}
-                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
+                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-125'
                     />
-                    <div className='absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
                   </div>
 
-                  {/* Content */}
-                  <div className='flex-grow p-7 sm:p-8 flex flex-col'>
-                    <div className='flex items-start gap-4'>
-                      <PremiumIcon Icon={feature.icon} delay={i} />
-                      <div className='flex-1'>
-                        <h3 className='text-lg sm:text-xl font-bold text-gray-900'>
-                          {feature.title}
-                        </h3>
+                  {/* Content with luxury spacing */}
+                  <div className='flex-grow p-8 sm:p-9 flex flex-col'>
+                    {/* Icon and Title in elegant layout */}
+                    <div className='flex items-start gap-4 mb-4'>
+                      <div className='flex-shrink-0 mt-1'>
+                        <PremiumIcon Icon={feature.icon} delay={i} />
                       </div>
+                      <h3 className='text-xl sm:text-2xl font-bold text-gray-900 leading-tight flex-grow'>
+                        {feature.title}
+                      </h3>
                     </div>
-                    <p className='mt-4 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
+
+                    {/* Elegant separator */}
+                    <div className='w-8 h-0.5 bg-gradient-to-r from-primary-400 to-purple-400 my-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+
+                    {/* Description with better typography */}
+                    <p className='mt-2 font-body text-[15px] sm:text-base leading-relaxed text-gray-600 flex-grow'>
                       {feature.description}
                     </p>
+
+                    {/* Call-to-action element */}
+                    <div className='mt-6 flex items-center text-primary-600 font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-0 group-hover:translate-x-2'>
+                      Learn more
+                      <ChevronRight className='h-4 w-4 ml-2' />
+                    </div>
                   </div>
                 </div>
               </ScrollReveal>
@@ -1392,43 +1397,61 @@ export default function Landing() {
             </p>
           </ScrollReveal>
 
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 relative'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-10 sm:gap-12 relative'>
             {[
-              { icon: Users, title: 'Create Your Account', description: 'Sign up in under 60 seconds. Add your business details and connect your account in minutes.', stepNum: 1, gradient: 'from-blue-50 to-cyan-50' },
-              { icon: DollarSign, title: 'Record Transactions', description: 'Log sales and expenses as they happen. Import from bank transfers or enter manually.', stepNum: 2, gradient: 'from-purple-50 to-pink-50' },
-              { icon: CheckCheck, title: 'File & Pay Tax', description: 'Review your auto-computed report, finalize, and pay FIRS directly. Done in minutes.', stepNum: 3, gradient: 'from-emerald-50 to-green-50' },
+              { title: 'Create Your Account', description: 'Sign up in seconds. Set up your business profile and connect securely in just a few minutes.', stepNum: 1, image: '/images/step-1-account.jpg' },
+              { title: 'Record Transactions', description: 'Track income and expenses effortlessly. Import from your bank or enter manually with our intuitive interface.', stepNum: 2, image: '/images/step-2-transactions.jpg' },
+              { title: 'File & Pay Tax', description: 'Review your auto-calculated FIRS tax, finalize with confidence, and pay securely in minutes.', stepNum: 3, image: '/images/step-3-file-tax.jpg' },
             ].map((step, index) => (
               <ScrollReveal key={step.title} delay={index * 150} className='relative group'>
-                <div className={`flex flex-col h-full rounded-xl border border-gray-300 bg-gradient-to-br ${step.gradient} backdrop-blur p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-2 overflow-hidden relative`}>
-                  {/* Decorative background pattern */}
-                  <div className='absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full -mr-16 -mt-16 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
-
-                  {/* Step Number Badge */}
-                  <div className='absolute -top-3 -right-3 w-12 h-12 rounded-lg bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-lg text-white font-bold text-lg'>
-                    {step.stepNum}
-                  </div>
-
-                  {/* Content with better layout */}
-                  <div className='relative z-10 flex flex-col h-full'>
-                    <div className='mb-6 p-4 bg-white/70 rounded-lg inline-w-fit'>
-                      <PremiumIcon Icon={step.icon} delay={index} />
+                <div className='flex flex-col h-full rounded-2xl border border-gray-300 overflow-hidden bg-white shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-3'>
+                  {/* Image Section with gradient overlay */}
+                  <div className='relative h-60 sm:h-72 overflow-hidden bg-gray-100'>
+                    <img
+                      src={step.image}
+                      alt={step.title}
+                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
+                    />
+                    {/* Gradient overlay for depth */}
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent' />
+                    
+                    {/* Step Number Badge - Large and prominent */}
+                    <div className='absolute top-5 right-5 w-14 h-14 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-xl border border-white/80'>
+                      <span className='text-2xl font-bold text-gray-900'>{step.stepNum}</span>
                     </div>
 
-                    <h3 className='text-xl sm:text-2xl font-bold text-gray-900 leading-tight'>
-                      {step.title}
-                    </h3>
-                    <p className='mt-4 font-body text-sm sm:text-[15px] leading-relaxed text-gray-700 flex-grow'>
-                      {step.description}
-                    </p>
-
-                    {/* Bottom accent line */}
-                    <div className='mt-6 h-1 w-12 bg-gradient-to-r from-primary-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+                    {/* Step indicator text */}
+                    <div className='absolute bottom-5 left-5 right-5'>
+                      <div className='text-white/90 font-semibold text-sm tracking-wide'>STEP {step.stepNum} OF 3</div>
+                    </div>
                   </div>
 
-                  {/* Arrow divider */}
+                  {/* Content Section */}
+                  <div className='flex-grow p-8 sm:p-9 flex flex-col justify-between'>
+                    {/* Title and Description */}
+                    <div>
+                      <h3 className='text-2xl sm:text-2xl font-bold text-gray-900 leading-tight mb-4'>
+                        {step.title}
+                      </h3>
+                      <p className='font-body text-[15px] sm:text-base leading-relaxed text-gray-600'>
+                        {step.description}
+                      </p>
+                    </div>
+
+                    {/* Interactive element */}
+                    <div className='mt-6 pt-6 border-t border-gray-200'>
+                      <div className='flex items-center text-primary-600 font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1'>
+                        <div className='w-2 h-2 bg-primary-500 rounded-full mr-2' />
+                        Get started
+                        <ChevronRight className='h-4 w-4 ml-auto' />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Arrow connector */}
                   {index < 2 && (
-                    <div className='hidden lg:flex absolute -right-6 top-1/2 -translate-y-1/2 z-20 h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white to-gray-50 border border-gray-300 text-gray-500 shadow-lg transition-all duration-300 group-hover:border-primary-400 group-hover:text-primary-500'>
-                      <ChevronRight className='h-5 w-5' />
+                    <div className='hidden lg:flex absolute -right-7 top-1/2 -translate-y-1/2 z-20 h-12 w-12 items-center justify-center rounded-full bg-white border border-gray-300 text-gray-400 shadow-lg transition-all duration-300 group-hover:bg-primary-50 group-hover:border-primary-400 group-hover:text-primary-500'>
+                      <ChevronRight className='h-6 w-6' />
                     </div>
                   )}
                 </div>
