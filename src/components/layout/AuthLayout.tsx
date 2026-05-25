@@ -1,8 +1,8 @@
 import { Link, Outlet } from 'react-router-dom';
-import { Shield, BarChart3, Clock, CheckCircle2, Sparkles } from 'lucide-react';
+import { Shield, LineChart, Clock, CheckCircle2, Fingerprint } from 'lucide-react';
 
 const highlights = [
-  { icon: BarChart3, text: 'Track sales & expenses in real time' },
+  { icon: LineChart, text: 'Track sales & expenses in real time' },
   { icon: Shield, text: 'Bank-grade encryption on all data' },
   { icon: Clock, text: 'File your taxes in under 5 minutes' },
   { icon: CheckCircle2, text: 'Stay FIRS-compliant, always' },
@@ -14,16 +14,16 @@ export default function AuthLayout() {
       {/* Left panel — branding (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex-col justify-between p-12">
         {/* Background accents */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(16,185,129,0.25),transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_100%,rgba(20,184,166,0.2),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(147,51,234,0.25),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_100%,rgba(139,92,246,0.2),transparent)]" />
         <div className="absolute top-20 -left-20 w-72 h-72 bg-primary-500/15 rounded-full blur-[100px] animate-blob-morph" />
-        <div className="absolute bottom-20 right-0 w-80 h-80 bg-teal-500/10 rounded-full blur-[100px] animate-blob-morph" style={{ animationDelay: '3s' }} />
+        <div className="absolute bottom-20 right-0 w-80 h-80 bg-violet-500/10 rounded-full blur-[100px] animate-blob-morph" style={{ animationDelay: '3s' }} />
         
         {/* Grid pattern */}
         <div 
           className="absolute inset-0 opacity-[0.03]"
           style={{
-            backgroundImage: 'linear-gradient(to right, #10b981 1px, transparent 1px), linear-gradient(to bottom, #10b981 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(to right, #9333ea 1px, transparent 1px), linear-gradient(to bottom, #9333ea 1px, transparent 1px)',
             backgroundSize: '48px 48px',
           }}
         />
@@ -36,14 +36,14 @@ export default function AuthLayout() {
 
         <div className="relative z-10 flex-1 flex flex-col justify-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-1.5 mb-6 w-fit">
-            <Sparkles className="h-3.5 w-3.5 text-primary-400 fill-primary-400 animate-icon-pulse" />
+            <Fingerprint className="h-3.5 w-3.5 text-primary-400 animate-icon-pulse" />
             <span className="text-xs font-semibold text-primary-300 uppercase tracking-wider">Simple & Secure</span>
           </div>
           
           <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
             Tax compliance
             <br />
-            <span className="bg-gradient-to-r from-primary-400 to-teal-400 bg-clip-text text-transparent">made simple.</span>
+            <span className="bg-gradient-to-r from-primary-400 to-violet-400 bg-clip-text text-transparent">made simple.</span>
           </h2>
           <p className="mt-4 max-w-sm font-body text-base text-slate-400 leading-relaxed">
             Join thousands of Nigerian businesses managing their taxes with confidence.
