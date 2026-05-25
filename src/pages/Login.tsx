@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import toast from 'react-hot-toast';
 import api from '@/lib/axios.ts';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -34,15 +34,19 @@ export default function Login() {
   };
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-        <p className="mt-2 font-body text-[15px] text-gray-500">
-          Sign in to your account to continue
+        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-teal-50 border border-primary-100/50 px-3 py-1 mb-4 shadow-sm">
+          <Sparkles className="h-3 w-3 text-primary-500 fill-primary-500" />
+          <span className="text-xs font-semibold text-primary-600">Welcome back</span>
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Sign in to your account</h2>
+        <p className="mt-2 font-body text-[15px] text-slate-500">
+          Continue managing your business taxes
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Input
           label="Email address"
           type="email"
@@ -65,7 +69,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3 top-[34px] text-slate-400 hover:text-slate-600 transition-colors"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
@@ -73,14 +77,14 @@ export default function Login() {
           </div>
         </div>
 
-        <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-lg">
+        <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-xl">
           Sign in
-          {!isLoading && <ArrowRight className="h-4 w-4 ml-2" />}
+          {!isLoading && <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-0.5" />}
         </Button>
       </form>
 
-      <div className="mt-8 border-t border-gray-100 pt-6">
-        <p className="text-center font-body text-[15px] text-gray-500">
+      <div className="mt-8 border-t border-slate-100 pt-6">
+        <p className="text-center font-body text-[15px] text-slate-500">
           Don&apos;t have an account?{' '}
           <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
             Create one

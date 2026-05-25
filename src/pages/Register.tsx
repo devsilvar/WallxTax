@@ -4,17 +4,21 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, ArrowRight, Check, X } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Check, X, Sparkles } from 'lucide-react';
 
 function PasswordRule({ met, label }: { met: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2">
       {met ? (
-        <Check className="h-3.5 w-3.5 text-green-500" />
+        <div className="h-4 w-4 rounded-full bg-green-100 flex items-center justify-center">
+          <Check className="h-2.5 w-2.5 text-green-600" />
+        </div>
       ) : (
-        <X className="h-3.5 w-3.5 text-gray-300" />
+        <div className="h-4 w-4 rounded-full bg-slate-100 flex items-center justify-center">
+          <X className="h-2.5 w-2.5 text-slate-300" />
+        </div>
       )}
-      <span className={`text-xs font-body ${met ? 'text-green-600' : 'text-gray-400'}`}>
+      <span className={`text-xs font-body ${met ? 'text-green-600' : 'text-slate-400'}`}>
         {label}
       </span>
     </div>
@@ -64,15 +68,19 @@ export default function Register() {
   };
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Create your account</h2>
-        <p className="mt-2 font-body text-[15px] text-gray-500">
+        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-teal-50 border border-primary-100/50 px-3 py-1 mb-4 shadow-sm">
+          <Sparkles className="h-3 w-3 text-primary-500 fill-primary-500" />
+          <span className="text-xs font-semibold text-primary-600">Get started free</span>
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Create your account</h2>
+        <p className="mt-2 font-body text-[15px] text-slate-500">
           Start managing your taxes in minutes
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Input
           label="Email address"
           type="email"
@@ -103,7 +111,7 @@ export default function Register() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3 top-[34px] text-slate-400 hover:text-slate-600 transition-colors"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
@@ -112,7 +120,7 @@ export default function Register() {
 
           {/* Password strength rules */}
           {passwordTouched && (
-            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 p-3 rounded-lg bg-slate-50 border border-slate-100">
               <PasswordRule met={rules.length} label="8+ characters" />
               <PasswordRule met={rules.uppercase} label="Uppercase letter" />
               <PasswordRule met={rules.lowercase} label="Lowercase letter" />
@@ -138,21 +146,21 @@ export default function Register() {
           <button
             type="button"
             onClick={() => setShowConfirm(!showConfirm)}
-            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute right-3 top-[34px] text-slate-400 hover:text-slate-600 transition-colors"
             tabIndex={-1}
           >
             {showConfirm ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
           </button>
         </div>
 
-        <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-lg">
+        <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-xl">
           Create account
-          {!isLoading && <ArrowRight className="h-4 w-4 ml-2" />}
+          {!isLoading && <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-0.5" />}
         </Button>
       </form>
 
-      <div className="mt-8 border-t border-gray-100 pt-6">
-        <p className="text-center font-body text-[15px] text-gray-500">
+      <div className="mt-8 border-t border-slate-100 pt-6">
+        <p className="text-center font-body text-[15px] text-slate-500">
           Already have an account?{' '}
           <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
             Sign in

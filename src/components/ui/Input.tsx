@@ -10,21 +10,21 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
+          <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
             {label}
           </label>
         )}
         <input
           ref={ref}
           id={inputId}
-          className={`block w-full rounded-lg border bg-gray-50 px-3.5 py-2.5 text-[15px] text-gray-900 transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white ${
-            error ? 'border-danger-500' : 'border-gray-200'
+          className={`block w-full rounded-xl border bg-slate-50/50 px-4 py-3 text-[15px] text-slate-900 transition-all duration-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white hover:border-slate-300 ${
+            error ? 'border-danger-500 focus:ring-danger-500/20 focus:border-danger-500' : 'border-slate-200'
           } ${className}`}
           {...props}
         />
-        {error && <p className="text-sm text-danger-500">{error}</p>}
+        {error && <p className="text-sm text-danger-500 font-body">{error}</p>}
       </div>
     );
   }
