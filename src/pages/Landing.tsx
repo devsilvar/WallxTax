@@ -743,13 +743,13 @@ export default function Landing() {
             {/* Stats Grid */}
             <div className='lg:col-span-2 grid grid-cols-2 gap-5 sm:gap-6'>
               {[
-                { icon: TrendingUp, value: '7.5%', label: 'FIRS Tax Rate' },
-                { icon: Shield, value: '100%', label: 'FIRS Compliant' },
-                { icon: Clock, value: '<2min', label: 'Setup Time' },
-                { icon: Zap, value: 'Auto', label: 'Calculation' },
+                { icon: Receipt, value: '7.5%', label: 'FIRS Tax Rate' },
+                { icon: BadgeCheck, value: '100%', label: 'FIRS Compliant' },
+                { icon: Zap, value: '<2min', label: 'Setup Time' },
+                { icon: BarChart3, value: 'Auto', label: 'Calculation' },
               ].map((stat, i) => (
                 <ScrollReveal key={stat.label} delay={i * 100}>
-                  <div className='group relative overflow-hidden rounded-xl border border-gray-100/50 bg-white/70 backdrop-blur p-6 sm:p-7 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-100/50'>
+                  <div className='group relative overflow-hidden rounded-xl border border-gray-300 bg-white/80 backdrop-blur p-6 sm:p-7 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-300'>
                     <PremiumIcon Icon={stat.icon} delay={i} />
                     <div className='mt-4 text-3xl sm:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
                       {stat.value}
@@ -1320,29 +1320,44 @@ export default function Landing() {
 
           <div className='grid md:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-stretch'>
             {[
-              { icon: Calculator, title: 'Smart Tax Calculation', description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No guesswork.', image: '/images/analytics-feature.jpg' },
-              { icon: Lock, title: 'Bank-Grade Security', description: 'Your financial data is encrypted and protected with enterprise-grade security standards.', image: '/images/compliance-secure.jpg' },
-              { icon: PieChart, title: 'Real-Time Analytics', description: 'Get instant insights into your business finances with interactive charts and reports.', image: '/images/dashboard-hero.jpg' },
-              { icon: CheckCheck, title: 'Compliance Ready', description: 'Generate professional tax reports that meet all FIRS requirements in seconds.', image: '/images/mobile-interface.jpg' },
+              { icon: Calculator, title: 'Smart Tax Calculation', description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No guesswork.', image: '/images/analytics-feature.jpg', accent: 'primary' },
+              { icon: Lock, title: 'Bank-Grade Security', description: 'Your financial data is encrypted and protected with enterprise-grade security standards.', image: '/images/compliance-secure.jpg', accent: 'emerald' },
+              { icon: PieChart, title: 'Real-Time Analytics', description: 'Get instant insights into your business finances with interactive charts and reports.', image: '/images/dashboard-hero.jpg', accent: 'blue' },
+              { icon: CheckCheck, title: 'Compliance Ready', description: 'Generate professional tax reports that meet all FIRS requirements in seconds.', image: '/images/mobile-interface.jpg', accent: 'amber' },
             ].map((feature, i) => (
               <ScrollReveal key={feature.title} delay={i * 100} className='group'>
-                <div className='flex flex-col h-full rounded-xl border border-gray-200/50 overflow-hidden bg-white/50 backdrop-blur transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1'>
+                <div className='flex flex-col h-full rounded-xl border border-gray-300 overflow-hidden bg-white/70 backdrop-blur transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/15 hover:border-primary-300 hover:-translate-y-2 relative'>
+                  {/* Accent Line */}
+                  <div
+                    className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
+                      feature.accent === 'primary' ? 'from-primary-400 to-purple-500' :
+                      feature.accent === 'emerald' ? 'from-emerald-400 to-teal-500' :
+                      feature.accent === 'blue' ? 'from-blue-400 to-cyan-500' :
+                      'from-amber-400 to-orange-500'
+                    }`}
+                  />
+
                   {/* Feature Image */}
-                  <div className='relative h-40 sm:h-48 overflow-hidden bg-gray-100'>
+                  <div className='relative h-44 sm:h-52 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50'>
                     <img
                       src={feature.image}
                       alt={feature.title}
-                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
+                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
                     />
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
                   </div>
 
                   {/* Content */}
-                  <div className='flex-grow p-6 sm:p-7 flex flex-col'>
-                    <PremiumIcon Icon={feature.icon} delay={i} />
-                    <h3 className='mt-4 text-lg sm:text-xl font-bold text-gray-900'>
-                      {feature.title}
-                    </h3>
-                    <p className='mt-3 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
+                  <div className='flex-grow p-7 sm:p-8 flex flex-col'>
+                    <div className='flex items-start gap-4'>
+                      <PremiumIcon Icon={feature.icon} delay={i} />
+                      <div className='flex-1'>
+                        <h3 className='text-lg sm:text-xl font-bold text-gray-900'>
+                          {feature.title}
+                        </h3>
+                      </div>
+                    </div>
+                    <p className='mt-4 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
                       {feature.description}
                     </p>
                   </div>
@@ -1377,33 +1392,42 @@ export default function Landing() {
             </p>
           </ScrollReveal>
 
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 relative'>
             {[
-              { icon: Users, title: 'Create Your Account', description: 'Sign up in under 60 seconds. Add your business details and connect your account in minutes.', stepNum: 1 },
-              { icon: DollarSign, title: 'Record Transactions', description: 'Log sales and expenses as they happen. Import from bank transfers or enter manually.', stepNum: 2 },
-              { icon: CheckCheck, title: 'File & Pay Tax', description: 'Review your auto-computed report, finalize, and pay FIRS directly. Done in minutes.', stepNum: 3 },
+              { icon: Users, title: 'Create Your Account', description: 'Sign up in under 60 seconds. Add your business details and connect your account in minutes.', stepNum: 1, gradient: 'from-blue-50 to-cyan-50' },
+              { icon: DollarSign, title: 'Record Transactions', description: 'Log sales and expenses as they happen. Import from bank transfers or enter manually.', stepNum: 2, gradient: 'from-purple-50 to-pink-50' },
+              { icon: CheckCheck, title: 'File & Pay Tax', description: 'Review your auto-computed report, finalize, and pay FIRS directly. Done in minutes.', stepNum: 3, gradient: 'from-emerald-50 to-green-50' },
             ].map((step, index) => (
               <ScrollReveal key={step.title} delay={index * 150} className='relative group'>
-                <div className='flex flex-col h-full rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur p-8 transition-all duration-500 hover:shadow-lg hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1'>
-                  {/* Step Number */}
-                  <div className='absolute -top-4 -right-4 w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow-md'>
-                    <span className='text-lg font-bold text-gray-600'>{step.stepNum}</span>
+                <div className={`flex flex-col h-full rounded-xl border border-gray-300 bg-gradient-to-br ${step.gradient} backdrop-blur p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-2 overflow-hidden relative`}>
+                  {/* Decorative background pattern */}
+                  <div className='absolute top-0 right-0 w-32 h-32 bg-white/40 rounded-full -mr-16 -mt-16 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
+
+                  {/* Step Number Badge */}
+                  <div className='absolute -top-3 -right-3 w-12 h-12 rounded-lg bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-lg text-white font-bold text-lg'>
+                    {step.stepNum}
                   </div>
 
-                  {/* Premium Icon */}
-                  <PremiumIcon Icon={step.icon} delay={index} />
+                  {/* Content with better layout */}
+                  <div className='relative z-10 flex flex-col h-full'>
+                    <div className='mb-6 p-4 bg-white/70 rounded-lg inline-w-fit'>
+                      <PremiumIcon Icon={step.icon} delay={index} />
+                    </div>
 
-                  {/* Content */}
-                  <h3 className='mt-5 text-xl sm:text-2xl font-bold text-gray-900'>
-                    {step.title}
-                  </h3>
-                  <p className='mt-3 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
-                    {step.description}
-                  </p>
+                    <h3 className='text-xl sm:text-2xl font-bold text-gray-900 leading-tight'>
+                      {step.title}
+                    </h3>
+                    <p className='mt-4 font-body text-sm sm:text-[15px] leading-relaxed text-gray-700 flex-grow'>
+                      {step.description}
+                    </p>
+
+                    {/* Bottom accent line */}
+                    <div className='mt-6 h-1 w-12 bg-gradient-to-r from-primary-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+                  </div>
 
                   {/* Arrow divider */}
                   {index < 2 && (
-                    <div className='hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-white border border-gray-200/50 text-gray-400 transition-all duration-300'>
+                    <div className='hidden lg:flex absolute -right-6 top-1/2 -translate-y-1/2 z-20 h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white to-gray-50 border border-gray-300 text-gray-500 shadow-lg transition-all duration-300 group-hover:border-primary-400 group-hover:text-primary-500'>
                       <ChevronRight className='h-5 w-5' />
                     </div>
                   )}
