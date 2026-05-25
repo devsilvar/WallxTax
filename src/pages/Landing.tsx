@@ -749,12 +749,14 @@ export default function Landing() {
                 { icon: BarChart3, value: 'Auto', label: 'Calculation' },
               ].map((stat, i) => (
                 <ScrollReveal key={stat.label} delay={i * 100}>
-                  <div className='group relative overflow-hidden rounded-xl border border-gray-300 bg-white/80 backdrop-blur p-6 sm:p-7 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-300'>
-                    <PremiumIcon Icon={stat.icon} delay={i} />
-                    <div className='mt-4 text-3xl sm:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
+                  <div className='group relative overflow-hidden rounded-xl border border-gray-300 bg-white/80 backdrop-blur p-8 sm:p-9 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-300'>
+                    <div className='mb-6'>
+                      <stat.icon className='h-10 w-10 sm:h-12 sm:w-12 text-gray-700 transition-transform duration-300 group-hover:scale-110' strokeWidth={1.2} />
+                    </div>
+                    <div className='text-3xl sm:text-4xl font-bold text-gray-900 mb-2 tracking-tight'>
                       {stat.value}
                     </div>
-                    <div className='text-sm text-gray-600 font-medium'>
+                    <div className='text-sm sm:text-[15px] text-gray-700 font-medium'>
                       {stat.label}
                     </div>
                   </div>
@@ -1300,53 +1302,60 @@ export default function Landing() {
       {/* ── Why Choose Us - Million Dollar Section ── */}
       <section className='py-20 sm:py-24 lg:py-32 bg-white relative overflow-hidden'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
-          {/* Section Header - Minimal and Elegant */}
-          <ScrollReveal className='mx-auto max-w-2xl mb-20 sm:mb-28'>
-            <span className='inline-block text-xs sm:text-sm font-semibold uppercase tracking-widest text-primary-600 mb-4'>
-              Why WallxTax
+          {/* Section Header - Consistent with other sections */}
+          <ScrollReveal className='mx-auto max-w-3xl mb-20 sm:mb-28 text-center'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-5 py-2 mb-6 shadow-sm'>
+              <Sparkles className='h-4 sm:h-4 w-4 sm:w-4 text-primary-500' />
+              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
+                Why WallxTax
+              </span>
             </span>
-            <h2 className='text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 leading-tight'>
-              Built for{' '}
-              <span className='italic font-light'>professional</span>
-              <br />
-              tax management
+            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6'>
+              Professional tools for{' '}
+              <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
+                serious businesses
+              </span>
             </h2>
-            <p className='mt-8 font-body text-lg sm:text-xl text-gray-600 max-w-xl leading-relaxed'>
-              Purpose-built features that handle real-world complexities. No compromises on quality.
+            <p className='font-body text-base sm:text-lg text-gray-600 max-w-2xl mx-auto'>
+              Built by professionals. For professionals. Every feature designed to make tax management smarter, faster, and more reliable.
             </p>
           </ScrollReveal>
 
-          {/* Feature Grid - Sophisticated 2x2 */}
+          {/* Feature Grid - World-Class Cards */}
           <div className='grid md:grid-cols-2 gap-8 sm:gap-10 lg:gap-12'>
             {[
               {
                 title: 'Tax Calculation',
-                description: 'AI-powered calculations that understand Nigerian business complexity. Every deduction, every rate, perfectly applied.',
+                description: 'Precise, FIRS-compliant calculations that understand your business.',
+                detail: 'AI-powered • Every deduction • Real-time accuracy',
                 feature: 'FIRS Compliant',
                 image: '/images/analytics-feature.jpg',
               },
               {
                 title: 'Bank-Level Security',
-                description: 'Enterprise encryption meets accessibility. Your finances are protected like a Fortune 500 company.',
+                description: 'Your data protected like a Fortune 500 company.',
+                detail: 'Military encryption • Zero compromise • Enterprise grade',
                 feature: 'Military Grade',
                 image: '/images/compliance-secure.jpg',
               },
               {
                 title: 'Financial Intelligence',
-                description: 'Real-time dashboards that turn raw numbers into strategic insights. See your business clearly.',
-                feature: 'Live Analytics',
+                description: 'Actionable insights that drive smarter decisions.',
+                detail: 'Real-time dashboards • Strategic clarity • Smart analytics',
                 image: '/images/dashboard-hero.jpg',
+                feature: 'Live Analytics',
               },
               {
                 title: 'Seamless Filing',
-                description: 'One-click FIRS submissions. Professional reports that are audit-ready from day one.',
+                description: 'From calculation to submission in minutes.',
+                detail: 'One-click FIRS • Audit-ready • Stress-free compliance',
                 feature: 'Auto Generated',
                 image: '/images/mobile-interface.jpg',
               },
             ].map((item, i) => (
               <ScrollReveal key={item.title} delay={i * 80} className='group'>
                 <div className='relative h-full rounded-3xl overflow-hidden bg-white border border-gray-200 transition-all duration-500 hover:border-gray-300 hover:shadow-2xl hover:-translate-y-2'>
-                  {/* Image Section - 60% Height */}
+                  {/* Image Section */}
                   <div className='relative h-64 sm:h-72 overflow-hidden bg-gray-100'>
                     <img
                       src={item.image}
@@ -1355,7 +1364,7 @@ export default function Landing() {
                     />
                     <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent' />
                     
-                    {/* Feature Badge - Minimal */}
+                    {/* Feature Badge */}
                     <div className='absolute top-6 right-6 bg-white/95 backdrop-blur px-4 py-2 rounded-full'>
                       <span className='text-xs font-bold uppercase tracking-widest text-gray-900'>
                         {item.feature}
@@ -1363,18 +1372,28 @@ export default function Landing() {
                     </div>
                   </div>
 
-                  {/* Content Section - Premium Spacing */}
-                  <div className='p-9 sm:p-10 flex flex-col h-48 sm:h-52'>
-                    <h3 className='text-2xl sm:text-3xl font-bold text-gray-900 mb-3 leading-tight'>
+                  {/* Content Section - Refined */}
+                  <div className='p-9 sm:p-10 flex flex-col h-auto'>
+                    <h3 className='text-2xl sm:text-3xl font-bold text-gray-900 mb-2 leading-tight'>
                       {item.title}
                     </h3>
                     
-                    <p className='font-body text-[15px] sm:text-base leading-relaxed text-gray-700 flex-grow'>
+                    <p className='font-body text-sm sm:text-[15px] leading-relaxed text-gray-700 mb-4'>
                       {item.description}
                     </p>
 
+                    {/* Detail points - Elegant secondary text */}
+                    <div className='text-xs sm:text-sm text-gray-500 font-medium tracking-wide space-y-1 mb-6 flex-grow'>
+                      {item.detail.split(' • ').map((point, idx) => (
+                        <div key={idx} className='flex items-center gap-2'>
+                          <div className='h-1 w-1 rounded-full bg-primary-400' />
+                          {point}
+                        </div>
+                      ))}
+                    </div>
+
                     {/* Minimal CTA Line */}
-                    <div className='mt-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+                    <div className='flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
                       <div className='w-8 h-px bg-primary-600' />
                       <span className='text-xs font-semibold uppercase tracking-wider text-primary-600'>Explore</span>
                     </div>
