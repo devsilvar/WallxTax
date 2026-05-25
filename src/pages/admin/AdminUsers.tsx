@@ -40,10 +40,10 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-        <p className="mt-1 font-body text-sm text-gray-500">Manage all registered users.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Users</h1>
+        <p className="mt-2 text-sm text-gray-500">Manage all registered users.</p>
       </div>
 
       {isLoading && (
@@ -52,63 +52,64 @@ export default function AdminUsers() {
 
       {!isLoading && users.length === 0 && (
         <Card className="py-12 text-center">
-          <Users className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">No users found.</p>
+          <Users className="mx-auto h-10 w-10 text-gray-200" />
+          <p className="mt-3 text-sm text-gray-400">No users found.</p>
         </Card>
       )}
 
       {!isLoading && users.length > 0 && (
         <>
-          {/* Desktop table */}
-          <div className="hidden md:block rounded-md border border-gray-200 bg-white shadow-sm overflow-x-auto">
-            <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Businesses</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Verified</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Joined</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="font-body text-sm">
-              {users.map((u) => (
-                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{u._count.businesses}</td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${u.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {u.isVerified ? 'Yes' : 'No'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {u.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{formatDate(u.createdAt)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600" title="View details">
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded p-2 ${u.isActive ? 'text-gray-400 hover:bg-red-50 hover:text-red-500' : 'text-gray-400 hover:bg-green-50 hover:text-green-600'}`} title={u.isActive ? 'Deactivate' : 'Activate'}>
-                        {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </td>
+          <Card className="p-0 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                  <th className="px-6 py-4">Email</th>
+                  <th className="px-6 py-4">Role</th>
+                  <th className="px-6 py-4 hidden lg:table-cell">Businesses</th>
+                  <th className="px-6 py-4 hidden lg:table-cell">Verified</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Joined</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody className="text-sm">
+                {users.map((u) => (
+                  <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{u.email}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-500 hidden lg:table-cell">{u._count.businesses}</td>
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isVerified ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                        {u.isVerified ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-400">{formatDate(u.createdAt)}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-md p-2 text-gray-300 hover:bg-gray-100 hover:text-gray-700" title="View details">
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded-md p-2 ${u.isActive ? 'text-gray-300 hover:bg-red-50 hover:text-red-600' : 'text-gray-300 hover:bg-green-50 hover:text-green-600'}`} title={u.isActive ? 'Deactivate' : 'Activate'}>
+                          {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+          </Card>
 
         {/* Mobile card list */}
         <div className="md:hidden space-y-3">
@@ -117,15 +118,15 @@ export default function AdminUsers() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-gray-900 truncate">{u.email}</p>
-                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>{u.role}</span>
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{u.isActive ? 'Active' : 'Inactive'}</span>
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{u.role}</span>
+                    <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{u.isActive ? 'Active' : 'Inactive'}</span>
                   </div>
-                  <p className="mt-1.5 text-xs text-gray-400">Joined {formatDate(u.createdAt)} · {u._count.businesses} business{u._count.businesses !== 1 ? 'es' : ''}</p>
+                  <p className="mt-2 text-xs text-gray-400">Joined {formatDate(u.createdAt)} · {u._count.businesses} business{u._count.businesses !== 1 ? 'es' : ''}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-lg p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600"><Eye className="h-4 w-4" /></button>
-                  <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded-lg p-2 ${u.isActive ? 'text-gray-400 hover:bg-red-50 hover:text-red-500' : 'text-gray-400 hover:bg-green-50 hover:text-green-600'}`}>
+                  <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-md p-2 text-gray-300 hover:bg-gray-100 hover:text-gray-700"><Eye className="h-4 w-4" /></button>
+                  <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded-md p-2 ${u.isActive ? 'text-gray-300 hover:bg-red-50 hover:text-red-600' : 'text-gray-300 hover:bg-green-50 hover:text-green-600'}`}>
                     {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
                   </button>
                 </div>
@@ -138,7 +139,7 @@ export default function AdminUsers() {
 
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="font-body text-xs text-gray-400">Page {pagination.page} of {pagination.totalPages}</span>
+          <span className="text-xs text-gray-400">Page {pagination.page} of {pagination.totalPages}</span>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" disabled={!pagination.hasPrev} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
             <Button variant="secondary" size="sm" disabled={!pagination.hasNext} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>

@@ -682,11 +682,36 @@ export default function Landing() {
       {/* ── Making Tax Compliance Effortless ── */}
       <section
         ref={statsRef as React.Ref<HTMLDivElement>}
-        className='py-16 sm:py-20 lg:py-24 bg-gray-50'
+        className='relative py-20 sm:py-24 lg:py-32 overflow-hidden bg-gradient-to-b from-white via-gray-50/50 to-white'
       >
-        <div className='mx-auto max-w-7xl px-4 sm:px-6'>
-          {/* Top Section - Badge & Heading */}
-          <ScrollReveal className='text-center mb-10 sm:mb-14'>
+        {/* Ambient background — grid + glows */}
+        <div
+          className='absolute inset-0 opacity-[0.04] pointer-events-none'
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, #7c3aed 1px, transparent 1px), linear-gradient(to bottom, #7c3aed 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+            maskImage:
+              'radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 75%)',
+            WebkitMaskImage:
+              'radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 75%)',
+          }}
+        />
+        <div className='absolute top-1/4 -left-32 w-[500px] h-[500px] bg-primary-400/15 blur-[120px] rounded-full pointer-events-none' />
+        <div className='absolute bottom-1/4 -right-32 w-[500px] h-[500px] bg-fuchsia-400/15 blur-[120px] rounded-full pointer-events-none' />
+
+        <div className='relative mx-auto max-w-7xl px-4 sm:px-6'>
+          {/* Heading */}
+          <ScrollReveal className='text-center mb-14 sm:mb-20'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-5 sm:mb-6 shadow-sm'>
+              <span className='relative flex h-2 w-2'>
+                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
+                <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
+              </span>
+              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
+                Built for Nigeria
+              </span>
+            </span>
             <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-5 max-w-3xl mx-auto leading-tight'>
               Making tax compliance{' '}
               <span className='bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
@@ -699,76 +724,282 @@ export default function Landing() {
             </p>
           </ScrollReveal>
 
-          {/* Content Grid - Stats + Image */}
-          <div className='grid lg:grid-cols-2 gap-10 sm:gap-12 lg:gap-16 items-center'>
+          {/* Content Grid — Stats + Creative Visual */}
+          <div className='grid lg:grid-cols-5 gap-10 sm:gap-12 lg:gap-16 items-center'>
             {/* Stats Grid */}
-            <div className='grid grid-cols-2 gap-6 sm:gap-8'>
-              <ScrollReveal delay={0}>
-                <div className='text-center p-4'>
-                  <div className='inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-100 text-primary-600 mb-4'>
-                    <TrendingUp className='h-6 w-6' />
+            <div className='lg:col-span-2 grid grid-cols-2 gap-4 sm:gap-5'>
+              {[
+                {
+                  icon: TrendingUp,
+                  value: '7.5%',
+                  label: 'FIRS Tax Rate',
+                  iconBg: 'bg-primary-100',
+                  iconColor: 'text-primary-600',
+                  accent: 'from-primary-500/0 via-primary-500/60 to-primary-500/0',
+                },
+                {
+                  icon: Shield,
+                  value: '100%',
+                  label: 'FIRS Compliant',
+                  iconBg: 'bg-purple-100',
+                  iconColor: 'text-purple-600',
+                  accent: 'from-purple-500/0 via-purple-500/60 to-purple-500/0',
+                },
+                {
+                  icon: Clock,
+                  value: '<2min',
+                  label: 'Setup Time',
+                  iconBg: 'bg-fuchsia-100',
+                  iconColor: 'text-fuchsia-600',
+                  accent: 'from-fuchsia-500/0 via-fuchsia-500/60 to-fuchsia-500/0',
+                },
+                {
+                  icon: Zap,
+                  value: 'Auto',
+                  label: 'Tax Calculation',
+                  iconBg: 'bg-indigo-100',
+                  iconColor: 'text-indigo-600',
+                  accent: 'from-indigo-500/0 via-indigo-500/60 to-indigo-500/0',
+                },
+              ].map((stat, i) => (
+                <ScrollReveal key={stat.label} delay={i * 100}>
+                  <div className='group relative overflow-hidden rounded-xl border border-gray-200/80 bg-white/70 backdrop-blur-sm p-5 sm:p-6 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-200'>
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${stat.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                    />
+                    <div
+                      className={`inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-lg ${stat.iconBg} ${stat.iconColor} mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500`}
+                    >
+                      <stat.icon className='h-5 w-5 sm:h-6 sm:w-6' strokeWidth={1.75} />
+                    </div>
+                    <div className='text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
+                      {stat.value}
+                    </div>
+                    <div className='text-xs sm:text-sm text-gray-500 font-medium'>
+                      {stat.label}
+                    </div>
                   </div>
-                  <div className='text-3xl sm:text-4xl font-bold text-gray-900 mb-2'>
-                    7.5%
-                  </div>
-                  <div className='text-sm sm:text-base text-gray-600'>
-                    FIRS Tax Rate
-                  </div>
-                </div>
-              </ScrollReveal>
-
-              <ScrollReveal delay={100}>
-                <div className='text-center p-4'>
-                  <div className='inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-purple-100 text-purple-600 mb-4'>
-                    <Shield className='h-6 w-6' />
-                  </div>
-                  <div className='text-3xl sm:text-4xl font-bold text-gray-900 mb-2'>
-                    100%
-                  </div>
-                  <div className='text-sm sm:text-base text-gray-600'>
-                    FIRS Compliant
-                  </div>
-                </div>
-              </ScrollReveal>
-
-              <ScrollReveal delay={200}>
-                <div className='text-center p-4'>
-                  <div className='inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-fuchsia-100 text-fuchsia-600 mb-4'>
-                    <Clock className='h-6 w-6' />
-                  </div>
-                  <div className='text-3xl sm:text-4xl font-bold text-gray-900 mb-2'>
-                    &lt;2min
-                  </div>
-                  <div className='text-sm sm:text-base text-gray-600'>
-                    Setup Time
-                  </div>
-                </div>
-              </ScrollReveal>
-
-              <ScrollReveal delay={300}>
-                <div className='text-center p-4'>
-                  <div className='inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 mb-4'>
-                    <Zap className='h-6 w-6' />
-                  </div>
-                  <div className='text-3xl sm:text-4xl font-bold text-gray-900 mb-2'>
-                    Auto
-                  </div>
-                  <div className='text-sm sm:text-base text-gray-600'>
-                    Tax Calculation
-                  </div>
-                </div>
-              </ScrollReveal>
+                </ScrollReveal>
+              ))}
             </div>
 
-            {/* Image */}
-            <ScrollReveal delay={150}>
-              <div className='relative'>
-                <img
-                  src='https://images.unsplash.com/photo-1554224311-beee4ece8c35?w=800&h=600&fit=crop&q=80'
-                  alt='Business owner managing taxes'
-                  className='rounded-2xl shadow-xl w-full h-auto'
+            {/* Creative Visual — Floating phone mockup with live tax calc */}
+            <ScrollReveal delay={200} className='lg:col-span-3'>
+              <div className='relative mx-auto max-w-lg lg:max-w-none aspect-[5/4] sm:aspect-[6/5]'>
+                {/* Glow halo */}
+                <div className='absolute inset-0 bg-gradient-to-br from-primary-500/20 via-purple-500/20 to-fuchsia-500/20 rounded-3xl blur-3xl' />
+
+                {/* Rotating conic ring */}
+                <div
+                  className='absolute inset-8 rounded-full opacity-30'
+                  style={{
+                    background:
+                      'conic-gradient(from 0deg, transparent 0deg, #7c3aed 60deg, transparent 120deg, #a855f7 180deg, transparent 240deg, #d946ef 300deg, transparent 360deg)',
+                    animation: 'spin 20s linear infinite',
+                    filter: 'blur(30px)',
+                  }}
                 />
-                <div className='absolute inset-0 rounded-2xl bg-gradient-to-t from-black/10 to-transparent'></div>
+
+                {/* Floating badge — top left */}
+                <div
+                  className='absolute top-4 left-2 sm:left-0 z-20 animate-bounce-gentle'
+                  style={{ animationDelay: '0.5s' }}
+                >
+                  <div className='flex items-center gap-2.5 rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
+                    <div className='h-9 w-9 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/30'>
+                      <CheckCircle2 className='h-5 w-5 text-white' strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <div className='text-[10px] font-medium text-gray-400 leading-tight'>
+                        Tax Filed
+                      </div>
+                      <div className='text-xs font-bold text-gray-900 leading-tight'>
+                        March 2026
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating badge — bottom right */}
+                <div
+                  className='absolute bottom-6 right-2 sm:right-0 z-20 animate-bounce-gentle'
+                  style={{ animationDelay: '1.8s' }}
+                >
+                  <div className='flex items-center gap-2.5 rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
+                    <div className='h-9 w-9 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center shadow-lg shadow-primary-500/30'>
+                      <Zap
+                        className='h-5 w-5 text-white fill-white'
+                        strokeWidth={2}
+                      />
+                    </div>
+                    <div>
+                      <div className='text-[10px] font-medium text-gray-400 leading-tight'>
+                        Auto-calculated
+                      </div>
+                      <div className='text-xs font-bold text-gray-900 leading-tight'>
+                        in 0.3 seconds
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating mini chart — top right */}
+                <div
+                  className='absolute top-10 right-0 sm:right-4 z-20 animate-sway'
+                  style={{ animationDelay: '0s' }}
+                >
+                  <div className='rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-4 py-3 shadow-xl shadow-primary-900/10'>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <TrendingUp className='h-3.5 w-3.5 text-green-500' />
+                      <span className='text-[10px] font-semibold text-gray-700'>
+                        Revenue
+                      </span>
+                      <span className='text-[10px] font-bold text-green-500'>
+                        +24%
+                      </span>
+                    </div>
+                    <svg viewBox='0 0 80 24' className='w-20 h-6'>
+                      <defs>
+                        <linearGradient id='miniChartGrad' x1='0' y1='0' x2='0' y2='1'>
+                          <stop offset='0%' stopColor='#10b981' stopOpacity='0.4' />
+                          <stop offset='100%' stopColor='#10b981' stopOpacity='0' />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d='M0,20 L15,16 L30,18 L45,10 L60,12 L80,4 L80,24 L0,24 Z'
+                        fill='url(#miniChartGrad)'
+                      />
+                      <path
+                        d='M0,20 L15,16 L30,18 L45,10 L60,12 L80,4'
+                        fill='none'
+                        stroke='#10b981'
+                        strokeWidth='1.5'
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Central Tax Calculation Card */}
+                <div className='absolute inset-0 flex items-center justify-center'>
+                  <div className='relative w-[88%] sm:w-[82%] lg:w-[78%] rounded-2xl bg-gradient-to-br from-gray-900 via-primary-950 to-purple-950 p-1 shadow-2xl shadow-primary-900/40'>
+                    {/* Inner card */}
+                    <div className='relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 to-purple-950 p-5 sm:p-6 lg:p-7'>
+                      {/* Subtle pattern */}
+                      <div
+                        className='absolute inset-0 opacity-[0.08]'
+                        style={{
+                          backgroundImage:
+                            'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+                          backgroundSize: '20px 20px',
+                        }}
+                      />
+                      {/* Glow corner */}
+                      <div className='absolute -top-20 -right-20 w-48 h-48 bg-primary-500/30 rounded-full blur-3xl' />
+                      <div className='absolute -bottom-20 -left-20 w-48 h-48 bg-fuchsia-500/20 rounded-full blur-3xl' />
+
+                      <div className='relative'>
+                        {/* Header */}
+                        <div className='flex items-center justify-between mb-5 sm:mb-6'>
+                          <div className='flex items-center gap-2'>
+                            <div className='h-8 w-8 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center'>
+                              <Receipt className='h-4 w-4 text-white' />
+                            </div>
+                            <div>
+                              <div className='text-[10px] uppercase tracking-wider text-white/50 font-semibold'>
+                                Tax Summary
+                              </div>
+                              <div className='text-xs font-bold text-white'>
+                                March 2026
+                              </div>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-1.5 rounded-full bg-green-500/15 border border-green-400/30 px-2.5 py-1'>
+                            <div className='h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse' />
+                            <span className='text-[10px] font-semibold text-green-300'>
+                              Live
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Calculation rows */}
+                        <div className='space-y-2.5 sm:space-y-3 mb-4 sm:mb-5'>
+                          <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3.5 py-2.5 backdrop-blur-sm'>
+                            <div className='flex items-center gap-2'>
+                              <div className='h-6 w-6 rounded-md bg-green-500/20 flex items-center justify-center'>
+                                <TrendingUp className='h-3 w-3 text-green-400' />
+                              </div>
+                              <span className='text-xs text-white/70 font-medium'>
+                                Total Sales
+                              </span>
+                            </div>
+                            <span className='text-sm font-bold text-white tabular-nums'>
+                              ₦700,000
+                            </span>
+                          </div>
+
+                          <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3.5 py-2.5 backdrop-blur-sm'>
+                            <div className='flex items-center gap-2'>
+                              <div className='h-6 w-6 rounded-md bg-red-500/20 flex items-center justify-center'>
+                                <Receipt className='h-3 w-3 text-red-400' />
+                              </div>
+                              <span className='text-xs text-white/70 font-medium'>
+                                Expenses
+                              </span>
+                            </div>
+                            <span className='text-sm font-bold text-white tabular-nums'>
+                              −₦360,000
+                            </span>
+                          </div>
+
+                          <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3.5 py-2.5 backdrop-blur-sm'>
+                            <div className='flex items-center gap-2'>
+                              <div className='h-6 w-6 rounded-md bg-primary-500/20 flex items-center justify-center'>
+                                <BarChart3 className='h-3 w-3 text-primary-300' />
+                              </div>
+                              <span className='text-xs text-white/70 font-medium'>
+                                Gross Profit
+                              </span>
+                            </div>
+                            <span className='text-sm font-bold text-white tabular-nums'>
+                              ₦340,000
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Divider with formula */}
+                        <div className='relative flex items-center gap-3 my-4'>
+                          <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
+                          <span className='text-[9px] font-mono font-bold uppercase tracking-wider text-white/40'>
+                            × 7.5% FIRS
+                          </span>
+                          <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
+                        </div>
+
+                        {/* Tax Payable — hero number */}
+                        <div className='relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 via-purple-500 to-fuchsia-500 p-[1.5px]'>
+                          <div className='rounded-xl bg-gradient-to-br from-primary-600/90 to-purple-700/90 backdrop-blur-sm px-4 py-3.5 sm:py-4'>
+                            <div className='flex items-end justify-between'>
+                              <div>
+                                <div className='text-[10px] uppercase tracking-wider text-white/70 font-semibold mb-0.5'>
+                                  Tax Payable
+                                </div>
+                                <div className='text-2xl sm:text-3xl font-bold text-white tabular-nums leading-none'>
+                                  ₦25,500
+                                </div>
+                              </div>
+                              <button className='flex items-center gap-1.5 rounded-lg bg-white text-primary-700 px-3 py-1.5 text-[11px] font-bold shadow-lg hover:shadow-xl transition-shadow'>
+                                Pay now
+                                <ArrowRight className='h-3 w-3' />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </ScrollReveal>
           </div>
@@ -808,130 +1039,282 @@ export default function Landing() {
             </p>
           </ScrollReveal>
 
-          <StaggerReveal
-            staggerDelay={100}
-            className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5'
-          >
-            {/* Feature 1 */}
-            <div className='md:col-span-2 lg:col-span-2 bg-gradient-to-br from-primary-50 to-purple-50 rounded-2xl p-5 sm:p-6 border border-primary-100 group hover:shadow-lg transition-all duration-300'>
-              <div className='flex items-start gap-4'>
-                <div className='flex-shrink-0 w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300'>
-                  <BarChart3
-                    className='w-6 h-6 text-primary-600'
-                    strokeWidth={1.5}
-                  />
-                </div>
-                <div>
-                  <h3 className='text-xl sm:text-2xl font-bold text-gray-900 mb-2'>
+          {/*
+            Bento Grid — 4 columns × 4 rows on lg
+            ┌─────────────┬───────┬───────┐
+            │  Sales (2×2)│ FIRS  │ 1-Clk │
+            │             ├───────┴───────┤
+            │             │ Reminders(2×1)│
+            ├───────┬─────┴───────────────┤
+            │ Dash  │   PDF Statements    │
+            │ (1×2) │     (2×2)           │
+            ├───────┤                     │
+            │ Dash2 │                     │
+            └───────┴─────────────────────┘
+          */}
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-4 auto-rows-[minmax(180px,auto)] gap-4 sm:gap-5'>
+            {/* 1. Sales & Expense Tracking — HERO (2×2) */}
+            <ScrollReveal
+              delay={0}
+              className='sm:col-span-2 lg:col-span-2 lg:row-span-2 h-full'
+            >
+              <div className='relative h-full overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-purple-50 p-6 sm:p-7 group hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-200 transition-all duration-500'>
+                <div className='absolute -top-16 -right-16 w-48 h-48 bg-primary-200/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
+                <div className='relative flex h-full flex-col'>
+                  <div className='w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-primary-500/10 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500'>
+                    <BarChart3
+                      className='w-7 h-7 text-primary-600'
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                  <h3 className='text-xl sm:text-2xl font-bold text-gray-900 mb-3'>
                     Sales & Expense Tracking
                   </h3>
-                  <p className='text-sm sm:text-base text-gray-600 leading-relaxed'>
+                  <p className='text-sm sm:text-base text-gray-600 leading-relaxed mb-6'>
                     Log every naira in and out. Auto-categorize transactions and
                     see profit margins at a glance.
                   </p>
+
+                  {/* Live mini visual — revenue vs expenses bars */}
+                  <div className='mt-auto rounded-xl bg-white/70 backdrop-blur-sm border border-white/80 p-4 shadow-sm'>
+                    <div className='flex items-center justify-between mb-3'>
+                      <span className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider'>
+                        This month
+                      </span>
+                      <span className='text-[11px] font-bold text-green-600'>
+                        +24% ↑
+                      </span>
+                    </div>
+                    <div className='space-y-2.5'>
+                      <div>
+                        <div className='flex items-center justify-between mb-1'>
+                          <span className='text-xs text-gray-500'>Sales</span>
+                          <span className='text-xs font-bold text-gray-800 tabular-nums'>
+                            ₦700K
+                          </span>
+                        </div>
+                        <div className='h-2 rounded-full bg-gray-100 overflow-hidden'>
+                          <div className='h-full w-[85%] rounded-full bg-gradient-to-r from-primary-500 to-purple-500' />
+                        </div>
+                      </div>
+                      <div>
+                        <div className='flex items-center justify-between mb-1'>
+                          <span className='text-xs text-gray-500'>Expenses</span>
+                          <span className='text-xs font-bold text-gray-800 tabular-nums'>
+                            ₦360K
+                          </span>
+                        </div>
+                        <div className='h-2 rounded-full bg-gray-100 overflow-hidden'>
+                          <div className='h-full w-[45%] rounded-full bg-gradient-to-r from-fuchsia-400 to-pink-400' />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </ScrollReveal>
 
-            {/* Feature 2 */}
-            <div className='bg-white rounded-2xl p-5 border border-gray-200 hover:border-primary-200 hover:shadow-md transition-all duration-300 group'>
-              <div className='w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
-                <Shield
-                  className='w-5 h-5 text-primary-600'
-                  strokeWidth={1.5}
-                />
+            {/* 2. FIRS-Compliant — small (1×1) */}
+            <ScrollReveal delay={100} className='lg:col-span-1 lg:row-span-1 h-full'>
+              <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-500/5 hover:-translate-y-0.5 transition-all duration-300'>
+                <div className='w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
+                  <Shield className='w-5 h-5 text-primary-600' strokeWidth={1.5} />
+                </div>
+                <h3 className='text-base font-bold text-gray-900 mb-1.5'>
+                  FIRS-Compliant
+                </h3>
+                <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                  7.5% VAT calculator follows FIRS rules precisely
+                </p>
               </div>
-              <h3 className='text-lg font-bold text-gray-900 mb-2'>
-                FIRS-Compliant
-              </h3>
-              <p className='text-sm text-gray-600 leading-relaxed'>
-                7.5% VAT calculator follows FIRS rules precisely
-              </p>
-            </div>
+            </ScrollReveal>
 
-            {/* Feature 3 */}
-            <div className='bg-white rounded-2xl p-5 border border-gray-200 hover:border-primary-200 hover:shadow-md transition-all duration-300 group'>
-              <div className='w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
-                <CreditCard
-                  className='w-5 h-5 text-purple-600'
-                  strokeWidth={1.5}
-                />
-              </div>
-              <h3 className='text-lg font-bold text-gray-900 mb-2'>
-                One-Click Payment
-              </h3>
-              <p className='text-sm text-gray-600 leading-relaxed'>
-                Pay tax instantly via Paystack — card, transfer, or USSD
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className='md:col-span-2 lg:col-span-1 bg-gradient-to-br from-fuchsia-50 to-purple-50 rounded-2xl p-5 border border-fuchsia-100 group hover:shadow-lg transition-all duration-300'>
-              <div className='w-12 h-12 rounded-xl bg-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform duration-300'>
-                <Bell className='w-6 h-6 text-fuchsia-600' strokeWidth={1.5} />
-              </div>
-              <h3 className='text-xl font-bold text-gray-900 mb-2'>
-                Smart Tax Reminders
-              </h3>
-              <p className='text-sm text-gray-600 leading-relaxed'>
-                Never miss a deadline. Automated notifications keep you
-                penalty-free.
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className='lg:row-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 hover:border-primary-200 hover:shadow-md transition-all duration-300 group'>
-              <div className='w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
-                <FileText
-                  className='w-6 h-6 text-indigo-600'
-                  strokeWidth={1.5}
-                />
-              </div>
-              <h3 className='text-xl font-bold text-gray-900 mb-3'>
-                PDF Tax Statements
-              </h3>
-              <p className='text-sm text-gray-600 leading-relaxed mb-6'>
-                Download professionally formatted tax statements. Monthly
-                reports or custom date ranges on demand.
-              </p>
-              <div className='space-y-2'>
-                {[
-                  'Monthly summaries',
-                  'Custom date ranges',
-                  'Print-ready formats',
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className='flex items-center gap-2 text-xs text-gray-500'
-                  >
-                    <div className='w-1.5 h-1.5 rounded-full bg-primary-500' />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Feature 6 */}
-            <div className='md:col-span-2 lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 hover:border-primary-200 hover:shadow-md transition-all duration-300 group'>
-              <div className='flex items-start gap-5'>
-                <div className='flex-shrink-0 w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300'>
-                  <TrendingUp
-                    className='w-6 h-6 text-violet-600'
+            {/* 3. One-Click Payment — small (1×1) */}
+            <ScrollReveal delay={200} className='lg:col-span-1 lg:row-span-1 h-full'>
+              <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 hover:border-purple-200 hover:shadow-lg hover:shadow-purple-500/5 hover:-translate-y-0.5 transition-all duration-300'>
+                <div className='w-11 h-11 rounded-xl bg-purple-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
+                  <CreditCard
+                    className='w-5 h-5 text-purple-600'
                     strokeWidth={1.5}
                   />
                 </div>
-                <div>
-                  <h3 className='text-xl font-bold text-gray-900 mb-2'>
-                    Real-Time Dashboard
-                  </h3>
-                  <p className='text-sm text-gray-600 leading-relaxed max-w-xl'>
-                    Bird's-eye view of revenue, expenses, tax liability, and
-                    payment history. Make data-driven decisions with clarity.
-                  </p>
+                <h3 className='text-base font-bold text-gray-900 mb-1.5'>
+                  One-Click Payment
+                </h3>
+                <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                  Pay instantly via Paystack — card, transfer, or USSD
+                </p>
+              </div>
+            </ScrollReveal>
+
+            {/* 4. Smart Tax Reminders — wide (2×1) */}
+            <ScrollReveal
+              delay={300}
+              className='sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full'
+            >
+              <div className='relative h-full overflow-hidden rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 to-purple-50 p-5 sm:p-6 group hover:shadow-lg hover:shadow-fuchsia-500/10 transition-all duration-500'>
+                <div className='flex items-center gap-5 h-full'>
+                  <div className='flex-shrink-0 w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-fuchsia-500/10 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500'>
+                    <Bell
+                      className='w-6 h-6 text-fuchsia-600'
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <h3 className='text-lg sm:text-xl font-bold text-gray-900 mb-1'>
+                      Smart Tax Reminders
+                    </h3>
+                    <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                      Never miss a deadline. Automated notifications keep you
+                      penalty-free.
+                    </p>
+                  </div>
+                  {/* Date chip */}
+                  <div className='hidden sm:flex flex-shrink-0 flex-col items-center justify-center w-14 h-16 rounded-xl bg-white border border-fuchsia-200 shadow-sm'>
+                    <div className='text-[9px] font-bold uppercase tracking-wider text-fuchsia-600 bg-fuchsia-50 w-full text-center py-0.5 rounded-t-[10px]'>
+                      Apr
+                    </div>
+                    <div className='text-xl font-bold text-gray-900 flex-1 flex items-center'>
+                      25
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </StaggerReveal>
+            </ScrollReveal>
+
+            {/* 5. Real-Time Dashboard — tall (1×2) */}
+            <ScrollReveal
+              delay={400}
+              className='lg:col-span-1 lg:row-span-2 h-full'
+            >
+              <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-violet-50/40 p-5 sm:p-6 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-500'>
+                <div className='flex h-full flex-col'>
+                  <div className='w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500'>
+                    <TrendingUp
+                      className='w-6 h-6 text-violet-600'
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                  <h3 className='text-lg font-bold text-gray-900 mb-2'>
+                    Real-Time Dashboard
+                  </h3>
+                  <p className='text-sm text-gray-600 leading-relaxed mb-5'>
+                    Bird's-eye view of revenue, expenses & tax liability.
+                  </p>
+
+                  {/* Live chart */}
+                  <div className='mt-auto rounded-xl bg-white border border-gray-100 p-3 shadow-sm'>
+                    <svg viewBox='0 0 120 50' className='w-full h-14'>
+                      <defs>
+                        <linearGradient id='dashChartGrad' x1='0' y1='0' x2='0' y2='1'>
+                          <stop offset='0%' stopColor='#8b5cf6' stopOpacity='0.3' />
+                          <stop offset='100%' stopColor='#8b5cf6' stopOpacity='0' />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d='M0,42 L20,36 L40,38 L60,22 L80,28 L100,14 L120,8 L120,50 L0,50 Z'
+                        fill='url(#dashChartGrad)'
+                      />
+                      <path
+                        d='M0,42 L20,36 L40,38 L60,22 L80,28 L100,14 L120,8'
+                        fill='none'
+                        stroke='#8b5cf6'
+                        strokeWidth='2'
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                      />
+                      <circle cx='120' cy='8' r='3' fill='#8b5cf6' />
+                      <circle cx='120' cy='8' r='6' fill='#8b5cf6' fillOpacity='0.25' />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* 6. PDF Tax Statements — wide (2×2) */}
+            <ScrollReveal
+              delay={500}
+              className='sm:col-span-2 lg:col-span-2 lg:row-span-2 h-full'
+            >
+              <div className='group relative h-full overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/30 to-primary-50/40 p-6 sm:p-7 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-500'>
+                <div className='absolute -bottom-20 -right-20 w-56 h-56 bg-indigo-200/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
+
+                <div className='relative grid sm:grid-cols-5 gap-5 h-full items-center'>
+                  {/* Left: copy */}
+                  <div className='sm:col-span-3'>
+                    <div className='w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500'>
+                      <FileText
+                        className='w-6 h-6 text-indigo-600'
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <h3 className='text-xl font-bold text-gray-900 mb-2'>
+                      PDF Tax Statements
+                    </h3>
+                    <p className='text-sm text-gray-600 leading-relaxed mb-4'>
+                      Download professionally formatted statements — monthly or
+                      custom date ranges, on demand.
+                    </p>
+                    <div className='space-y-1.5'>
+                      {[
+                        'Monthly summaries',
+                        'Custom date ranges',
+                        'Print-ready formats',
+                      ].map((item) => (
+                        <div
+                          key={item}
+                          className='flex items-center gap-2 text-xs text-gray-600'
+                        >
+                          <CheckCircle2
+                            className='w-3.5 h-3.5 text-indigo-500 flex-shrink-0'
+                            strokeWidth={2.5}
+                          />
+                          <span className='font-medium'>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right: document mockup */}
+                  <div className='sm:col-span-2 hidden sm:flex items-center justify-center'>
+                    <div className='relative w-full max-w-[180px] aspect-[3/4] group-hover:-rotate-2 transition-transform duration-500'>
+                      {/* Back doc */}
+                      <div className='absolute inset-0 translate-x-2 translate-y-2 rounded-lg bg-white border border-gray-200 shadow-sm' />
+                      {/* Front doc */}
+                      <div className='absolute inset-0 rounded-lg bg-white border border-gray-200 shadow-lg p-3 flex flex-col'>
+                        <div className='flex items-center justify-between pb-2 border-b border-gray-100'>
+                          <div className='h-1.5 w-10 rounded-full bg-gradient-to-r from-primary-500 to-purple-500' />
+                          <div className='text-[7px] font-bold text-gray-400 uppercase'>
+                            PDF
+                          </div>
+                        </div>
+                        <div className='mt-2 space-y-1'>
+                          <div className='h-1 w-full rounded-full bg-gray-100' />
+                          <div className='h-1 w-4/5 rounded-full bg-gray-100' />
+                          <div className='h-1 w-3/5 rounded-full bg-gray-100' />
+                        </div>
+                        <div className='mt-3 grid grid-cols-2 gap-1'>
+                          <div className='h-6 rounded bg-primary-50 border border-primary-100' />
+                          <div className='h-6 rounded bg-purple-50 border border-purple-100' />
+                        </div>
+                        <div className='mt-2 space-y-1'>
+                          <div className='h-1 w-full rounded-full bg-gray-100' />
+                          <div className='h-1 w-5/6 rounded-full bg-gray-100' />
+                          <div className='h-1 w-4/6 rounded-full bg-gray-100' />
+                        </div>
+                        <div className='mt-auto pt-2 flex items-center justify-between'>
+                          <div className='h-1.5 w-8 rounded-full bg-gray-200' />
+                          <div className='text-[7px] font-bold text-indigo-500'>
+                            ₦25,500
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollReveal>
+          </div>
         </div>
       </section>
 

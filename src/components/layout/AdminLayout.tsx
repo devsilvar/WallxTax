@@ -20,19 +20,19 @@ export default function AdminLayout() {
         <header className="md:hidden flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors -ml-1"
+            className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-50 transition-colors -ml-1"
           >
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-red-600 text-white font-bold text-xs">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-900 text-white font-bold text-xs">
               A
             </div>
-            <span className="text-sm font-bold text-gray-900">Admin Panel</span>
+            <span className="text-sm font-semibold text-gray-900">Admin Panel</span>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
             <Outlet />
           </div>

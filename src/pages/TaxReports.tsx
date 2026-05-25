@@ -1,4 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Calculator,
@@ -8,6 +16,8 @@ import {
   CreditCard,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
+  ListChecks,
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -16,6 +26,9 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxReport, Pagination } from '@/types/index.ts';
+
+// Lazy-load the Analytics tab so Recharts (~150kB gz) only ships when needed.
+const LazyTaxAnalytics = lazy(() => import('./TaxAnalytics.tsx'));
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -28,7 +41,89 @@ function statusBadge(s: string) {
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${m[s] || 'bg-gray-100 text-gray-600'}`}>{s}</span>;
 }
 
+// ─── Shell ──────────────────────────────────────────────────
+// Owns the header + tab switcher. Tab state is URL-backed (?tab=analytics),
+// so bookmarking, back-button, and bar-click-to-jump all "just work".
+
+type TabKey = 'reports' | 'analytics';
+
 export default function TaxReports() {
+  const [params, setParams] = useSearchParams();
+  const tab: TabKey = params.get('tab') === 'analytics' ? 'analytics' : 'reports';
+  const highlight = params.get('highlight');
+
+  const setTab = (next: TabKey) => {
+    const p = new URLSearchParams(params);
+    if (next === 'analytics') p.set('tab', 'analytics');
+    else p.delete('tab');
+    p.delete('highlight'); // manual tab change clears any drill-through highlight
+    setParams(p, { replace: true });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Tax Reports</h1>
+        <p className="mt-1 font-body text-sm text-gray-500">
+          Calculate, finalize, and pay your monthly tax — with a visual history view.
+        </p>
+      </div>
+
+      <Tabs value={tab} onChange={setTab} />
+
+      {tab === 'reports' ? (
+        <TaxReportsList highlightedReportId={highlight} />
+      ) : (
+        <Suspense fallback={<ChartSkeleton />}>
+          <LazyTaxAnalytics />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+
+// ─── Tabs ───────────────────────────────────────────────────
+
+function Tabs({ value, onChange }: { value: TabKey; onChange: (t: TabKey) => void }) {
+  const base =
+    'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2';
+  const active = 'bg-primary-600 text-white shadow-sm';
+  const inactive = 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50';
+
+  return (
+    <div role="tablist" aria-label="Tax views" className="flex gap-2">
+      <button
+        role="tab"
+        aria-selected={value === 'reports'}
+        className={`${base} ${value === 'reports' ? active : inactive}`}
+        onClick={() => onChange('reports')}
+      >
+        <ListChecks className="h-4 w-4" /> Reports
+      </button>
+      <button
+        role="tab"
+        aria-selected={value === 'analytics'}
+        className={`${base} ${value === 'analytics' ? active : inactive}`}
+        onClick={() => onChange('analytics')}
+      >
+        <BarChart3 className="h-4 w-4" /> Analytics
+      </button>
+    </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="h-24 animate-pulse rounded-lg bg-gray-100" />
+      <div className="h-80 animate-pulse rounded-lg bg-gray-100" />
+    </div>
+  );
+}
+
+// ─── Reports List (previously the whole page) ───────────────
+
+function TaxReportsList({ highlightedReportId }: { highlightedReportId: string | null }) {
   const biz = useBusinessStore((s) => s.activeBusiness);
   const [reports, setReports] = useState<TaxReport[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -47,6 +142,12 @@ export default function TaxReports() {
   // Pay state
   const [paying, setPaying] = useState<string | null>(null);
 
+  // Highlight-on-scroll: track the currently-flashing row so we can strip the
+  // class after a timeout. Using a ref map lets us scroll to the element
+  // directly without query-selector gymnastics.
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [flashId, setFlashId] = useState<string | null>(null);
+
   const taxPath = biz ? `/businesses/${biz.id}/tax` : '';
 
   const fetchReports = () => {
@@ -57,7 +158,21 @@ export default function TaxReports() {
       .finally(() => setIsLoading(false));
   };
 
-  useEffect(() => { fetchReports(); }, [biz, page]);
+  useEffect(() => { fetchReports(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [biz, page]);
+
+  // When a report ID is passed in via `?highlight=`, scroll to it and flash
+  // the ring for 2 seconds. Re-runs if the ID changes (e.g., user jumps from
+  // analytics → reports → analytics → reports with a different bar).
+  useEffect(() => {
+    if (!highlightedReportId || isLoading) return;
+    const el = cardRefs.current[highlightedReportId];
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashId(highlightedReportId);
+    const timer = setTimeout(() => setFlashId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightedReportId, reports, isLoading]);
 
   const handleCalculate = async (e: FormEvent) => {
     e.preventDefault();
@@ -107,11 +222,7 @@ export default function TaxReports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tax Reports</h1>
-          <p className="mt-1 font-body text-sm text-gray-500">Calculate, finalize, and pay your monthly tax.</p>
-        </div>
+      <div className="flex items-center justify-end">
         <Button onClick={() => setShowCalc(!showCalc)}><Calculator className="h-4 w-4" /> Calculate Tax</Button>
       </div>
 
@@ -154,59 +265,68 @@ export default function TaxReports() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {reports.map((r) => (
-            <Card key={r.id}>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-base font-semibold text-gray-900">{formatMonth(r.taxMonth)}</h3>
-                    {statusBadge(r.paymentStatus)}
-                    {r.isFinalized && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-success-600">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Finalized
-                      </span>
-                    )}
-                    {r.isLocked && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-600">
-                        <Lock className="h-3.5 w-3.5" /> Locked
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 font-body text-sm sm:grid-cols-4">
-                    <div><span className="text-gray-400">Sales</span><p className="font-medium text-gray-700">{formatNaira(Number(r.totalSales))}</p></div>
-                    <div><span className="text-gray-400">Expenses</span><p className="font-medium text-gray-700">{formatNaira(Number(r.totalExpenses))}</p></div>
-                    <div><span className="text-gray-400">Profit</span><p className="font-medium text-gray-700">{formatNaira(Number(r.grossProfit))}</p></div>
-                    <div><span className="text-gray-400">Tax @ {Number(r.taxRate)}%</span><p className="font-bold text-gray-900">{formatNaira(Number(r.taxPayable))}</p></div>
-                  </div>
-                </div>
+          {reports.map((r) => {
+            const isFlashing = flashId === r.id;
+            return (
+              <div
+                key={r.id}
+                ref={(el) => { cardRefs.current[r.id] = el; }}
+                className={`rounded-lg transition-shadow duration-500 ${isFlashing ? 'ring-2 ring-primary-400 ring-offset-2' : ''}`}
+              >
+                <Card>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-base font-semibold text-gray-900">{formatMonth(r.taxMonth)}</h3>
+                        {statusBadge(r.paymentStatus)}
+                        {r.isFinalized && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-success-600">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Finalized
+                          </span>
+                        )}
+                        {r.isLocked && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-600">
+                            <Lock className="h-3.5 w-3.5" /> Locked
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 font-body text-sm sm:grid-cols-4">
+                        <div><span className="text-gray-400">Sales</span><p className="font-medium text-gray-700">{formatNaira(Number(r.totalSales))}</p></div>
+                        <div><span className="text-gray-400">Expenses</span><p className="font-medium text-gray-700">{formatNaira(Number(r.totalExpenses))}</p></div>
+                        <div><span className="text-gray-400">Profit</span><p className="font-medium text-gray-700">{formatNaira(Number(r.grossProfit))}</p></div>
+                        <div><span className="text-gray-400">Tax @ {Number(r.taxRate)}%</span><p className="font-bold text-gray-900">{formatNaira(Number(r.taxPayable))}</p></div>
+                      </div>
+                    </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {!r.isLocked && !r.isFinalized && (
-                    <Button size="sm" variant="secondary" onClick={() => handleFinalize(r.id)}>
-                      <CheckCircle2 className="h-4 w-4" /> Finalize
-                    </Button>
-                  )}
-                  {r.isFinalized && !r.isLocked && (
-                    <>
-                      <Button size="sm" variant="ghost" onClick={() => handleUnfinalize(r.id)}>
-                        <Clock className="h-4 w-4" /> Un-finalize
-                      </Button>
-                      {r.paymentStatus !== 'completed' && (
-                        <Button size="sm" onClick={() => handlePay(r.id)} isLoading={paying === r.id}>
-                          <CreditCard className="h-4 w-4" /> Pay Now
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!r.isLocked && !r.isFinalized && (
+                        <Button size="sm" variant="secondary" onClick={() => handleFinalize(r.id)}>
+                          <CheckCircle2 className="h-4 w-4" /> Finalize
                         </Button>
                       )}
-                    </>
-                  )}
-                  {r.isLocked && (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Paid
-                    </span>
-                  )}
-                </div>
+                      {r.isFinalized && !r.isLocked && (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => handleUnfinalize(r.id)}>
+                            <Clock className="h-4 w-4" /> Un-finalize
+                          </Button>
+                          {r.paymentStatus !== 'completed' && (
+                            <Button size="sm" onClick={() => handlePay(r.id)} isLoading={paying === r.id}>
+                              <CreditCard className="h-4 w-4" /> Pay Now
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      {r.isLocked && (
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Paid
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Card>
               </div>
-            </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

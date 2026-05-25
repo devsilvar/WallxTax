@@ -23,6 +23,7 @@ function PasswordRule({ met, label }: { met: boolean; label: string }) {
 
 export default function Register() {
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -52,9 +53,9 @@ export default function Register() {
     }
     setIsLoading(true);
     try {
-      await register(email, password);
-      toast.success('Account created!');
-      navigate('/dashboard');
+      await register(email, phone, password);
+      toast.success('Account created! Please sign in.');
+      navigate('/login');
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Registration failed');
     } finally {
@@ -79,6 +80,14 @@ export default function Register() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           required
+        />
+
+        <Input
+          label="Phone Number"
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="e.g. 2348012345678"
         />
 
         <div>

@@ -15,10 +15,12 @@ import {
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { Expense, Pagination } from '@/types/index.ts';
+import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
 const CATEGORIES = ['rent', 'inventory', 'salary', 'utility', 'fuel', 'logistics', 'marketing', 'other'] as const;
 
@@ -175,7 +177,7 @@ export default function Expenses() {
   };
   const monthLabel = new Date(summaryYear, summaryMonth - 1).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
 
-  if (!biz) return <p className="py-20 text-center text-gray-400">Select a business first.</p>;
+  if (!biz) return <NoBusinessPrompt />;
 
   return (
     <div className="space-y-6">
@@ -354,9 +356,7 @@ export default function Expenses() {
       </div>
 
       {/* Table */}
-      {isLoading && (
-        <div className="py-12 text-center text-gray-400">Loading...</div>
-      )}
+      {isLoading && <TableSkeleton rows={6} columns={6} />}
 
       {!isLoading && expenses.length === 0 && (
         <Card className="py-12 text-center">

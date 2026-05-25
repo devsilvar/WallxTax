@@ -41,18 +41,18 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
 
   const sidebarContent = (
     <>
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-5">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white font-bold text-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white font-bold text-sm">
             A
           </div>
-          <span className="text-lg font-bold text-gray-900">Admin Panel</span>
+          <span className="text-base font-semibold text-gray-900">Admin</span>
         </div>
         <button
           onClick={onClose}
-          className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+          className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-50 transition-colors"
         >
-          <X className="h-4 w-4 text-gray-500" />
+          <X className="h-4 w-4 text-gray-400" />
         </button>
       </div>
 
@@ -65,14 +65,14 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
                 end={end}
                 onClick={handleNavClick}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`
                 }
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
                 {label}
               </NavLink>
             </li>
@@ -80,20 +80,20 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
         </ul>
       </nav>
 
-      <div className="border-t border-gray-200 p-3 space-y-1">
+      <div className="border-t border-gray-100 px-3 py-4 space-y-1">
         <NavLink
           to="/dashboard"
           onClick={handleNavClick}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
           Back to App
         </NavLink>
         <button
           onClick={logout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4" />
           Log out
         </button>
       </div>
@@ -103,7 +103,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex h-screen w-64 flex-col border-r border-gray-200 bg-white shrink-0">
+      <aside className="hidden md:flex h-screen w-64 flex-col border-r border-gray-100 bg-white shrink-0">
         {sidebarContent}
       </aside>
 
@@ -114,7 +114,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
           onClick={onClose}
         />
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-[280px] flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className={`fixed inset-y-0 left-0 z-50 w-[280px] flex flex-col bg-white shadow-xl transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
           {sidebarContent}
         </aside>

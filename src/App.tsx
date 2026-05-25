@@ -14,6 +14,9 @@ import Register from '@/pages/Register.tsx';
 import Dashboard from '@/pages/Dashboard.tsx';
 import Sales from '@/pages/Sales.tsx';
 import Expenses from '@/pages/Expenses.tsx';
+import Invoices from '@/pages/Invoices.tsx';
+import InvoiceForm from '@/pages/InvoiceForm.tsx';
+import InvoiceDetail from '@/pages/InvoiceDetail.tsx';
 import TaxReports from '@/pages/TaxReports.tsx';
 import Payments from '@/pages/Payments.tsx';
 import Reminders from '@/pages/Reminders.tsx';
@@ -64,6 +67,10 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/expenses" element={<Expenses />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/invoices/new" element={<InvoiceForm />} />
+              <Route path="/invoices/:id" element={<InvoiceDetail />} />
+              <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
               <Route path="/tax" element={<TaxReports />} />
               <Route path="/payments" element={<Payments />} />
               <Route path="/reminders" element={<Reminders />} />

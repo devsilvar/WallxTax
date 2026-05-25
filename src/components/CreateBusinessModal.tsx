@@ -13,10 +13,8 @@ interface CreateBusinessModalProps {
 }
 
 const businessTypes = [
-  { value: 'sole_proprietorship', label: 'Sole Proprietorship' },
-  { value: 'partnership', label: 'Partnership' },
-  { value: 'llc', label: 'Limited Liability Company (LLC)' },
-  { value: 'corporation', label: 'Corporation' },
+  { value: 'sole_proprietorship', label: 'Sole Proprietorship (Individual)' },
+  { value: 'llc', label: 'Registered Business (LLC)' },
 ];
 
 export default function CreateBusinessModal({ isOpen, onClose, required }: CreateBusinessModalProps) {
@@ -79,11 +77,11 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Create a Business</h2>
+            <h2 className="text-xl font-bold text-gray-900">Enter your business details</h2>
             <p className="mt-1 text-sm text-gray-500">
               {required
                 ? 'Set up your first business to get started with PayMyTax.'
@@ -119,7 +117,7 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
             <select
               value={form.businessType}
               onChange={(e) => update('businessType', e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               {businessTypes.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -127,12 +125,14 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
             </select>
           </div>
 
-          <Input
-            label="Tax ID (TIN)"
-            value={form.taxId}
-            onChange={(e) => update('taxId', e.target.value)}
-            placeholder="Optional"
-          />
+          {form.businessType === 'llc' && (
+            <Input
+              label="Tax ID (TIN)"
+              value={form.taxId}
+              onChange={(e) => update('taxId', e.target.value)}
+              placeholder="Enter your TIN"
+            />
+          )}
 
           <Input
             label="Address"

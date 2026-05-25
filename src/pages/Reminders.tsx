@@ -2,21 +2,11 @@ import { useEffect, useState } from 'react';
 import { Bell, Trash2, Check, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import { CardListSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
-import type { Pagination } from '@/types/index.ts';
-
-interface Reminder {
-  id: string;
-  businessId: string;
-  reminderType: string;
-  scheduledDate: string;
-  message: string;
-  isSent: boolean;
-  sentAt: string | null;
-  createdAt: string;
-}
+import type { Pagination, Reminder } from '@/types/index.ts';
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -28,6 +18,10 @@ function typeBadge(t: string) {
     unfiled_tax: 'bg-yellow-100 text-yellow-700',
     unfinalized_report: 'bg-blue-100 text-blue-700',
     unpaid_tax: 'bg-orange-100 text-orange-700',
+    margin_warning: 'bg-amber-100 text-amber-700',
+    invoice_overdue: 'bg-orange-100 text-orange-700',
+    payment_successful: 'bg-green-100 text-green-700',
+    dva_received: 'bg-emerald-100 text-emerald-700',
   };
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${m[t] || 'bg-gray-100 text-gray-600'}`}>{t.replace(/_/g, ' ')}</span>;
 }
@@ -56,8 +50,26 @@ export default function Reminders() {
     setGenerating(true);
     const now = new Date();
     try {
-      await api.post(`${basePath}/generate`, { month: now.getMonth() + 1, year: now.getFullYear() });
-      toast.success('Reminders generated');
+      const r = await api.post(`${basePath}/generate`, {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      });
+      const d = r.data?.data ?? {};
+      const parts: string[] = [];
+      if (d.taxReminderCreated && d.taxReminderType) {
+        parts.push(`${d.taxReminderType.replace(/_/g, ' ')} reminder`);
+      }
+      if (d.deadlineCreated) parts.push('tax deadline reminder');
+      if (d.invoiceRemindersCreated > 0) {
+        parts.push(
+          `${d.invoiceRemindersCreated} overdue invoice reminder${d.invoiceRemindersCreated === 1 ? '' : 's'}`
+        );
+      }
+      if (parts.length === 0) {
+        toast.success(d.message || 'You are all caught up — no new reminders.');
+      } else {
+        toast.success(`Created ${parts.join(' + ')}.`);
+      }
       fetchReminders();
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed');
@@ -96,7 +108,7 @@ export default function Reminders() {
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-gray-400">Loading...</div>
+        <CardListSkeleton rows={5} />
       ) : reminders.length === 0 ? (
         <Card className="py-12 text-center">
           <Bell className="mx-auto h-10 w-10 text-gray-300" />

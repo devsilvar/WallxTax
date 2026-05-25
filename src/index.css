@@ -183,7 +183,17 @@ p, td, th, li, label, input, textarea, select {
   body.sidebar-open { overflow: hidden; }
 }
 
-.overflow-y-auto::-webkit-scrollbar { width: 4px; }
-.overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
-.overflow-y-auto::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 100px; }
-.overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+.overflow-y-auto::-webkit-scrollbar { width: 6px; }
+.overflow-y-auto::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 100px; }
+.overflow-y-auto::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 100px; }
+.overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+/* Custom scrollbar for modal */
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: #f3f4f6; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb { background: #d1d5db; }
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.scrollbar-track-gray-100::-webkit-scrollbar-track { background: #f3f4f6; }

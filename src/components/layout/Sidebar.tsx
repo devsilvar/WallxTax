@@ -4,31 +4,54 @@ import {
   LayoutDashboard,
   Receipt,
   Wallet,
+  FileText,
   Calculator,
   CreditCard,
   Bell,
   Landmark,
   Settings,
-  LogOut,
   Shield,
   ChevronDown,
   Plus,
   Check,
   X,
+  Zap,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/sales', label: 'Sales', icon: Receipt },
-  { to: '/expenses', label: 'Expenses', icon: Wallet },
-  { to: '/tax', label: 'Tax Reports', icon: Calculator },
-  { to: '/payments', label: 'Payments', icon: CreditCard },
-  { to: '/reminders', label: 'Reminders', icon: Bell },
-  { to: '/account', label: 'Bank Account', icon: Landmark },
-  { to: '/settings', label: 'Settings', icon: Settings },
+// Nav grouped by what the user is trying to do, not by what the data is.
+// "Operate" = day-to-day bookkeeping. "Money" = tax + payments + bank.
+// "Account" = settings/notifications.
+const navSections: Array<{
+  label: string;
+  items: Array<{ to: string; label: string; icon: typeof LayoutDashboard }>;
+}> = [
+  {
+    label: 'Operate',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/sales', label: 'Sales', icon: Receipt },
+      { to: '/expenses', label: 'Expenses', icon: Wallet },
+      { to: '/invoices', label: 'Invoices', icon: FileText },
+    ],
+  },
+  {
+    label: 'Money',
+    items: [
+      { to: '/tax', label: 'Tax Reports', icon: Calculator },
+      { to: '/payments', label: 'Payments', icon: CreditCard },
+      { to: '/account', label: 'Bank Account', icon: Landmark },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { to: '/reminders', label: 'Reminders', icon: Bell },
+      { to: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -37,7 +60,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
-  const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
@@ -166,41 +188,66 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         onClose={() => setShowCreateModal(false)}
       />
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pt-2" aria-label="Main navigation">
-        <p className="px-3 mb-2 text-[10px] font-semibold text-gray-300 uppercase tracking-widest sr-only">
-          Menu
-        </p>
-        <ul className='space-y-0.5'>
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                onClick={handleNavClick}
-                className={({ isActive }) =>
-                  `group relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-primary-50 to-primary-50/40 text-primary-700'
-                      : 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && (
-                      <div className='absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-gradient-to-b from-primary-500 to-primary-600' />
+      {/* Quick actions — shortcuts to the two highest-frequency flows.
+          Both deep-link to the page; the page's existing CTA opens its modal. */}
+      <div className='px-4 mt-1 mb-3 space-y-1.5'>
+        <NavLink
+          to='/sales'
+          onClick={handleNavClick}
+          className='flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-[13px] font-semibold text-white shadow-sm shadow-primary-500/20 transition-all duration-200 hover:bg-primary-700 active:scale-[0.99]'
+        >
+          <Plus className='h-4 w-4' strokeWidth={2.4} />
+          Record sale
+        </NavLink>
+        <NavLink
+          to='/tax'
+          onClick={handleNavClick}
+          className='flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:border-primary-200 hover:bg-primary-50/40 hover:text-primary-700'
+        >
+          <Zap className='h-4 w-4 text-amber-500' strokeWidth={2.2} />
+          Calculate tax
+        </NavLink>
+      </div>
+
+      {/* Navigation — grouped by intent (Operate / Money / Account) */}
+      <nav className='flex-1 overflow-y-auto px-3' aria-label='Main navigation'>
+        {navSections.map((section) => (
+          <div key={section.label} className='mb-4 last:mb-0'>
+            <p className='px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider'>
+              {section.label}
+            </p>
+            <ul className='space-y-0.5'>
+              {section.items.map(({ to, label, icon: Icon }) => (
+                <li key={to}>
+                  <NavLink
+                    to={to}
+                    onClick={handleNavClick}
+                    className={({ isActive }) =>
+                      `group relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-primary-50 to-primary-50/40 text-primary-700'
+                          : 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <div className='absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-gradient-to-b from-primary-500 to-primary-600' />
+                        )}
+                        <Icon
+                          className={`h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary-600' : ''}`}
+                          strokeWidth={isActive ? 2 : 1.8}
+                        />
+                        {label}
+                      </>
                     )}
-                    <Icon
-                      className={`h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary-600' : ''}`}
-                      strokeWidth={isActive ? 2 : 1.8}
-                    />
-                    {label}
-                  </>
-                )}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       {/* Admin link */}
@@ -233,27 +280,6 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         </div>
       )}
 
-      {/* User + Logout */}
-      <div className='border-t border-gray-100 p-4'>
-        <div className='flex items-center gap-2.5 px-2 py-2'>
-          <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white text-xs font-bold shrink-0 shadow-sm shadow-primary-500/20'>
-            {user?.email?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          <div className='min-w-0 flex-1'>
-            <p className='text-[13px] font-semibold text-gray-900 truncate'>
-              {user?.email?.split('@')[0]}
-            </p>
-            <p className='text-[10px] text-gray-400 truncate'>{user?.email}</p>
-          </div>
-        </div>
-        <button
-          onClick={logout}
-          className='mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-gray-400 transition-all duration-200 hover:bg-red-50/60 hover:text-red-600'
-        >
-          <LogOut className='h-[18px] w-[18px]' strokeWidth={1.8} />
-          Log out
-        </button>
-      </div>
     </>
   );
 

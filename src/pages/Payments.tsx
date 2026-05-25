@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CreditCard, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
@@ -71,9 +72,7 @@ export default function Payments() {
         {pagination && <span className="font-body text-xs text-gray-400">{pagination.total} total</span>}
       </div>
 
-      {isLoading && (
-        <div className="py-12 text-center text-gray-400">Loading...</div>
-      )}
+      {isLoading && <TableSkeleton rows={5} columns={5} />}
 
       {!isLoading && payments.length === 0 && (
         <Card className="py-12 text-center">
