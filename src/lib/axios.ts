@@ -33,7 +33,7 @@ export function getErrorMessage(error: unknown): string {
 //     the deploy host's env vars (Vercel/Netlify dashboard) so the bundle
 //     points at the live backend instead of trying to proxy through the
 //     static host.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://paymy-tax.onrender.com/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
