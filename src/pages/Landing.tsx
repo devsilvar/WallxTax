@@ -23,8 +23,46 @@ import {
   BarChart3,
   Zap,
   X,
+  DollarSign,
+  PieChart,
+  Lock,
+  Calculator,
+  CheckCheck,
+  Lightbulb,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
+
+/* ─── Gradient Icon Component ─── */
+function GradientIcon({
+  Icon,
+  gradient,
+  delay = 0,
+}: {
+  Icon: React.ComponentType<any>;
+  gradient: string;
+  delay?: number;
+}) {
+  return (
+    <div className='relative'>
+      <style>{`
+        @keyframes gradient-rotate-${delay} {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .gradient-animate-${delay} {
+          animation: gradient-rotate-${delay} 6s ease infinite;
+          animation-delay: ${delay * 0.3}s;
+        }
+      `}</style>
+      <div
+        className={`gradient-animate-${delay} w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br ${gradient} bg-[length:200%_200%] shadow-lg shadow-primary-500/20`}
+      >
+        <Icon className='h-6 w-6 text-white' strokeWidth={1.5} />
+      </div>
+    </div>
+  );
+}
 
 /* ─── Custom Hooks ─── */
 function useScrollAnimation<T extends HTMLElement = HTMLDivElement>() {
@@ -251,29 +289,28 @@ function FAQSection() {
   return (
     <section
       id='faq'
-      className='py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-gray-50/80 to-white'
+      className='py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'
     >
       <div className='mx-auto max-w-3xl px-4 sm:px-6'>
-        <ScrollReveal className='text-center mb-10 sm:mb-14'>
-          <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-5 sm:mb-6 shadow-sm'>
-            <HelpCircle className='h-3.5 sm:h-4 w-3.5 sm:w-4 text-primary-500' />
+        <ScrollReveal className='text-center mb-14 sm:mb-16'>
+          <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-5 py-2 mb-6 shadow-sm'>
+            <HelpCircle className='h-4 sm:h-4 w-4 sm:w-4 text-primary-500' />
             <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
-              FAQ
+              Got Questions?
             </span>
           </span>
-          <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
-            Common{' '}
+          <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+            Frequently asked{' '}
             <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
               questions
             </span>
           </h2>
-          <p className='mt-4 sm:mt-5 font-body text-base sm:text-lg text-gray-500'>
-            Everything you need to know about PayMyTax and tax compliance in
-            Nigeria.
+          <p className='mt-6 font-body text-base sm:text-lg text-gray-600'>
+            Find answers to common questions about WallxTax and tax compliance.
           </p>
         </ScrollReveal>
 
-        <div className='divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm'>
+        <div className='divide-y divide-gray-200 rounded-lg border-2 border-gray-200 bg-white overflow-hidden shadow-sm'>
           {faqs.map((faq, i) => {
             const isOpen = openIndex === i;
             return (
@@ -465,21 +502,21 @@ export default function Landing() {
               </p>
             </ScrollReveal>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons - Pill Shaped */}
             <ScrollReveal delay={300}>
-              <div className='mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0'>
-                <Link to='/register' className='w-full sm:w-auto group'>
-                  <button className='w-fit inline sm:w-auto relative inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-base font-bold text-white shadow-2xl shadow-primary-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/50 hover:from-primary-700 hover:via-primary-600 hover:to-purple-700 active:scale-[0.98] overflow-hidden'>
+              <div className='mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 px-4 sm:px-0'>
+                <Link to='/register' className='w-full sm:w-auto'>
+                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-8 sm:px-10 py-4 text-sm sm:text-base font-bold text-white shadow-2xl shadow-primary-500/40 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/60 hover:-translate-y-1 active:scale-[0.98] overflow-hidden group'>
                     <span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700' />
                     <span className='relative flex items-center gap-2'>
-                      Start for free{' '}
-                      <ArrowRight className='h-4 sm:h-5 w-4 sm:w-5 transition-transform group-hover:translate-x-1' />
+                      Start Free Today{' '}
+                      <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
                     </span>
                   </button>
                 </Link>
                 <Link to='/login' className='w-full sm:w-auto'>
-                  <button className='w-fit sm:w-auto relative inline-flex items-center justify-center gap-2.5 rounded-xl border-2 border-gray-200 bg-white/80 backdrop-blur px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-gray-700 shadow-lg transition-all duration-300 hover:border-primary-200 hover:bg-white hover:shadow-xl hover:text-primary-700 active:scale-[0.98] overflow-hidden'>
-                    <Play className='h-4 w-4 fill-current' /> See how it works
+                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border-2 border-gray-300 bg-white/70 backdrop-blur px-8 sm:px-10 py-4 text-sm sm:text-base font-semibold text-gray-700 shadow-md transition-all duration-300 hover:border-primary-300 hover:bg-white hover:shadow-xl hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
+                    <Play className='h-4 w-4 fill-current' /> Watch Demo
                   </button>
                 </Link>
               </div>
@@ -727,55 +764,40 @@ export default function Landing() {
           {/* Content Grid — Stats + Creative Visual */}
           <div className='grid lg:grid-cols-5 gap-10 sm:gap-12 lg:gap-16 items-center'>
             {/* Stats Grid */}
-            <div className='lg:col-span-2 grid grid-cols-2 gap-4 sm:gap-5'>
+            <div className='lg:col-span-2 grid grid-cols-2 gap-5 sm:gap-6'>
               {[
                 {
                   icon: TrendingUp,
+                  gradient: 'from-amber-500 via-orange-400 to-red-500',
                   value: '7.5%',
                   label: 'FIRS Tax Rate',
-                  iconBg: 'bg-primary-100',
-                  iconColor: 'text-primary-600',
-                  accent: 'from-primary-500/0 via-primary-500/60 to-primary-500/0',
                 },
                 {
                   icon: Shield,
+                  gradient: 'from-green-500 via-emerald-400 to-teal-500',
                   value: '100%',
                   label: 'FIRS Compliant',
-                  iconBg: 'bg-purple-100',
-                  iconColor: 'text-purple-600',
-                  accent: 'from-purple-500/0 via-purple-500/60 to-purple-500/0',
                 },
                 {
                   icon: Clock,
+                  gradient: 'from-blue-500 via-indigo-400 to-purple-500',
                   value: '<2min',
                   label: 'Setup Time',
-                  iconBg: 'bg-fuchsia-100',
-                  iconColor: 'text-fuchsia-600',
-                  accent: 'from-fuchsia-500/0 via-fuchsia-500/60 to-fuchsia-500/0',
                 },
                 {
                   icon: Zap,
+                  gradient: 'from-yellow-500 via-amber-400 to-orange-500',
                   value: 'Auto',
-                  label: 'Tax Calculation',
-                  iconBg: 'bg-indigo-100',
-                  iconColor: 'text-indigo-600',
-                  accent: 'from-indigo-500/0 via-indigo-500/60 to-indigo-500/0',
+                  label: 'Calculation',
                 },
               ].map((stat, i) => (
                 <ScrollReveal key={stat.label} delay={i * 100}>
-                  <div className='group relative overflow-hidden rounded-xl border border-gray-200/80 bg-white/70 backdrop-blur-sm p-5 sm:p-6 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-200'>
-                    <div
-                      className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${stat.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
-                    />
-                    <div
-                      className={`inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-lg ${stat.iconBg} ${stat.iconColor} mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500`}
-                    >
-                      <stat.icon className='h-5 w-5 sm:h-6 sm:w-6' strokeWidth={1.75} />
-                    </div>
-                    <div className='text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
+                  <div className='group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 sm:p-7 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-300'>
+                    <GradientIcon Icon={stat.icon} gradient={stat.gradient} delay={i} />
+                    <div className='mt-5 text-3xl sm:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
                       {stat.value}
                     </div>
-                    <div className='text-xs sm:text-sm text-gray-500 font-medium'>
+                    <div className='text-sm text-gray-600 font-medium'>
                       {stat.label}
                     </div>
                   </div>
@@ -1318,84 +1340,168 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── How It Works ── */}
-      <section
-        id='how-it-works'
-        className='py-12 sm:py-16 lg:py-20 bg-gray-50/50 relative overflow-hidden'
-      >
+      {/* ── Key Features ── */}
+      <section className='py-16 sm:py-20 lg:py-28 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-10 sm:mb-12'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-4 sm:mb-5 shadow-sm'>
-              <Rocket className='h-3.5 sm:h-4 w-3.5 sm:w-4 text-primary-500' />
+          <ScrollReveal className='mx-auto max-w-3xl text-center mb-16 sm:mb-20'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-6 shadow-sm'>
+              <Lightbulb className='h-4 sm:h-4 w-4 sm:w-4 text-primary-500' />
               <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
-                How It Works
+                Why Choose Us
               </span>
             </span>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
-              Three steps to{' '}
+            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+              Everything you need to{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
-                tax peace of mind
+                stay compliant
               </span>
             </h2>
-            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-500'>
-              No accounting degree required. We've made tax filing ridiculously
-              simple.
+            <p className='mt-6 font-body text-base sm:text-lg text-gray-600'>
+              Powerful features built specifically for Nigerian businesses.
             </p>
           </ScrollReveal>
 
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8'>
-            {steps.map((step, index) => (
+          <div className='grid md:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-stretch'>
+            {/* Feature Cards */}
+            {[
+              {
+                icon: Calculator,
+                gradient: 'from-blue-500 via-cyan-400 to-teal-500',
+                title: 'Smart Tax Calculation',
+                description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No guesswork.',
+                image: '/images/analytics-feature.jpg',
+              },
+              {
+                icon: Lock,
+                gradient: 'from-emerald-500 via-green-400 to-lime-500',
+                title: 'Bank-Grade Security',
+                description: 'Your financial data is encrypted and protected with enterprise-grade security standards.',
+                image: '/images/compliance-secure.jpg',
+              },
+              {
+                icon: PieChart,
+                gradient: 'from-purple-500 via-pink-400 to-rose-500',
+                title: 'Real-Time Analytics',
+                description: 'Get instant insights into your business finances with interactive charts and reports.',
+                image: '/images/dashboard-hero.jpg',
+              },
+              {
+                icon: CheckCheck,
+                gradient: 'from-amber-500 via-orange-400 to-red-500',
+                title: 'Compliance Ready',
+                description: 'Generate professional tax reports that meet all FIRS requirements in seconds.',
+                image: '/images/analytics-feature.jpg',
+              },
+            ].map((feature, i) => (
+              <ScrollReveal key={feature.title} delay={i * 100} className='group'>
+                <div className='flex flex-col h-full rounded-lg border-2 border-gray-200 overflow-hidden bg-white transition-all duration-500 hover:border-primary-300 hover:shadow-2xl hover:shadow-primary-500/15 hover:-translate-y-2'>
+                  {/* Feature Image */}
+                  <div className='relative h-40 sm:h-48 overflow-hidden bg-gray-100'>
+                    <img
+                      src={feature.image}
+                      alt={feature.title}
+                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
+                    />
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent' />
+                  </div>
+
+                  {/* Content */}
+                  <div className='flex-grow p-6 sm:p-7 flex flex-col'>
+                    <GradientIcon Icon={feature.icon} gradient={feature.gradient} delay={i} />
+                    <h3 className='mt-5 text-lg sm:text-xl font-bold text-gray-900'>
+                      {feature.title}
+                    </h3>
+                    <p className='mt-3 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
+                      {feature.description}
+                    </p>
+                    <div className='mt-4 inline-flex items-center text-primary-600 font-semibold text-sm group-hover:gap-2 transition-all duration-300'>
+                      Learn more
+                      <ArrowRight className='h-4 w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity' />
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section
+        id='how-it-works'
+        className='py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'
+      >
+        <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
+          <ScrollReveal className='mx-auto max-w-2xl text-center mb-16 sm:mb-20'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-6 shadow-sm'>
+              <Rocket className='h-4 sm:h-4 w-4 sm:w-4 text-primary-500' />
+              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
+                Simple Process
+              </span>
+            </span>
+            <h2 className='text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold text-gray-900 leading-tight'>
+              Get compliant in{' '}
+              <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
+                three simple steps
+              </span>
+            </h2>
+            <p className='mt-5 sm:mt-6 font-body text-base sm:text-lg text-gray-600'>
+              Your path to effortless tax management, designed for clarity and speed.
+            </p>
+          </ScrollReveal>
+
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10'>
+            {[
+              {
+                icon: Users,
+                gradient: 'from-blue-500 via-cyan-400 to-teal-500',
+                title: 'Create Your Account',
+                description: 'Sign up in under 60 seconds. Add your business details and connect your account in minutes.',
+                stepNum: 1,
+              },
+              {
+                icon: DollarSign,
+                gradient: 'from-purple-500 via-pink-400 to-rose-500',
+                title: 'Record Transactions',
+                description: 'Log sales and expenses as they happen. Import from bank transfers or enter manually.',
+                stepNum: 2,
+              },
+              {
+                icon: CheckCheck,
+                gradient: 'from-emerald-500 via-green-400 to-lime-500',
+                title: 'File & Pay Tax',
+                description: 'Review your auto-computed report, finalize, and pay FIRS directly. Done in minutes.',
+                stepNum: 3,
+              },
+            ].map((step, index) => (
               <ScrollReveal
                 key={step.title}
                 delay={index * 150}
                 className='relative group'
               >
-                {index < steps.length - 1 && (
-                  <div className='hidden lg:flex absolute top-1/2 -right-4 z-10 h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-500 shadow-lg'>
-                    <ChevronRight className='h-4 w-4' />
-                  </div>
-                )}
-                <div className='flex flex-col items-center rounded-2xl overflow-hidden border border-gray-100 bg-white transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-100'>
-                  <div className='relative w-full aspect-[4/3] overflow-hidden'>
-                    {index === 0 && (
-                      <img
-                        src='https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&h=450&fit=crop&q=80'
-                        alt='Creating account'
-                        className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
-                      />
-                    )}
-                    {index === 1 && (
-                      <img
-                        src='https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&h=450&fit=crop&q=80'
-                        alt='Recording transactions'
-                        className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
-                      />
-                    )}
-                    {index === 2 && (
-                      <img
-                        src='https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&h=450&fit=crop&q=80'
-                        alt='Filing tax'
-                        className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
-                      />
-                    )}
-                    <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent' />
-                    <span className='absolute top-3 sm:top-4 left-3 sm:left-4 font-body text-xs sm:text-sm font-bold uppercase tracking-widest text-white bg-primary-500/90 backdrop-blur-sm px-3 sm:px-4 py-1 sm:py-1.5 rounded-full'>
-                      Step {index + 1}
-                    </span>
+                <div className='flex flex-col h-full rounded-lg border-2 border-gray-200 bg-white p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/15 hover:border-primary-300 hover:-translate-y-2'>
+                  {/* Step Number */}
+                  <div className='absolute -top-5 -right-5 w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shadow-lg'>
+                    <span className='text-xl font-bold text-gray-700'>{step.stepNum}</span>
                   </div>
 
-                  <div className='p-5 sm:p-6 text-center w-full'>
-                    <step.icon
-                      className='h-8 sm:h-10 w-8 sm:w-10 text-primary-500 transition-transform duration-300 group-hover:scale-110 mx-auto'
-                      strokeWidth={1.3}
-                    />
-                    <h3 className='mt-4 sm:mt-5 text-lg sm:text-xl font-bold text-gray-900'>
-                      {step.title}
-                    </h3>
-                    <p className='mt-2 sm:mt-3 max-w-xs font-body text-sm sm:text-[15px] leading-relaxed text-gray-500 mx-auto'>
-                      {step.description}
-                    </p>
-                  </div>
+                  {/* Gradient Icon */}
+                  <GradientIcon Icon={step.icon} gradient={step.gradient} delay={index} />
+
+                  {/* Content */}
+                  <h3 className='mt-6 text-xl sm:text-2xl font-bold text-gray-900'>
+                    {step.title}
+                  </h3>
+                  <p className='mt-4 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
+                    {step.description}
+                  </p>
+
+                  {/* Arrow divider */}
+                  {index < 2 && (
+                    <div className='hidden lg:flex absolute -right-6 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-gray-200 text-gray-400 group-hover:border-primary-300 group-hover:text-primary-500 transition-all duration-300'>
+                      <ChevronRight className='h-5 w-5' />
+                    </div>
+                  )}
                 </div>
               </ScrollReveal>
             ))}
@@ -1406,36 +1512,33 @@ export default function Landing() {
       {/* ── Testimonials ── */}
       <section
         id='testimonials'
-        className='py-12 sm:py-16 lg:py-20 relative overflow-hidden'
+        className='py-16 sm:py-20 lg:py-28 relative overflow-hidden'
       >
         <div className='absolute inset-0 z-0'>
           <img
-            src='https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1600&h=900&fit=crop&q=80'
-            alt=''
+            src='/images/dashboard-hero.jpg'
+            alt='Business success'
             className='w-full h-full object-cover object-center'
           />
-          <div className='absolute inset-0 bg-white/90 backdrop-blur-sm' />
-          <div className='absolute inset-0 bg-gradient-to-b from-white via-transparent to-white' />
+          <div className='absolute inset-0 bg-gradient-to-br from-white via-white/95 to-white/90' />
         </div>
 
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative z-10'>
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-10 sm:mb-14 lg:mb-16'>
-            <div className='absolute -top-8 left-1/2 -translate-x-1/2 w-32 h-32 bg-gradient-to-br from-primary-500/10 to-purple-500/10 rounded-full blur-2xl' />
-            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-5 sm:mb-6 shadow-sm'>
-              <Star className='h-3.5 sm:h-4 w-3.5 sm:w-4 text-primary-500 fill-primary-500' />
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
-                Testimonials
+          <ScrollReveal className='mx-auto max-w-3xl text-center mb-16 sm:mb-20'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-5 py-2 mb-6 shadow-sm'>
+              <span className='flex h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse' />
+              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-700'>
+                Real Results
               </span>
             </span>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
-              Loved by{' '}
+            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+              Trusted by{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
-                business owners
+                thousands of businesses
               </span>
             </h2>
-            <p className='mt-4 sm:mt-5 font-body text-base sm:text-lg text-gray-500'>
-              Don't just take our word for it. Here's what real Nigerian
-              entrepreneurs are saying.
+            <p className='mt-6 font-body text-base sm:text-lg text-gray-700'>
+              Hear from business owners who've transformed their tax management.
             </p>
           </ScrollReveal>
 
@@ -1446,10 +1549,10 @@ export default function Landing() {
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className='group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 sm:p-7 lg:p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/10 hover:border-primary-200/50 hover:-translate-y-1'
+                className='group relative overflow-hidden rounded-lg border-2 border-gray-300 bg-white/95 backdrop-blur p-7 sm:p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-2'
               >
                 <div
-                  className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${t.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                  className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${t.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                 />
                 <div className='absolute top-4 right-6 sm:right-8 text-5xl sm:text-6xl lg:text-7xl font-serif bg-gradient-to-br from-primary-100 to-purple-50 bg-clip-text text-transparent leading-none select-none'>
                   "
@@ -1492,6 +1595,35 @@ export default function Landing() {
 
       {/* ── FAQ ── */}
       <FAQSection />
+
+      {/* ── Final CTA ── */}
+      <section className='py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-white to-gray-50'>
+        <ScrollReveal className='mx-auto max-w-4xl px-4 sm:px-6 text-center'>
+          <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+            Ready to simplify your{' '}
+            <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
+              tax management?
+            </span>
+          </h2>
+          <p className='mt-6 font-body text-lg text-gray-600 max-w-2xl mx-auto'>
+            Join thousands of Nigerian businesses that trust WallxTax for their tax compliance and reporting needs.
+          </p>
+          <div className='mt-10 flex flex-col sm:flex-row items-center justify-center gap-5'>
+            <Link to='/register'>
+              <button className='px-10 py-4 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 text-white font-bold shadow-xl shadow-primary-500/40 hover:shadow-2xl hover:shadow-primary-500/60 transition-all duration-300 hover:-translate-y-1 group'>
+                <span className='flex items-center gap-2'>
+                  Start Your Free Trial <ArrowRight className='h-5 w-5 group-hover:translate-x-1 transition-transform' />
+                </span>
+              </button>
+            </Link>
+            <Link to='/login'>
+              <button className='px-10 py-4 rounded-full border-2 border-gray-300 text-gray-700 font-semibold hover:border-primary-400 hover:text-primary-700 transition-all duration-300 hover:-translate-y-0.5'>
+                Schedule Demo
+              </button>
+            </Link>
+          </div>
+        </ScrollReveal>
+      </section>
 
       {/* ── Footer ── */}
       <footer className='bg-gray-950 text-gray-400'>
