@@ -32,34 +32,11 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 
-/* ─── Gradient Icon Component ─── */
-function GradientIcon({
-  Icon,
-  gradient,
-  delay = 0,
-}: {
-  Icon: React.ComponentType<any>;
-  gradient: string;
-  delay?: number;
-}) {
+/* ─── Premium Icon Component ─── */
+function PremiumIcon({ Icon, delay = 0 }: { Icon: React.ComponentType<any>; delay?: number }) {
   return (
-    <div className='relative'>
-      <style>{`
-        @keyframes gradient-rotate-${delay} {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .gradient-animate-${delay} {
-          animation: gradient-rotate-${delay} 6s ease infinite;
-          animation-delay: ${delay * 0.3}s;
-        }
-      `}</style>
-      <div
-        className={`gradient-animate-${delay} w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br ${gradient} bg-[length:200%_200%] shadow-lg shadow-primary-500/20`}
-      >
-        <Icon className='h-6 w-6 text-white' strokeWidth={1.5} />
-      </div>
+    <div className='w-12 h-12 flex items-center justify-center'>
+      <Icon className='h-6 w-6 text-gray-700' strokeWidth={1.3} />
     </div>
   );
 }
@@ -310,7 +287,7 @@ function FAQSection() {
           </p>
         </ScrollReveal>
 
-        <div className='divide-y divide-gray-200 rounded-lg border-2 border-gray-200 bg-white overflow-hidden shadow-sm'>
+        <div className='divide-y divide-gray-200/50 rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur overflow-hidden shadow-sm'>
           {faqs.map((faq, i) => {
             const isOpen = openIndex === i;
             return (
@@ -766,35 +743,15 @@ export default function Landing() {
             {/* Stats Grid */}
             <div className='lg:col-span-2 grid grid-cols-2 gap-5 sm:gap-6'>
               {[
-                {
-                  icon: TrendingUp,
-                  gradient: 'from-amber-500 via-orange-400 to-red-500',
-                  value: '7.5%',
-                  label: 'FIRS Tax Rate',
-                },
-                {
-                  icon: Shield,
-                  gradient: 'from-green-500 via-emerald-400 to-teal-500',
-                  value: '100%',
-                  label: 'FIRS Compliant',
-                },
-                {
-                  icon: Clock,
-                  gradient: 'from-blue-500 via-indigo-400 to-purple-500',
-                  value: '<2min',
-                  label: 'Setup Time',
-                },
-                {
-                  icon: Zap,
-                  gradient: 'from-yellow-500 via-amber-400 to-orange-500',
-                  value: 'Auto',
-                  label: 'Calculation',
-                },
+                { icon: TrendingUp, value: '7.5%', label: 'FIRS Tax Rate' },
+                { icon: Shield, value: '100%', label: 'FIRS Compliant' },
+                { icon: Clock, value: '<2min', label: 'Setup Time' },
+                { icon: Zap, value: 'Auto', label: 'Calculation' },
               ].map((stat, i) => (
                 <ScrollReveal key={stat.label} delay={i * 100}>
-                  <div className='group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 sm:p-7 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-300'>
-                    <GradientIcon Icon={stat.icon} gradient={stat.gradient} delay={i} />
-                    <div className='mt-5 text-3xl sm:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
+                  <div className='group relative overflow-hidden rounded-xl border border-gray-100/50 bg-white/70 backdrop-blur p-6 sm:p-7 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-100/50'>
+                    <PremiumIcon Icon={stat.icon} delay={i} />
+                    <div className='mt-4 text-3xl sm:text-4xl font-bold text-gray-900 mb-1 tracking-tight'>
                       {stat.value}
                     </div>
                     <div className='text-sm text-gray-600 font-medium'>
@@ -1362,39 +1319,14 @@ export default function Landing() {
           </ScrollReveal>
 
           <div className='grid md:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-stretch'>
-            {/* Feature Cards */}
             {[
-              {
-                icon: Calculator,
-                gradient: 'from-blue-500 via-cyan-400 to-teal-500',
-                title: 'Smart Tax Calculation',
-                description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No guesswork.',
-                image: '/images/analytics-feature.jpg',
-              },
-              {
-                icon: Lock,
-                gradient: 'from-emerald-500 via-green-400 to-lime-500',
-                title: 'Bank-Grade Security',
-                description: 'Your financial data is encrypted and protected with enterprise-grade security standards.',
-                image: '/images/compliance-secure.jpg',
-              },
-              {
-                icon: PieChart,
-                gradient: 'from-purple-500 via-pink-400 to-rose-500',
-                title: 'Real-Time Analytics',
-                description: 'Get instant insights into your business finances with interactive charts and reports.',
-                image: '/images/dashboard-hero.jpg',
-              },
-              {
-                icon: CheckCheck,
-                gradient: 'from-amber-500 via-orange-400 to-red-500',
-                title: 'Compliance Ready',
-                description: 'Generate professional tax reports that meet all FIRS requirements in seconds.',
-                image: '/images/analytics-feature.jpg',
-              },
+              { icon: Calculator, title: 'Smart Tax Calculation', description: 'Automatic FIRS-compliant tax calculations based on your sales and expenses. No guesswork.', image: '/images/analytics-feature.jpg' },
+              { icon: Lock, title: 'Bank-Grade Security', description: 'Your financial data is encrypted and protected with enterprise-grade security standards.', image: '/images/compliance-secure.jpg' },
+              { icon: PieChart, title: 'Real-Time Analytics', description: 'Get instant insights into your business finances with interactive charts and reports.', image: '/images/dashboard-hero.jpg' },
+              { icon: CheckCheck, title: 'Compliance Ready', description: 'Generate professional tax reports that meet all FIRS requirements in seconds.', image: '/images/mobile-interface.jpg' },
             ].map((feature, i) => (
               <ScrollReveal key={feature.title} delay={i * 100} className='group'>
-                <div className='flex flex-col h-full rounded-lg border-2 border-gray-200 overflow-hidden bg-white transition-all duration-500 hover:border-primary-300 hover:shadow-2xl hover:shadow-primary-500/15 hover:-translate-y-2'>
+                <div className='flex flex-col h-full rounded-xl border border-gray-200/50 overflow-hidden bg-white/50 backdrop-blur transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1'>
                   {/* Feature Image */}
                   <div className='relative h-40 sm:h-48 overflow-hidden bg-gray-100'>
                     <img
@@ -1402,22 +1334,17 @@ export default function Landing() {
                       alt={feature.title}
                       className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
                     />
-                    <div className='absolute inset-0 bg-gradient-to-t from-black/20 to-transparent' />
                   </div>
 
                   {/* Content */}
                   <div className='flex-grow p-6 sm:p-7 flex flex-col'>
-                    <GradientIcon Icon={feature.icon} gradient={feature.gradient} delay={i} />
-                    <h3 className='mt-5 text-lg sm:text-xl font-bold text-gray-900'>
+                    <PremiumIcon Icon={feature.icon} delay={i} />
+                    <h3 className='mt-4 text-lg sm:text-xl font-bold text-gray-900'>
                       {feature.title}
                     </h3>
                     <p className='mt-3 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
                       {feature.description}
                     </p>
-                    <div className='mt-4 inline-flex items-center text-primary-600 font-semibold text-sm group-hover:gap-2 transition-all duration-300'>
-                      Learn more
-                      <ArrowRight className='h-4 w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity' />
-                    </div>
                   </div>
                 </div>
               </ScrollReveal>
@@ -1452,56 +1379,77 @@ export default function Landing() {
 
           <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10'>
             {[
-              {
-                icon: Users,
-                gradient: 'from-blue-500 via-cyan-400 to-teal-500',
-                title: 'Create Your Account',
-                description: 'Sign up in under 60 seconds. Add your business details and connect your account in minutes.',
-                stepNum: 1,
-              },
-              {
-                icon: DollarSign,
-                gradient: 'from-purple-500 via-pink-400 to-rose-500',
-                title: 'Record Transactions',
-                description: 'Log sales and expenses as they happen. Import from bank transfers or enter manually.',
-                stepNum: 2,
-              },
-              {
-                icon: CheckCheck,
-                gradient: 'from-emerald-500 via-green-400 to-lime-500',
-                title: 'File & Pay Tax',
-                description: 'Review your auto-computed report, finalize, and pay FIRS directly. Done in minutes.',
-                stepNum: 3,
-              },
+              { icon: Users, title: 'Create Your Account', description: 'Sign up in under 60 seconds. Add your business details and connect your account in minutes.', stepNum: 1 },
+              { icon: DollarSign, title: 'Record Transactions', description: 'Log sales and expenses as they happen. Import from bank transfers or enter manually.', stepNum: 2 },
+              { icon: CheckCheck, title: 'File & Pay Tax', description: 'Review your auto-computed report, finalize, and pay FIRS directly. Done in minutes.', stepNum: 3 },
             ].map((step, index) => (
-              <ScrollReveal
-                key={step.title}
-                delay={index * 150}
-                className='relative group'
-              >
-                <div className='flex flex-col h-full rounded-lg border-2 border-gray-200 bg-white p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/15 hover:border-primary-300 hover:-translate-y-2'>
+              <ScrollReveal key={step.title} delay={index * 150} className='relative group'>
+                <div className='flex flex-col h-full rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur p-8 transition-all duration-500 hover:shadow-lg hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1'>
                   {/* Step Number */}
-                  <div className='absolute -top-5 -right-5 w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shadow-lg'>
-                    <span className='text-xl font-bold text-gray-700'>{step.stepNum}</span>
+                  <div className='absolute -top-4 -right-4 w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center shadow-md'>
+                    <span className='text-lg font-bold text-gray-600'>{step.stepNum}</span>
                   </div>
 
-                  {/* Gradient Icon */}
-                  <GradientIcon Icon={step.icon} gradient={step.gradient} delay={index} />
+                  {/* Premium Icon */}
+                  <PremiumIcon Icon={step.icon} delay={index} />
 
                   {/* Content */}
-                  <h3 className='mt-6 text-xl sm:text-2xl font-bold text-gray-900'>
+                  <h3 className='mt-5 text-xl sm:text-2xl font-bold text-gray-900'>
                     {step.title}
                   </h3>
-                  <p className='mt-4 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
+                  <p className='mt-3 font-body text-sm sm:text-[15px] leading-relaxed text-gray-600 flex-grow'>
                     {step.description}
                   </p>
 
                   {/* Arrow divider */}
                   {index < 2 && (
-                    <div className='hidden lg:flex absolute -right-6 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-gray-200 text-gray-400 group-hover:border-primary-300 group-hover:text-primary-500 transition-all duration-300'>
+                    <div className='hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-white border border-gray-200/50 text-gray-400 transition-all duration-300'>
                       <ChevronRight className='h-5 w-5' />
                     </div>
                   )}
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Gallery Section ── */}
+      <section className='py-16 sm:py-20 lg:py-28 bg-white'>
+        <div className='mx-auto max-w-7xl px-4 sm:px-6'>
+          <ScrollReveal className='mx-auto max-w-2xl text-center mb-16 sm:mb-20'>
+            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+              See how businesses use{' '}
+              <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
+                WallxTax
+              </span>
+            </h2>
+            <p className='mt-6 font-body text-base sm:text-lg text-gray-600'>
+              Real businesses managing their taxes with confidence.
+            </p>
+          </ScrollReveal>
+
+          {/* Image Grid */}
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8'>
+            {[
+              { image: '/images/workspace.jpg', title: 'Workspace Setup', alt: 'Professional workspace with WallxTax' },
+              { image: '/images/team-collaboration.jpg', title: 'Team Collaboration', alt: 'Teams working together efficiently' },
+              { image: '/images/business-growth.jpg', title: 'Business Growth', alt: 'Growing business metrics' },
+              { image: '/images/mobile-interface.jpg', title: 'Mobile Access', alt: 'Access WallxTax on the go' },
+              { image: '/images/dashboard-hero.jpg', title: 'Dashboard', alt: 'Comprehensive tax dashboard' },
+              { image: '/images/compliance-secure.jpg', title: 'Security First', alt: 'Enterprise security standards' },
+            ].map((item, i) => (
+              <ScrollReveal key={item.title} delay={i * 100} className='group'>
+                <div className='relative overflow-hidden rounded-xl h-72 sm:h-80 shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1'>
+                  <img
+                    src={item.image}
+                    alt={item.alt}
+                    className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
+                  />
+                  <div className='absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+                  <div className='absolute bottom-0 left-0 right-0 p-6 translate-y-full group-hover:translate-y-0 transition-transform duration-300'>
+                    <h3 className='text-white font-bold text-lg'>{item.title}</h3>
+                  </div>
                 </div>
               </ScrollReveal>
             ))}
@@ -1549,10 +1497,10 @@ export default function Landing() {
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className='group relative overflow-hidden rounded-lg border-2 border-gray-300 bg-white/95 backdrop-blur p-7 sm:p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-2'
+                className='group relative overflow-hidden rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur p-7 sm:p-8 transition-all duration-500 hover:shadow-lg hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1'
               >
                 <div
-                  className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${t.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                  className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${t.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                 />
                 <div className='absolute top-4 right-6 sm:right-8 text-5xl sm:text-6xl lg:text-7xl font-serif bg-gradient-to-br from-primary-100 to-purple-50 bg-clip-text text-transparent leading-none select-none'>
                   "
