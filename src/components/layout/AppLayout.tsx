@@ -9,6 +9,8 @@ import CommandPalette from '@/components/CommandPalette.tsx';
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/sales': 'Sales',
+  '/sales/unverified': 'Unverified Transactions',
+  '/test/transfer-simulator': 'Test Transfer Simulator',
   '/expenses': 'Expenses',
   '/tax': 'Tax Reports',
   '/payments': 'Payments',

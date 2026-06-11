@@ -24,6 +24,13 @@ export interface Business {
   paystackCustomerCode?: string;
   virtualAccountNumber?: string;
   virtualAccountBank?: string;
+  paystackSubaccountCode?: string;
+  settlementBankCode?: string;
+  settlementBankName?: string;
+  settlementAccountNumber?: string;
+  settlementAccountName?: string;
+  platformCommissionPct?: number;
+  settlementConnectedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,8 +44,14 @@ export interface SalesTransaction {
   referenceId?: string;
   description?: string;
   customerName?: string;
+  customerHint?: string;
+  finalClassification?: string;
+  needsVerification?: boolean;
+  verifiedAt?: string;
+  isTaxable?: boolean;
   transactionDate: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Expense {
@@ -390,4 +403,19 @@ export interface Reminder {
   createdAt: string;
   referenceType: ReminderReferenceType | null;
   referenceId: string | null;
+}
+
+// Returned by `GET /api/v1/banks`. Backs the BVN-validation bank dropdown on
+// the Account page. `code` is the NIBSS clearing code Paystack expects as
+// `bank_code` on `/customer/:code/identification`; `slug` is the identifier
+// used elsewhere (e.g. `preferred_bank` on DVA creation). Server-side cache
+// in `banks` table refreshes from Paystack every 24h.
+export interface Bank {
+  id: string;
+  code: string;
+  name: string;
+  slug: string;
+  longCode: string | null;
+  type: string | null;
+  active: boolean;
 }

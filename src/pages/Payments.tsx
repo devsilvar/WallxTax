@@ -7,6 +7,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxPayment, Pagination } from '@/types/index.ts';
+import { mapPaystackError } from '@/lib/paystack-errors';
 
 const STATUSES = ['pending', 'processing', 'completed', 'failed', 'refunded'] as const;
 
@@ -50,8 +51,11 @@ export default function Payments() {
       await api.get(`${taxPath}/payments/${id}/verify`);
       toast.success('Payment verified');
       fetchPayments();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Verification failed');
+    } catch (err: unknown) {
+      const mapped = mapPaystackError(err as any);
+      if (mapped.intent !== 'silent') {
+        toast.error(`${mapped.title}: ${mapped.body}`);
+      }
     } finally { setVerifying(null); }
   };
 

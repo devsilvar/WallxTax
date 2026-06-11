@@ -16,6 +16,8 @@ import {
   Check,
   X,
   Zap,
+  AlertCircle,
+  Bot,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -33,8 +35,10 @@ const navSections: Array<{
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/sales', label: 'Sales', icon: Receipt },
+      { to: '/sales/unverified', label: 'Unverified', icon: AlertCircle },
       { to: '/expenses', label: 'Expenses', icon: Wallet },
       { to: '/invoices', label: 'Invoices', icon: FileText },
+      { to: '/ai', label: 'AI Assistant', icon: Bot },
     ],
   },
   {
@@ -50,6 +54,7 @@ const navSections: Array<{
     items: [
       { to: '/reminders', label: 'Reminders', icon: Bell },
       { to: '/settings', label: 'Settings', icon: Settings },
+      ...(import.meta.env.DEV ? [{ to: '/test/transfer-simulator', label: 'Test Transfer', icon: Zap }] : []),
     ],
   },
 ];

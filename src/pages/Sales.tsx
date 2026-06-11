@@ -33,6 +33,13 @@ const SOURCES = [
 ] as const;
 const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
 
+interface TransactionClassification {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+}
+
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
@@ -120,7 +127,12 @@ export default function Sales() {
   const [transactionDate, setTransactionDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
+  const [classification, setClassification] = useState('');
+  const [originalClassification, setOriginalClassification] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  const [classifications, setClassifications] = useState<TransactionClassification[]>([]);
+  const [loadingClassifications, setLoadingClassifications] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/sales` : '';
 
@@ -168,12 +180,28 @@ export default function Sales() {
       .finally(() => setSummaryLoading(false));
   };
 
+  const fetchClassifications = () => {
+    setLoadingClassifications(true);
+    api
+      .get('/transaction-classifications')
+      .then((r) => {
+        if (r.data.data && Array.isArray(r.data.data)) {
+          setClassifications(r.data.data);
+        }
+      })
+      .catch(() => toast.error('Failed to load classifications'))
+      .finally(() => setLoadingClassifications(false));
+  };
+
   useEffect(() => {
     fetchSales();
   }, [biz, page, filterSource, filterStatus, filterStartDate, filterEndDate]);
   useEffect(() => {
     fetchSummary();
   }, [biz, summaryMonth, summaryYear]);
+  useEffect(() => {
+    if (biz) fetchClassifications();
+  }, [biz]);
 
   const resetForm = () => {
     setAmount('');
@@ -181,6 +209,8 @@ export default function Sales() {
     setDescription('');
     setCustomerName('');
     setTransactionDate(new Date().toISOString().slice(0, 10));
+    setClassification('');
+    setOriginalClassification('');
     setEditId(null);
     setShowForm(false);
   };
@@ -192,6 +222,9 @@ export default function Sales() {
     setDescription(s.description || '');
     setCustomerName(s.customerName || '');
     setTransactionDate(new Date(s.transactionDate).toISOString().slice(0, 10));
+    const currentClass = s.finalClassification || '';
+    setClassification(currentClass);
+    setOriginalClassification(currentClass);
     setShowForm(true);
   };
 
@@ -208,6 +241,14 @@ export default function Sales() {
     try {
       if (editId) {
         await api.put(`${basePath}/${editId}`, body);
+        
+        // Only verify if classification changed
+        if (classification && classification !== originalClassification) {
+          await api.post(`${basePath}/${editId}/verify`, { 
+            classification 
+          });
+        }
+        
         toast.success('Sale updated');
       } else {
         await api.post(basePath, body);
@@ -443,6 +484,24 @@ export default function Sales() {
               onChange={(e) => setTransactionDate(e.target.value)}
               required
             />
+            <div className='space-y-1'>
+              <label className='block text-sm font-medium text-gray-700'>
+                Classification (Optional)
+              </label>
+              <select
+                value={classification}
+                onChange={(e) => setClassification(e.target.value)}
+                className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+                disabled={loadingClassifications}
+              >
+                <option value=''>Not classified</option>
+                {classifications.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className='flex items-end gap-2 sm:col-span-2'>
               <Button type='submit' isLoading={saving}>
                 {editId ? 'Update' : 'Create'}

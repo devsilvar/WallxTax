@@ -633,7 +633,7 @@ export default function Dashboard() {
               <p key={r.id} className='text-[13px] text-blue-700 truncate'>
                 {r.message}{' '}
                 <span className='text-blue-400'>
-                  \u00B7 {formatDate(r.scheduledDate)}
+                  · {formatDate(r.scheduledDate)}
                 </span>
               </p>
             ))}

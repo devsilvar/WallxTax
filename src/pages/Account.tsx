@@ -13,8 +13,11 @@ import {
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useAuthStore } from '@/stores/auth.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
+import type { Bank } from '@/types';
+import { mapPaystackError } from '@/lib/paystack-errors';
 
 interface DVAData {
   status: 'active' | 'pending' | 'none';
@@ -27,6 +30,7 @@ interface DVAData {
 export default function Account() {
   const biz = useBusinessStore((s) => s.activeBusiness);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
 
   const [dva, setDva] = useState<DVAData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +40,30 @@ export default function Account() {
   const [showBvnForm, setShowBvnForm] = useState(false);
   const [bvn, setBvn] = useState('');
   const [bvnError, setBvnError] = useState('');
+  // Bank-account fields required by Paystack's current validation shape
+  // (`type: 'bank_account'`). Bank dropdown is populated from /api/v1/banks
+  // when the form is first opened — cached for the rest of the page-life.
+  const [accountNumber, setAccountNumber] = useState('');
+  const [bankCode, setBankCode] = useState('');
+  const [banks, setBanks] = useState<Bank[] | null>(null);
+  const [banksLoading, setBanksLoading] = useState(false);
+  const [banksError, setBanksError] = useState('');
+  // Inline phone capture — fired when setupVirtualAccount returns
+  // USER_PHONE_REQUIRED. Path (b) from paymentPlan.md §2.3.
+  const [showPhoneForm, setShowPhoneForm] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
   const isMountedRef = useRef(true);
+
+  // Settlement bank connection state
+  const [showSettlementForm, setShowSettlementForm] = useState(false);
+  const [settlementBankCode, setSettlementBankCode] = useState('');
+  const [settlementAccountNumber, setSettlementAccountNumber] = useState('');
+  const [resolvedAccountName, setResolvedAccountName] = useState('');
+  const [resolvingAccount, setResolvingAccount] = useState(false);
+  const [connectingSettlement, setConnectingSettlement] = useState(false);
+  const [settlementError, setSettlementError] = useState('');
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -61,6 +88,38 @@ export default function Account() {
     fetchDVA();
   }, [biz?.id]);
 
+  // Lazy-fetch the bank list the first time the BVN form opens. We don't
+  // pre-load on page mount — most users won't see the BVN form (DVA
+  // already active, or test-mode no-validation flow). Cached server-side for
+  // 24h; first call may be ~600ms (Paystack fetch + DB upsert), subsequent
+  // calls in the same SPA session reuse `banks` state.
+  useEffect(() => {
+    if (!showBvnForm || banks !== null) return;
+    let cancelled = false;
+    setBanksLoading(true);
+    setBanksError('');
+    api
+      .get('/banks')
+      .then((res) => {
+        if (cancelled) return;
+        setBanks(res.data.data as Bank[]);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const e = err as { response?: { data?: { error?: { message?: string } } } };
+        setBanksError(
+          e.response?.data?.error?.message ||
+            'Could not load the bank list. Please try again.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setBanksLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showBvnForm, banks]);
+
   const handleSetup = async () => {
     if (!biz) return;
     setSettingUp(true);
@@ -75,30 +134,101 @@ export default function Account() {
       } else {
         toast.success('Account setup initiated — check back shortly.');
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Failed to set up virtual account';
-      const code = err.response?.data?.error?.code;
-      const details = err.response?.data?.error?.details;
+    } catch (err: unknown) {
+      const e = err as Parameters<typeof mapPaystackError>[0] & {
+        response?: { data?: { error?: { code?: string; message?: string; details?: { paystackCode?: string } } } };
+      };
+      const code = e.response?.data?.error?.code;
+      const paystackCode = e.response?.data?.error?.details?.paystackCode;
 
-      if (code === 'PAYSTACK_ERROR' && (
-        msg.toLowerCase().includes('validate') ||
-        msg.toLowerCase().includes('identification') ||
-        msg.toLowerCase().includes('not operational') ||
-        details?.paystackCode === 'disabled_merchant'
-      )) {
-        if (details?.paystackCode === 'disabled_merchant') {
-          setError('Your Paystack account needs activation. Please check your Paystack dashboard or contact support@paystack.com.');
-        } else {
-          setShowBvnForm(true);
-          setError('');
-          toast('Identity verification is required before creating a virtual account.', { icon: 'i' });
-        }
-      } else {
-        setError(msg);
-        toast.error(msg);
+      // Path (b) — user has no phone on their profile. We surface our own
+      // 400/USER_PHONE_REQUIRED before any Paystack call, so this branch
+      // comes first and short-circuits before the Paystack mapper runs.
+      if (code === 'USER_PHONE_REQUIRED') {
+        setShowPhoneForm(true);
+        setError('');
+        toast('Add your phone number to continue.', { icon: 'i' });
+        return;
+      }
+
+      // BVN/bank-account validation needed → swing the BVN form open. The
+      // Paystack-code variants of "validation required" all collapse to
+      // the same UX. Special-cased before the generic mapper because the
+      // UX is form-toggle, not message-display.
+      if (paystackCode === 'validation_required') {
+        setShowBvnForm(true);
+        setError('');
+        toast('Identity verification is required before creating a virtual account.', { icon: 'i' });
+        return;
+      }
+
+      // Map all other errors through the typed lookup.
+      const mapped = mapPaystackError(e);
+      switch (mapped.intent) {
+        case 'silent':
+          // Service self-heals (e.g. customer_not_found). Don't surface
+          // anything — a UI flash would be more confusing than nothing.
+          break;
+        case 'inline':
+          // Card-level banner. Used for actionable errors that need a
+          // persistent surface (e.g. disabled_merchant — user must email
+          // support before retry will work).
+          setError(`${mapped.title}. ${mapped.body}`);
+          break;
+        case 'toast':
+        default:
+          setError(mapped.body);
+          toast.error(`${mapped.title}: ${mapped.body}`);
+          break;
       }
     } finally {
       setSettingUp(false);
+    }
+  };
+
+  /**
+   * Inline phone-capture flow (path b — paymentPlan.md §2.3).
+   *
+   * Triggered when setupVirtualAccount returns USER_PHONE_REQUIRED. PATCHes
+   * /auth/me, refreshes the auth store (so the sidebar/profile reflect the
+   * new value), then auto-retries setupVirtualAccount so the user doesn't
+   * have to click again. If retry fails for any other reason, fall back to
+   * the normal error-handling branches of handleSetup.
+   */
+  const handleSavePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!biz) return;
+
+    setPhoneError('');
+    // E.164: optional leading +, then 1-15 digits starting 1-9. Mirrors
+    // backend/src/validators/auth.validator.ts → updateMeSchema.
+    if (!/^\+?[1-9]\d{1,14}$/.test(phone.trim())) {
+      setPhoneError('Enter a valid phone number (e.g. +2348012345678)');
+      return;
+    }
+
+    setSavingPhone(true);
+    try {
+      await api.patch('/auth/me', { phone: phone.trim() });
+      await fetchMe();
+      toast.success('Phone number saved.');
+      setShowPhoneForm(false);
+      setPhone('');
+      // Retry setup — if it still fails (e.g. BVN required next), the
+      // existing error branches in handleSetup will route correctly.
+      await handleSetup();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { code?: string; message?: string } } } };
+      const code = e.response?.data?.error?.code;
+      const msg = e.response?.data?.error?.message || 'Failed to save phone number';
+      // Surface duplicate-phone as a field error (most common failure).
+      if (code === 'PHONE_IN_USE') {
+        setPhoneError('That phone number is already used by another account.');
+      } else {
+        setPhoneError(msg);
+      }
+    } finally {
+      setSavingPhone(false);
     }
   };
 
@@ -107,17 +237,33 @@ export default function Account() {
     if (!biz) return;
 
     setBvnError('');
+    // Client-side mirrors of the server-side Zod rules in
+    // backend/src/validators/dva.validator.ts — keep them in sync.
     if (!/^\d{11}$/.test(bvn)) {
       setBvnError('BVN must be exactly 11 digits');
+      return;
+    }
+    if (!bankCode) {
+      setBvnError('Select the bank where your account is held');
+      return;
+    }
+    if (!/^\d{10}$/.test(accountNumber)) {
+      setBvnError('Account number must be exactly 10 digits (NUBAN)');
       return;
     }
 
     setValidating(true);
     try {
-      await api.post(`/businesses/${biz.id}/dva/validate-customer`, { bvn });
+      await api.post(`/businesses/${biz.id}/dva/validate-customer`, {
+        bvn,
+        bankCode,
+        accountNumber,
+      });
       toast.success('BVN submitted for verification.');
       setShowBvnForm(false);
       setBvn('');
+      setBankCode('');
+      setAccountNumber('');
 
       setTimeout(async () => {
         if (!isMountedRef.current) return;
@@ -146,6 +292,59 @@ export default function Account() {
       toast.error(msg);
     } finally {
       setValidating(false);
+    }
+  };
+
+  const handleResolveSettlement = async () => {
+    if (!biz) return;
+    if (!/^\d{10}$/.test(settlementAccountNumber)) {
+      setSettlementError('Account number must be exactly 10 digits');
+      return;
+    }
+    if (!settlementBankCode) {
+      setSettlementError('Select a bank');
+      return;
+    }
+
+    setSettlementError('');
+    setResolvingAccount(true);
+    try {
+      const res = await api.post(`/businesses/${biz.id}/dva/settlement/resolve`, {
+        bankCode: settlementBankCode,
+        accountNumber: settlementAccountNumber,
+      });
+      setResolvedAccountName(res.data.data.accountName);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: { message?: string } } } };
+      setSettlementError(error.response?.data?.error?.message || 'Failed to verify account');
+    } finally {
+      setResolvingAccount(false);
+    }
+  };
+
+  const handleConnectSettlement = async () => {
+    if (!biz || !resolvedAccountName) return;
+
+    setConnectingSettlement(true);
+    try {
+      const bankName = banks?.find((b) => b.code === settlementBankCode)?.name || '';
+      await api.post(`/businesses/${biz.id}/dva/settlement/connect`, {
+        bankCode: settlementBankCode,
+        bankName,
+        accountNumber: settlementAccountNumber,
+        commissionPct: 0, // Default 0% commission
+      });
+      toast.success('Settlement account connected!');
+      setShowSettlementForm(false);
+      setSettlementBankCode('');
+      setSettlementAccountNumber('');
+      setResolvedAccountName('');
+      await fetchBusinesses(); // Refresh to show connected account
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: { message?: string } } } };
+      setSettlementError(error.response?.data?.error?.message || 'Failed to connect account');
+    } finally {
+      setConnectingSettlement(false);
     }
   };
 
@@ -233,7 +432,44 @@ export default function Account() {
             </div>
           )}
 
-          {/* BVN Form */}
+          {/* Inline phone capture (path b — fired by USER_PHONE_REQUIRED) */}
+          {showPhoneForm && !loading && (
+            <div className="rounded-md bg-blue-50 border border-blue-100 p-5 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldCheck className="h-4 w-4 text-blue-600" />
+                <h3 className="text-[13px] font-semibold text-blue-800">Add your phone number</h3>
+              </div>
+              <p className="text-[13px] text-gray-600 mb-4">
+                Paystack requires a phone number on your profile before issuing a virtual account. We'll save it to your account and continue setup automatically.
+              </p>
+              <form onSubmit={handleSavePhone} className="space-y-3">
+                <Input
+                  label="Phone number"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="+2348012345678"
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
+                  error={phoneError}
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" isLoading={savingPhone}>
+                    Save and continue
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => { setShowPhoneForm(false); setPhone(''); setPhoneError(''); }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* BVN + Bank Account Form */}
           {showBvnForm && !loading && (
             <div className="rounded-md bg-blue-50 border border-blue-100 p-5 mb-4">
               <div className="flex items-center gap-2 mb-3">
@@ -241,7 +477,7 @@ export default function Account() {
                 <h3 className="text-[13px] font-semibold text-blue-800">Identity Verification Required</h3>
               </div>
               <p className="text-[13px] text-gray-600 mb-4">
-                Paystack requires BVN validation before creating a virtual account. Your BVN is securely sent to Paystack and not stored on our servers.
+                Paystack verifies your identity by matching your BVN against a bank account registered in your name. All three fields must match the same NIBSS record. None of these values are stored on our servers — they are sent directly to Paystack.
               </p>
               <form onSubmit={handleValidateBvn} className="space-y-3">
                 <Input
@@ -252,13 +488,55 @@ export default function Account() {
                   placeholder="Enter your 11-digit BVN"
                   value={bvn}
                   onChange={(e) => { setBvn(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
+                />
+                {/* Bank dropdown sourced from /api/v1/banks (server-cached) */}
+                <div>
+                  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                    Bank
+                  </label>
+                  <select
+                    value={bankCode}
+                    onChange={(e) => { setBankCode(e.target.value); setBvnError(''); }}
+                    disabled={banksLoading || !!banksError}
+                    className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-[13px] text-gray-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">
+                      {banksLoading ? 'Loading banks…' : banksError ? '— unavailable —' : 'Select your bank'}
+                    </option>
+                    {banks?.map((b) => (
+                      <option key={b.id} value={b.code}>{b.name}</option>
+                    ))}
+                  </select>
+                  {banksError && (
+                    <p className="mt-1 text-[11px] text-red-600">{banksError}</p>
+                  )}
+                </div>
+                <Input
+                  label="Account number (10 digits)"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="NUBAN account registered with your BVN"
+                  value={accountNumber}
+                  onChange={(e) => { setAccountNumber(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
                   error={bvnError}
                 />
                 <div className="flex gap-2">
-                  <Button type="submit" size="sm" isLoading={validating}>
-                    <ShieldCheck className="h-3.5 w-3.5" /> Verify BVN
+                  <Button type="submit" size="sm" isLoading={validating} disabled={banksLoading || !!banksError}>
+                    <ShieldCheck className="h-3.5 w-3.5" /> Verify
                   </Button>
-                  <Button variant="ghost" size="sm" type="button" onClick={() => { setShowBvnForm(false); setBvn(''); setBvnError(''); }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => {
+                      setShowBvnForm(false);
+                      setBvn('');
+                      setBankCode('');
+                      setAccountNumber('');
+                      setBvnError('');
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -299,6 +577,133 @@ export default function Account() {
             </div>
           )}
 
+          {/* Settlement Bank Connection (after DVA is active) */}
+          {!loading && dva?.status === 'active' && (
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50/50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-gray-400" />
+                  <h3 className="text-[13px] font-semibold text-gray-900">Settlement Account</h3>
+                </div>
+                {!biz.settlementAccountNumber && !showSettlementForm && (
+                  <button
+                    onClick={() => setShowSettlementForm(true)}
+                    className="text-[12px] font-medium text-primary-600 hover:text-primary-700"
+                  >
+                    Connect
+                  </button>
+                )}
+              </div>
+
+              {biz.settlementAccountNumber && !showSettlementForm ? (
+                <div className="rounded-md bg-white border border-emerald-100 p-3">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-gray-900">{biz.settlementAccountName}</p>
+                      <p className="text-[11px] text-gray-500">{biz.settlementBankName} · ••••{biz.settlementAccountNumber.slice(-4)}</p>
+                      <p className="text-[11px] text-emerald-600 mt-1">
+                        Revenue auto-settles to this account{biz.platformCommissionPct && biz.platformCommissionPct > 0 && ` (${biz.platformCommissionPct}% platform fee)`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : !biz.settlementAccountNumber && !showSettlementForm ? (
+                <p className="text-[12px] text-gray-500">
+                  Connect your bank account to automatically receive revenue from customer payments (minus any platform commission).
+                </p>
+              ) : showSettlementForm ? (
+                <div className="space-y-3">
+                  <p className="text-[12px] text-gray-600">
+                    Revenue from your virtual account will automatically settle to this bank account.
+                  </p>
+                  
+                  {settlementError && (
+                    <div className="rounded-md bg-red-50 border border-red-100 p-2">
+                      <p className="text-[11px] text-red-600">{settlementError}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                      Bank
+                    </label>
+                    <select
+                      value={settlementBankCode}
+                      onChange={(e) => { setSettlementBankCode(e.target.value); setSettlementError(''); setResolvedAccountName(''); }}
+                      disabled={banksLoading || !!banksError || resolvingAccount}
+                      className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-[13px] text-gray-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50"
+                    >
+                      <option value="">Select your bank</option>
+                      {banks?.map((b) => (
+                        <option key={b.id} value={b.code}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <Input
+                    label="Account Number"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="0123456789"
+                    value={settlementAccountNumber}
+                    onChange={(e) => { 
+                      setSettlementAccountNumber(e.target.value.replace(/\D/g, '')); 
+                      setSettlementError('');
+                      setResolvedAccountName('');
+                    }}
+                  />
+
+                  {!resolvedAccountName && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleResolveSettlement}
+                      isLoading={resolvingAccount}
+                      disabled={!settlementBankCode || settlementAccountNumber.length !== 10}
+                    >
+                      Verify Account
+                    </Button>
+                  )}
+
+                  {resolvedAccountName && (
+                    <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3">
+                      <div className="flex items-start gap-2 mb-3">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-[12px] font-semibold text-emerald-900">Account Verified</p>
+                          <p className="text-[13px] font-medium text-gray-900 mt-1">{resolvedAccountName}</p>
+                          <p className="text-[11px] text-gray-500">
+                            {banks?.find((b) => b.code === settlementBankCode)?.name} · {settlementAccountNumber}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleConnectSettlement} isLoading={connectingSettlement}>
+                          Connect Account
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setShowSettlementForm(false);
+                            setSettlementBankCode('');
+                            setSettlementAccountNumber('');
+                            setResolvedAccountName('');
+                            setSettlementError('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {/* Pending */}
           {!loading && dva?.status === 'pending' && (
             <div className="rounded-md bg-amber-50 border border-amber-100 p-5">
@@ -316,7 +721,7 @@ export default function Account() {
           )}
 
           {/* Not Set Up */}
-          {!loading && dva?.status === 'none' && !error && !showBvnForm && (
+          {!loading && dva?.status === 'none' && !error && !showBvnForm && !showPhoneForm && (
             <div>
               <div className="rounded-md bg-gray-50/80 border border-gray-100 p-5 mb-4">
                 <h3 className="text-[13px] font-semibold text-gray-900 mb-3">How it works</h3>
