@@ -348,6 +348,19 @@ export default function Account() {
     }
   };
 
+  const handleRequeryDVA = async () => {
+    if (!biz || !dva?.accountNumber) return;
+    
+    const toastId = toast.loading('Checking for new transactions...');
+    try {
+      await api.post(`/businesses/${biz.id}/dva/requery`);
+      toast.success('DVA requeried. Any missing transfers will appear shortly.', { id: toastId });
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: { message?: string } } } };
+      toast.error(error.response?.data?.error?.message || 'Failed to requery DVA', { id: toastId });
+    }
+  };
+
   if (!biz) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
@@ -570,137 +583,298 @@ export default function Account() {
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-emerald-200/60">
-                <p className="text-[12px] text-gray-500">
-                  Any transfer to this account is automatically captured as a confirmed sale for <strong>{biz.businessName}</strong>. Share this with customers for direct payments.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] text-gray-500">
+                    Any transfer to this account is automatically captured as a confirmed sale for <strong>{biz.businessName}</strong>. Share this with customers for direct payments.
+                  </p>
+                  <button
+                    onClick={handleRequeryDVA}
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-white/80 hover:text-gray-700 transition-colors shrink-0"
+                    title="Check for missed transfers"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Requery
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
           )}
 
-          {/* Settlement Bank Connection (after DVA is active) */}
+          {/* Settlement Bank Connection - World-Class Banking UI */}
           {!loading && dva?.status === 'active' && (
-            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50/50 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                  <h3 className="text-[13px] font-semibold text-gray-900">Settlement Account</h3>
+            <div className="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 shadow-sm">
+                      <Building2 className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-[15px] font-bold text-gray-900">Settlement Account</h3>
+                      <p className="text-[12px] text-gray-500">Where your revenue lands automatically</p>
+                    </div>
+                  </div>
+                  {!biz.settlementAccountNumber && !showSettlementForm && (
+                    <button
+                      onClick={() => {
+                        setShowSettlementForm(true);
+                        // Lazy-load banks
+                        if (!banks) {
+                          setBanksLoading(true);
+                          api.get('/banks')
+                            .then((res) => setBanks(res.data.data as Bank[]))
+                            .catch(() => setBanksError('Failed to load banks'))
+                            .finally(() => setBanksLoading(false));
+                        }
+                      }}
+                      className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Connect Bank
+                    </button>
+                  )}
                 </div>
-                {!biz.settlementAccountNumber && !showSettlementForm && (
-                  <button
-                    onClick={() => setShowSettlementForm(true)}
-                    className="text-[12px] font-medium text-primary-600 hover:text-primary-700"
-                  >
-                    Connect
-                  </button>
-                )}
               </div>
 
-              {biz.settlementAccountNumber && !showSettlementForm ? (
-                <div className="rounded-md bg-white border border-emerald-100 p-3">
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-medium text-gray-900">{biz.settlementAccountName}</p>
-                      <p className="text-[11px] text-gray-500">{biz.settlementBankName} · ••••{biz.settlementAccountNumber.slice(-4)}</p>
-                      <p className="text-[11px] text-emerald-600 mt-1">
-                        Revenue auto-settles to this account{biz.platformCommissionPct && biz.platformCommissionPct > 0 && ` (${biz.platformCommissionPct}% platform fee)`}
+              <div className="p-5">
+                {/* Connected State - Beautiful Display */}
+                {biz.settlementAccountNumber && !showSettlementForm ? (
+                  <div className="space-y-4">
+                    <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-600 shadow-md">
+                          <CheckCircle2 className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                              <CheckCircle2 className="h-3 w-3" /> ACTIVE
+                            </span>
+                          </div>
+                          <h4 className="text-[15px] font-bold text-gray-900 mb-1">{biz.settlementAccountName}</h4>
+                          <div className="flex items-center gap-2 text-[13px] text-gray-600">
+                            <span className="font-medium">{biz.settlementBankName}</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="font-mono">••••{biz.settlementAccountNumber.slice(-4)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* How It Works - Clear Explanation */}
+                    <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-4">
+                      <h5 className="text-[13px] font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <ArrowRight className="h-4 w-4 text-blue-600" />
+                        How Revenue Settlement Works
+                      </h5>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold mt-0.5">1</div>
+                          <p className="text-[13px] text-gray-700">Customer sends money to your Virtual Account</p>
+                        </div>
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold mt-0.5">2</div>
+                          <p className="text-[13px] text-gray-700">
+                            Paystack auto-settles to <strong>{biz.settlementAccountName}</strong>
+                            {biz.platformCommissionPct && biz.platformCommissionPct > 0 && (
+                              <span className="block mt-1 text-[12px] text-gray-500">
+                                ({100 - biz.platformCommissionPct}% to you, {biz.platformCommissionPct}% platform fee)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold mt-0.5">3</div>
+                          <p className="text-[13px] text-gray-700">Transaction recorded for tax calculation</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                      <p className="text-[11px] text-gray-400">
+                        Connected {biz.settlementConnectedAt ? new Date(biz.settlementConnectedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : 'recently'}
                       </p>
                     </div>
                   </div>
-                </div>
-              ) : !biz.settlementAccountNumber && !showSettlementForm ? (
-                <p className="text-[12px] text-gray-500">
-                  Connect your bank account to automatically receive revenue from customer payments (minus any platform commission).
-                </p>
-              ) : showSettlementForm ? (
-                <div className="space-y-3">
-                  <p className="text-[12px] text-gray-600">
-                    Revenue from your virtual account will automatically settle to this bank account.
-                  </p>
-                  
-                  {settlementError && (
-                    <div className="rounded-md bg-red-50 border border-red-100 p-2">
-                      <p className="text-[11px] text-red-600">{settlementError}</p>
+                ) : !biz.settlementAccountNumber && !showSettlementForm ? (
+                  /* Not Connected State */
+                  <div className="py-8 text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 mb-4">
+                      <Building2 className="h-8 w-8 text-gray-400" />
                     </div>
-                  )}
-
-                  <div>
-                    <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                      Bank
-                    </label>
-                    <select
-                      value={settlementBankCode}
-                      onChange={(e) => { setSettlementBankCode(e.target.value); setSettlementError(''); setResolvedAccountName(''); }}
-                      disabled={banksLoading || !!banksError || resolvingAccount}
-                      className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-[13px] text-gray-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50"
-                    >
-                      <option value="">Select your bank</option>
-                      {banks?.map((b) => (
-                        <option key={b.id} value={b.code}>{b.name}</option>
-                      ))}
-                    </select>
+                    <h4 className="text-[14px] font-semibold text-gray-900 mb-2">No Settlement Account Connected</h4>
+                    <p className="text-[13px] text-gray-500 max-w-md mx-auto mb-6">
+                      Connect your bank account to automatically receive customer payments. Money settles directly to your account within 24 hours.
+                    </p>
+                    <div className="flex items-center justify-center gap-4 text-[12px]">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <span>Instant setup</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <span>Automatic splits</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <span>Secure</span>
+                      </div>
+                    </div>
                   </div>
-
-                  <Input
-                    label="Account Number"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="0123456789"
-                    value={settlementAccountNumber}
-                    onChange={(e) => { 
-                      setSettlementAccountNumber(e.target.value.replace(/\D/g, '')); 
-                      setSettlementError('');
-                      setResolvedAccountName('');
-                    }}
-                  />
-
-                  {!resolvedAccountName && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleResolveSettlement}
-                      isLoading={resolvingAccount}
-                      disabled={!settlementBankCode || settlementAccountNumber.length !== 10}
-                    >
-                      Verify Account
-                    </Button>
-                  )}
-
-                  {resolvedAccountName && (
-                    <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3">
-                      <div className="flex items-start gap-2 mb-3">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : showSettlementForm ? (
+                  /* Connection Form - Professional Banking Flow */
+                  <div className="space-y-5">
+                    <div className="rounded-lg bg-blue-50/50 border border-blue-100 p-4">
+                      <div className="flex items-start gap-2.5">
+                        <ShieldCheck className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-[12px] font-semibold text-emerald-900">Account Verified</p>
-                          <p className="text-[13px] font-medium text-gray-900 mt-1">{resolvedAccountName}</p>
-                          <p className="text-[11px] text-gray-500">
-                            {banks?.find((b) => b.code === settlementBankCode)?.name} · {settlementAccountNumber}
+                          <h5 className="text-[13px] font-semibold text-blue-900 mb-1">Secure Account Verification</h5>
+                          <p className="text-[12px] text-gray-600">
+                            We'll verify your account name with your bank before connecting. Your account details are sent directly to Paystack.
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={handleConnectSettlement} isLoading={connectingSettlement}>
-                          Connect Account
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setShowSettlementForm(false);
-                            setSettlementBankCode('');
-                            setSettlementAccountNumber('');
-                            setResolvedAccountName('');
-                            setSettlementError('');
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
                     </div>
-                  )}
-                </div>
-              ) : null}
+
+                    {settlementError && (
+                      <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                          <p className="text-[12px] text-red-700">{settlementError}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-2">
+                          Select Your Bank
+                        </label>
+                        <select
+                          value={settlementBankCode}
+                          onChange={(e) => {
+                            setSettlementBankCode(e.target.value);
+                            setSettlementError('');
+                            setResolvedAccountName('');
+                          }}
+                          disabled={banksLoading || !!banksError || resolvingAccount || connectingSettlement}
+                          className="block w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-[14px] text-gray-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+                        >
+                          <option value="">
+                            {banksLoading ? 'Loading banks...' : banksError ? 'Failed to load banks' : '-- Select your bank --'}
+                          </option>
+                          {banks?.map((b) => (
+                            <option key={b.id} value={b.code}>{b.name}</option>
+                          ))}
+                        </select>
+                        {banksError && (
+                          <p className="mt-1.5 text-[11px] text-red-600">{banksError}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-2">
+                          Account Number (10 digits)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="0123456789"
+                          value={settlementAccountNumber}
+                          onChange={(e) => {
+                            setSettlementAccountNumber(e.target.value.replace(/\D/g, ''));
+                            setSettlementError('');
+                            setResolvedAccountName('');
+                          }}
+                          disabled={resolvingAccount || connectingSettlement}
+                          className="block w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-[14px] font-mono text-gray-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:bg-gray-100 transition-colors"
+                        />
+                        <p className="mt-1.5 text-[11px] text-gray-500">
+                          Enter the 10-digit NUBAN account number
+                        </p>
+                      </div>
+
+                      {!resolvedAccountName && (
+                        <Button
+                          size="lg"
+                          onClick={handleResolveSettlement}
+                          isLoading={resolvingAccount}
+                          disabled={!settlementBankCode || settlementAccountNumber.length !== 10 || banksLoading}
+                          className="w-full"
+                        >
+                          {resolvingAccount ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Verifying Account...
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="h-4 w-4" />
+                              Verify Account Name
+                            </>
+                          )}
+                        </Button>
+                      )}
+
+                      {resolvedAccountName && (
+                        <div className="rounded-lg bg-emerald-50 border-2 border-emerald-300 p-4 space-y-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600">
+                              <CheckCircle2 className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[12px] font-semibold text-emerald-900 uppercase tracking-wide mb-1">Verified Account</p>
+                              <h4 className="text-[16px] font-bold text-gray-900 mb-1">{resolvedAccountName}</h4>
+                              <div className="flex items-center gap-2 text-[13px] text-gray-600">
+                                <span className="font-medium">{banks?.find((b) => b.code === settlementBankCode)?.name}</span>
+                                <span className="text-gray-400">•</span>
+                                <span className="font-mono">{settlementAccountNumber}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-3 border-t border-emerald-200">
+                            <Button
+                              size="lg"
+                              onClick={handleConnectSettlement}
+                              isLoading={connectingSettlement}
+                              className="flex-1"
+                            >
+                              {connectingSettlement ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Connecting...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Connect This Account
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="lg"
+                              variant="secondary"
+                              onClick={() => {
+                                setShowSettlementForm(false);
+                                setSettlementBankCode('');
+                                setSettlementAccountNumber('');
+                                setResolvedAccountName('');
+                                setSettlementError('');
+                              }}
+                              disabled={connectingSettlement}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
 
