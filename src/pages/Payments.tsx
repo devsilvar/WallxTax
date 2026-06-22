@@ -22,6 +22,36 @@ function statusBadge(s: string) {
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${m[s] || 'bg-gray-100 text-gray-600'}`}>{s}</span>;
 }
 
+// FIRS remittance status — only meaningful once a payment is completed. Tells
+// the SME whether the tax they paid has been forwarded to FIRS yet.
+function remittanceBadge(p: TaxPayment) {
+  if (p.paymentStatus !== 'completed' || !p.remittanceStatus) {
+    return <span className="text-xs text-gray-300">—</span>;
+  }
+  const map: Record<string, { cls: string; label: string }> = {
+    collected: { cls: 'bg-amber-100 text-amber-700', label: 'Collected — awaiting FIRS' },
+    remitting: { cls: 'bg-blue-100 text-blue-700', label: 'Remittance in progress' },
+    remitted: { cls: 'bg-green-100 text-green-700', label: 'Remitted to FIRS' },
+  };
+  const v = map[p.remittanceStatus] ?? { cls: 'bg-gray-100 text-gray-600', label: p.remittanceStatus };
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className={`inline-block w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ${v.cls}`}>{v.label}</span>
+      {p.remittanceStatus === 'remitted' && p.firsRemittanceRef && (
+        <span className="font-mono text-[10px] text-gray-400">
+          Ref: {p.firsRemittanceRef}
+          {p.firsReceiptUrl && (
+            <>
+              {' · '}
+              <a href={p.firsReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">Receipt</a>
+            </>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function Payments() {
   const biz = useBusinessStore((s) => s.activeBusiness);
   const [payments, setPayments] = useState<TaxPayment[]>([]);
@@ -64,8 +94,8 @@ export default function Payments() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-        <p className="mt-1 font-body text-sm text-gray-500">View and track all tax payments.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Tax Payments</h1>
+        <p className="mt-1 font-body text-sm text-gray-500">Your tax remittances to FIRS. Money customers send you appears under Account &amp; Sales, not here.</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -97,6 +127,7 @@ export default function Payments() {
                 <th className="px-4 py-3">Method</th>
                 <th className="px-4 py-3 text-right">Amount</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">FIRS Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -108,6 +139,7 @@ export default function Payments() {
                   <td className="px-4 py-3 capitalize text-gray-600">{p.paymentMethod}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatNaira(Number(p.amountPaid))}</td>
                   <td className="px-4 py-3">{statusBadge(p.paymentStatus)}</td>
+                  <td className="px-4 py-3">{remittanceBadge(p)}</td>
                   <td className="px-4 py-3 text-right">
                     {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
                       <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
@@ -135,6 +167,9 @@ export default function Payments() {
                   <p className="mt-1 text-xs text-gray-400">
                     {formatDate(p.createdAt)} · <span className="capitalize">{p.paymentMethod}</span>
                   </p>
+                  {p.paymentStatus === 'completed' && p.remittanceStatus && (
+                    <div className="mt-2">{remittanceBadge(p)}</div>
+                  )}
                 </div>
                 {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
                   <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id} className="shrink-0">

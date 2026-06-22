@@ -92,9 +92,14 @@ export interface TaxPayment {
   paymentStatus: PaymentStatus;
   paymentDate?: string;
   createdAt: string;
+  remittanceStatus?: RemittanceStatus;
+  firsRemittanceRef?: string | null;
+  firsReceiptUrl?: string | null;
 }
 
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
+
+export type RemittanceStatus = 'collected' | 'remitting' | 'remitted';
 
 // ─── Invoices ───────────────────────────────────────────────
 
@@ -388,9 +393,10 @@ export type ReminderType =
   | 'margin_warning'
   | 'invoice_overdue'
   | 'payment_successful'
-  | 'dva_received';
+  | 'dva_received'
+  | 'dva_validation_failed';
 
-export type ReminderReferenceType = 'invoice' | 'payment' | 'sales_transaction';
+export type ReminderReferenceType = 'invoice' | 'payment' | 'sales_transaction' | 'business';
 
 export interface Reminder {
   id: string;
