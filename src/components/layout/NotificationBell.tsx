@@ -27,6 +27,7 @@ const TYPE_COLOR: Record<ReminderType, string> = {
   invoice_overdue: 'bg-rose-100 text-rose-700',
   payment_successful: 'bg-emerald-100 text-emerald-700',
   dva_received: 'bg-cyan-100 text-cyan-700',
+  dva_validation_failed: 'bg-red-100 text-red-700',
 };
 
 /** Where each reminder type deep-links to. Kept as a map (not a hard-coded
@@ -40,6 +41,7 @@ const ROUTE_FOR_REMINDER: Record<ReminderType, string> = {
   invoice_overdue: '/invoices',
   payment_successful: '/payments',
   dva_received: '/sales',
+  dva_validation_failed: '/account',
 };
 
 function typeLabel(t: ReminderType) {
@@ -146,7 +148,9 @@ export default function NotificationBell() {
   const handleNavigate = (r: Reminder) => {
     setSelected(null);
     setOpen(false);
-    navigate(ROUTE_FOR_REMINDER[r.reminderType]);
+    // Fallback to /dashboard if the backend ever sends a reminder type the
+    // frontend union doesn't know yet — avoids navigate(undefined).
+    navigate(ROUTE_FOR_REMINDER[r.reminderType] ?? '/dashboard');
   };
 
   const handleRetry = () => {
