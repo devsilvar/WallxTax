@@ -192,22 +192,23 @@ export default function InvoiceDetail() {
 
       // Try native share first on mobile with the PDF blob
       let nativeShareWorked = false;
-      try {
-        const file = new File(
-          [res.pdfBlob],
-          res.filename,
-          { type: 'application/pdf' },
-        );
-        const sharePayload = {
-          files: [file],
-          title: `Invoice ${inv.invoiceNumber}`,
-          text: res.message,
-        };
-        const nav = navigator as Navigator & {
-          canShare?: (data: ShareData & { files?: File[] }) => boolean;
-          share?: (data: ShareData & { files?: File[] }) => Promise<void>;
-        };
-        if (
+      if (res.pdfBlob) {
+        try {
+          const file = new File(
+            [res.pdfBlob],
+            res.filename,
+            { type: 'application/pdf' },
+          );
+          const sharePayload = {
+            files: [file],
+            title: `Invoice ${inv.invoiceNumber}`,
+            text: res.message,
+          };
+          const nav = navigator as Navigator & {
+            canShare?: (data: ShareData & { files?: File[] }) => boolean;
+            share?: (data: ShareData & { files?: File[] }) => Promise<void>;
+          };
+          if (
           typeof nav.share === 'function' &&
           typeof nav.canShare === 'function' &&
           nav.canShare(sharePayload)
@@ -228,18 +229,21 @@ export default function InvoiceDetail() {
       } catch {
         // Any error during the native-share path falls through to desktop approach.
       }
+      }
 
       if (!nativeShareWorked) {
         // Desktop: Download the PDF and open WhatsApp with message
         // The user can then manually attach the downloaded PDF in WhatsApp
-        const url = URL.createObjectURL(res.pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = res.filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (res.pdfBlob) {
+          const url = URL.createObjectURL(res.pdfBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = res.filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
         
         // Also open WhatsApp with the message
         window.open(res.waUrl, '_blank', 'noopener,noreferrer');

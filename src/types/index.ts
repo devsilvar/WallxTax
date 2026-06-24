@@ -231,7 +231,7 @@ export interface SendInvoiceWhatsAppResult {
    *  for analytics / debugging only; the wa.me link already encodes it. */
   to: string;
   /** The actual PDF file as a Blob for direct attachment in WhatsApp */
-  pdfBlob: Blob;
+  pdfBlob: Blob | null;
   /** Filename for the PDF */
   filename: string;
 }
