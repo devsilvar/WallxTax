@@ -134,6 +134,35 @@ const RULES: Record<string, MappingRule> = {
       'Paystack is busy. Retry in a minute — if the payment did go ' +
       'through, the Verify button will pick it up.',
   },
+
+  // BVN validation errors
+  invalid_bvn: {
+    intent: 'inline',
+    title: 'Invalid BVN',
+    body:
+      'The BVN you entered is not valid. Please check and try again.',
+  },
+
+  bvn_mismatch: {
+    intent: 'inline',
+    title: 'BVN mismatch',
+    body:
+      'The BVN does not match the account details you provided. Ensure the account number is registered to the same BVN.',
+  },
+
+  invalid_account_number: {
+    intent: 'inline',
+    title: 'Invalid account number',
+    body:
+      'The account number you entered could not be verified with your bank. Please check and try again.',
+  },
+
+  customer_identification_failed: {
+    intent: 'inline',
+    title: 'Verification failed',
+    body:
+      'Paystack could not verify your identity. Ensure your BVN and bank account details are correct and match.',
+  },
 };
 
 /**

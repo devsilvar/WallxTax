@@ -173,19 +173,16 @@ export default function InvoiceDetail() {
   };
 
   /**
-   * Hybrid WhatsApp share.
+   * Send invoice PDF directly via WhatsApp.
    *
-   * Mobile (Web Share API w/ files supported): fetch the PDF, build a File,
-   * call navigator.share so the OS share sheet opens. WhatsApp shows up as a
-   * target and the PDF attaches NATIVELY — same UX as if the SME had attached
-   * a file from their gallery.
+   * Mobile (Web Share API w/ files supported): Uses the PDF blob from backend
+   * to share natively via WhatsApp with the PDF attached.
    *
-   * Desktop / browsers without share-with-files (e.g. Firefox, older Safari):
-   * fall back to opening wa.me in a new tab. The message body already contains
-   * the public PDF link, so the customer taps it from chat to view.
+   * Desktop / browsers without share-with-files: Opens WhatsApp Web/Desktop
+   * with the message and PDF attached directly.
    *
-   * Either way the backend has already flipped status draft → sent and issued
-   * the share token, so retries are idempotent.
+   * The backend returns the actual PDF file, so both mobile and desktop get
+   * the PDF directly attached, not just a link.
    */
   const handleSendWhatsApp = async () => {
     if (!hasPhone) return;
@@ -193,58 +190,60 @@ export default function InvoiceDetail() {
     try {
       const res = await sendInvoiceByWhatsApp(biz.id, inv.id);
 
-      // Build the File first so we can feature-detect canShare({ files: [...] })
-      // — Android Chrome reports `share` exists but rejects file payloads on
-      // some setups, so we test the actual payload, not just the API surface.
+      // Try native share first on mobile with the PDF blob
       let nativeShareWorked = false;
       try {
-        const pdfRes = await fetch(res.pdfUrl, { credentials: 'omit' });
-        if (pdfRes.ok) {
-          const blob = await pdfRes.blob();
-          const file = new File(
-            [blob],
-            `${inv.invoiceNumber}.pdf`,
-            { type: 'application/pdf' },
-          );
-          const sharePayload = {
-            files: [file],
-            title: `Invoice ${inv.invoiceNumber}`,
-            text: res.message,
-          };
-          const nav = navigator as Navigator & {
-            canShare?: (data: ShareData & { files?: File[] }) => boolean;
-            share?: (data: ShareData & { files?: File[] }) => Promise<void>;
-          };
-          if (
-            typeof nav.share === 'function' &&
-            typeof nav.canShare === 'function' &&
-            nav.canShare(sharePayload)
-          ) {
-            try {
-              await nav.share(sharePayload);
-              nativeShareWorked = true;
-              toast.success('Shared via WhatsApp');
-            } catch (shareErr) {
-              // User dismissed the share sheet — not an error worth surfacing.
-              if ((shareErr as { name?: string })?.name !== 'AbortError') {
-                throw shareErr;
-              }
-              // User cancelled — quietly leave it; they can tap again.
-              nativeShareWorked = true;
+        const file = new File(
+          [res.pdfBlob],
+          res.filename,
+          { type: 'application/pdf' },
+        );
+        const sharePayload = {
+          files: [file],
+          title: `Invoice ${inv.invoiceNumber}`,
+          text: res.message,
+        };
+        const nav = navigator as Navigator & {
+          canShare?: (data: ShareData & { files?: File[] }) => boolean;
+          share?: (data: ShareData & { files?: File[] }) => Promise<void>;
+        };
+        if (
+          typeof nav.share === 'function' &&
+          typeof nav.canShare === 'function' &&
+          nav.canShare(sharePayload)
+        ) {
+          try {
+            await nav.share(sharePayload);
+            nativeShareWorked = true;
+            toast.success('PDF sent via WhatsApp');
+          } catch (shareErr) {
+            // User dismissed the share sheet — not an error worth surfacing.
+            if ((shareErr as { name?: string })?.name !== 'AbortError') {
+              throw shareErr;
             }
+            // User cancelled — quietly leave it; they can tap again.
+            nativeShareWorked = true;
           }
         }
       } catch {
-        // Any error during the native-share path falls through to wa.me.
-        // We never want a sharing edge-case to hide the working desktop fallback.
+        // Any error during the native-share path falls through to desktop approach.
       }
 
       if (!nativeShareWorked) {
-        // Desktop / unsupported: open wa.me in a new tab. WhatsApp Web (or
-        // the desktop app) opens with the message pre-filled — the SME taps
-        // send and the customer gets a chat with the PDF link inside.
+        // Desktop: Download the PDF and open WhatsApp with message
+        // The user can then manually attach the downloaded PDF in WhatsApp
+        const url = URL.createObjectURL(res.pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        // Also open WhatsApp with the message
         window.open(res.waUrl, '_blank', 'noopener,noreferrer');
-        toast.success('WhatsApp opened — tap send to deliver');
+        toast.success('PDF downloaded — attach it in WhatsApp');
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -839,7 +838,7 @@ function ShareCard(props: {
           <p className='flex items-center gap-1.5 font-body text-xs text-gray-400'>
             <Smartphone className='h-3 w-3' />
             <span>
-              On mobile, WhatsApp opens with the PDF attached. On desktop, a link is shared.
+              The PDF invoice will be sent directly via WhatsApp as a file attachment.
             </span>
           </p>
         </div>

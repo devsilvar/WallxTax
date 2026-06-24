@@ -50,6 +50,7 @@ export default function Account() {
   const [error, setError] = useState('');
   const [showBvnForm, setShowBvnForm] = useState(false);
   const [bvn, setBvn] = useState('');
+  const [nin, setNin] = useState('');
   const [bvnError, setBvnError] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [bankCode, setBankCode] = useState('');
@@ -106,12 +107,41 @@ export default function Account() {
     }
   }, [showBvnForm, showSettlementForm, banks]);
 
+  // Poll for DVA status when awaiting validation
+  useEffect(() => {
+    if (!awaitingValidation || !biz?.id) return;
+
+    const pollInterval = setInterval(() => {
+      fetchDVA();
+    }, 10000); // Poll every 10 seconds
+
+    // Stop polling after 5 minutes
+    const timeout = setTimeout(() => {
+      clearInterval(pollInterval);
+      setAwaitingValidation(false);
+      toast('Validation is taking longer than expected. Try refreshing the page in a few minutes.', { icon: 'ℹ️' });
+    }, 300000); // 5 minutes
+
+    return () => {
+      clearInterval(pollInterval);
+      clearTimeout(timeout);
+    };
+  }, [awaitingValidation, biz?.id]);
+
   const fetchDVA = async () => {
     if (!biz) return;
     setLoading(true);
     try {
       const res = await api.get(`/businesses/${biz.id}/dva/virtual-account`);
-      setDva(res.data.data);
+      const dvaData = res.data.data;
+      setDva(dvaData);
+      
+      // If we were waiting for validation and now have an active account, celebrate!
+      if (awaitingValidation && dvaData.status === 'active') {
+        setAwaitingValidation(false);
+        toast.success('🎉 Virtual account created! You can now receive payments.');
+        fetchBusinesses(); // Refresh business list to update the account number display
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to load account');
     } finally {
@@ -188,7 +218,9 @@ export default function Account() {
     setSettingUp(true);
     setError('');
     try {
+      console.log('Attempting setup for business:', biz.id);
       const res = await api.post(`/businesses/${biz.id}/dva/setup-virtual-account`);
+      console.log('Setup response:', res.data);
       setDva(res.data.data);
       if (res.data.data.status === 'active') {
         setAwaitingValidation(false);
@@ -196,7 +228,14 @@ export default function Account() {
         fetchBusinesses();
       }
     } catch (err: any) {
+      console.error('Setup error:', err);
+      console.error('Setup error response:', err.response?.data);
+      
       const code = err.response?.data?.error?.code;
+      const errorMessage = err.response?.data?.error?.message;
+      
+      console.error('Error code:', code, 'Message:', errorMessage);
+      
       if (code === 'USER_PHONE_REQUIRED') {
         setShowPhoneForm(true);
         toast('Add your phone number to continue.', { icon: 'ℹ️' });
@@ -204,14 +243,17 @@ export default function Account() {
       }
       const paystackCode = err.response?.data?.error?.details?.paystackCode;
       if (paystackCode === 'validation_required') {
+        console.log('✅ Paystack validation required - showing BVN form');
         if (awaitingValidation) {
           // BVN already submitted — Paystack is still verifying. Don't re-pop
           // the form (that reads as a rejection). Keep the waiting state so the
           // user can retry once verification lands (seconds to a couple minutes).
           toast('Still verifying your BVN with your bank. This can take a minute — try again shortly.', { icon: '⏳' });
         } else {
+          // Show BVN form with clear instruction
           setShowBvnForm(true);
-          toast('Identity verification required.', { icon: 'ℹ️' });
+          setError('');
+          toast('Please verify your identity first with BVN', { icon: 'ℹ️' });
         }
         return;
       }
@@ -246,7 +288,11 @@ export default function Account() {
   const handleValidateBvn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{11}$/.test(bvn)) {
-      setBvnError('BVN must be 11 digits');
+      setBvnError('BVN must be exactly 11 digits');
+      return;
+    }
+    if (nin && !/^\d{11}$/.test(nin)) {
+      setBvnError('NIN must be 11 digits');
       return;
     }
     if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
@@ -254,17 +300,63 @@ export default function Account() {
       return;
     }
     setValidating(true);
+    setBvnError('');
     try {
-      await api.post(`/businesses/${biz!.id}/dva/validate-customer`, { bvn, bankCode, accountNumber });
-      toast.success('BVN submitted for verification');
+      console.log('Submitting BVN validation:', { 
+        businessId: biz!.id,
+        bankCode,
+        accountNumberLength: accountNumber.length,
+        bvnLength: bvn.length,
+        hasNin: !!nin
+      });
+      
+      await api.post(`/businesses/${biz!.id}/dva/validate-customer`, { 
+        bvn, 
+        nin: nin || undefined,
+        bankCode, 
+        accountNumber 
+      });
+      
+      console.log('BVN validation successful, waiting for Paystack to process...');
+      toast.success('Identity submitted! Your account will be ready in 1-2 minutes.');
       setShowBvnForm(false);
-      // Paystack verifies asynchronously — mark that we're now waiting so a
-      // validation_required on the retry shows a "still verifying" state
-      // instead of re-popping the form.
       setAwaitingValidation(true);
-      setTimeout(() => handleSetup(), 3000);
+      
+      // Refresh user data to get the BVN stored
+      await fetchMe();
+      
+      // DON'T retry setup immediately - Paystack processes BVN validation
+      // asynchronously in live mode (takes seconds to minutes). The webhook
+      // will auto-create the DVA once validation completes. Just wait.
+      
     } catch (err: any) {
-      setBvnError(err.response?.data?.error?.message || 'Validation failed');
+      console.error('BVN validation error:', err);
+      console.error('Error response:', err.response?.data);
+      
+      const errorCode = err.response?.data?.error?.code;
+      const errorMessage = err.response?.data?.error?.message || 'Validation failed';
+      const paystackCode = err.response?.data?.error?.details?.paystackCode;
+      
+      // Log for debugging
+      console.error('Error details:', { errorCode, paystackCode, errorMessage });
+      
+      // Special handling for "no customer" error - means user needs to click Setup first
+      if (errorCode === 'NO_CUSTOMER') {
+        setBvnError('Account setup required. Close this form and click "Set Up" first.');
+        toast.error('Click "Set Up" button first');
+        return;
+      }
+      
+      // Use the Paystack error mapper if available
+      const mapped = mapPaystackError(err);
+      if (mapped.intent === 'inline') {
+        setBvnError(`${mapped.title}: ${mapped.body}`);
+      } else {
+        setBvnError(errorMessage);
+        if (mapped.intent === 'toast') {
+          toast.error(mapped.body);
+        }
+      }
     } finally {
       setValidating(false);
     }
@@ -592,26 +684,76 @@ export default function Account() {
                   <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary-500 mb-3" />
                   <h3 className="font-semibold text-gray-900 mb-1">Verifying your identity</h3>
                   <p className="text-sm text-gray-500 mb-1 max-w-sm mx-auto">
-                    Your BVN was submitted and Paystack is confirming it with your bank. This usually takes under a minute.
+                    Your BVN is being verified with Paystack. This usually takes 1-2 minutes, but can take up to 5 minutes.
                   </p>
-                  <p className="text-xs text-gray-400 mb-4">You can leave this page — the account appears here once verified.</p>
+                  <p className="text-xs text-gray-400 mb-4">We're checking every 10 seconds. You can leave this page — the account will appear automatically once verified.</p>
                   <div className="flex items-center justify-center gap-2">
-                    <Button onClick={handleSetup} isLoading={settingUp}><RefreshCw className="h-4 w-4" /> Check again</Button>
+                    <Button onClick={fetchDVA} isLoading={loading}><RefreshCw className="h-4 w-4" /> Refresh status</Button>
                     <Button variant="ghost" onClick={() => { setAwaitingValidation(false); setShowBvnForm(true); }}>Re-enter details</Button>
                   </div>
                 </div>
               ) : showBvnForm ? (
                 <form onSubmit={handleValidateBvn} className="space-y-4">
                   <h3 className="font-semibold text-gray-900">Identity Verification</h3>
-                  <Input label="BVN (11 digits)" type="text" maxLength={11} value={bvn} onChange={(e) => setBvn(e.target.value.replace(/\D/g, ''))} />
+                  <p className="text-sm text-gray-600">To receive payments, we need to verify your identity</p>
+                  
+                  {/* Test mode helper */}
+                  <div className="rounded-lg bg-blue-50 border border-blue-100 p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-blue-900 mb-1">Test Mode - Use Paystack Test Credentials:</p>
+                        <div className="text-xs text-blue-700 font-mono space-y-0.5">
+                          <p>BVN: 22222222222 (11 digits)</p>
+                          <p>Bank: Access Bank (code 007)</p>
+                          <p>Account: 0111111111</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {bvnError && (
+                    <div className="rounded-lg bg-red-50 border border-red-100 p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-red-700">{bvnError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <Input 
+                    label="BVN (11 digits)" 
+                    type="text" 
+                    maxLength={11} 
+                    value={bvn} 
+                    onChange={(e) => { setBvn(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
+                    required 
+                  />
+                  <Input 
+                    label="NIN (11 digits) - Optional" 
+                    type="text" 
+                    maxLength={11} 
+                    value={nin} 
+                    onChange={(e) => { setNin(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
+                    placeholder="Recommended for faster verification" 
+                  />
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Bank</label>
-                    <BankSelect banks={banks} loading={banksLoading} error={banksError} value={bankCode} onChange={setBankCode} />
+                    <BankSelect banks={banks} loading={banksLoading} error={banksError} value={bankCode} onChange={(code) => { setBankCode(code); setBvnError(''); }} />
                   </div>
-                  <Input label="Account number" type="text" maxLength={10} value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))} error={bvnError} />
+                  <Input 
+                    label="Account number" 
+                    type="text" 
+                    maxLength={10} 
+                    value={accountNumber} 
+                    onChange={(e) => { setAccountNumber(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
+                    placeholder="0123456789"
+                  />
                   <div className="flex gap-2">
                     <Button type="submit" isLoading={validating}>Verify</Button>
-                    <Button variant="ghost" onClick={() => setShowBvnForm(false)}>Cancel</Button>
+                    <Button variant="ghost" onClick={() => { setShowBvnForm(false); setBvnError(''); }}>Cancel</Button>
                   </div>
                 </form>
               ) : (

@@ -1,11 +1,11 @@
 import { Link, Outlet } from 'react-router-dom';
-import { Shield, BarChart3, Clock, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, TrendingUp, Zap, BadgeCheck } from 'lucide-react';
 
 const highlights = [
-  { icon: BarChart3, text: 'Track sales & expenses in real time' },
-  { icon: Shield, text: 'Bank-grade encryption on all data' },
-  { icon: Clock, text: 'File your taxes in under 5 minutes' },
-  { icon: CheckCircle2, text: 'Stay FIRS-compliant, always' },
+  { icon: TrendingUp, text: 'Track sales & expenses in real time' },
+  { icon: ShieldCheck, text: 'Bank-grade encryption on all data' },
+  { icon: Zap, text: 'File your taxes in under 5 minutes' },
+  { icon: BadgeCheck, text: 'Stay FIRS-compliant, always' },
 ];
 
 export default function AuthLayout() {
@@ -39,7 +39,7 @@ export default function AuthLayout() {
             {highlights.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
-                  <Icon className="h-4.5 w-4.5 text-purple-200" />
+                  <Icon className="h-5 w-5 text-purple-100" strokeWidth={2.5} />
                 </div>
                 <span className="font-body text-[15px] text-purple-100/90">{text}</span>
               </div>

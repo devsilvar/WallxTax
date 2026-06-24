@@ -2,6 +2,10 @@ export interface User {
   id: string;
   email: string;
   phone?: string;
+  bvn?: string;
+  nin?: string;
+  bvnVerifiedAt?: string;
+  ninVerifiedAt?: string;
   role: 'user' | 'admin';
   isVerified: boolean;
   isActive: boolean;
@@ -62,6 +66,7 @@ export interface Expense {
   amount: number;
   expenseDate: string;
   receiptUrl?: string;
+  isDeductible: boolean;
   createdAt: string;
 }
 
@@ -225,6 +230,10 @@ export interface SendInvoiceWhatsAppResult {
   /** E.164-style normalized phone the message will be addressed to — surfaced
    *  for analytics / debugging only; the wa.me link already encodes it. */
   to: string;
+  /** The actual PDF file as a Blob for direct attachment in WhatsApp */
+  pdfBlob: Blob;
+  /** Filename for the PDF */
+  filename: string;
 }
 
 // ─── Sales Import ───────────────────────────────────────────

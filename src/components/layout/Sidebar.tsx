@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Receipt,
@@ -23,48 +24,13 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 
-// Nav grouped by what the user is trying to do, not by what the data is.
-// "Operate" = day-to-day bookkeeping. "Money" = tax + payments + bank.
-// "Account" = settings/notifications.
-const navSections: Array<{
-  label: string;
-  items: Array<{ to: string; label: string; icon: typeof LayoutDashboard }>;
-}> = [
-  {
-    label: 'Operate',
-    items: [
-      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/sales', label: 'Sales', icon: Receipt },
-      { to: '/sales/unverified', label: 'Unverified', icon: AlertCircle },
-      { to: '/expenses', label: 'Expenses', icon: Wallet },
-      { to: '/invoices', label: 'Invoices', icon: FileText },
-      { to: '/ai', label: 'AI Assistant', icon: Bot },
-    ],
-  },
-  {
-    label: 'Money',
-    items: [
-      { to: '/tax', label: 'Tax Reports', icon: Calculator },
-      { to: '/payments', label: 'Payments', icon: CreditCard },
-      { to: '/account', label: 'Bank Account', icon: Landmark },
-    ],
-  },
-  {
-    label: 'Account',
-    items: [
-      { to: '/reminders', label: 'Reminders', icon: Bell },
-      { to: '/settings', label: 'Settings', icon: Settings },
-      ...(import.meta.env.DEV ? [{ to: '/test/transfer-simulator', label: 'Test Transfer', icon: Zap }] : []),
-    ],
-  },
-];
-
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
 }
 
 export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
+  const { t } = useTranslation('nav');
   const user = useAuthStore((s) => s.user);
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
@@ -72,6 +38,35 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const navSections = [
+    {
+      label: t('sections.operate'),
+      items: [
+        { to: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
+        { to: '/sales', label: t('sales'), icon: Receipt },
+        { to: '/sales/unverified', label: t('unverified'), icon: AlertCircle },
+        { to: '/expenses', label: t('expenses'), icon: Wallet },
+        { to: '/invoices', label: t('invoices'), icon: FileText },
+        { to: '/ai', label: t('ai_assistant'), icon: Bot },
+      ],
+    },
+    {
+      label: t('sections.money'),
+      items: [
+        { to: '/tax', label: t('tax_reports'), icon: Calculator },
+        { to: '/payments', label: t('payments'), icon: CreditCard },
+        { to: '/account', label: t('bank_account'), icon: Landmark },
+      ],
+    },
+    {
+      label: t('sections.account'),
+      items: [
+        { to: '/reminders', label: t('reminders'), icon: Bell },
+        { to: '/settings', label: t('settings'), icon: Settings },
+      ],
+    },
+  ];
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -116,7 +111,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <p className='text-[13px] font-semibold text-gray-900 truncate'>
                   {activeBusiness.businessName}
                 </p>
-                <p className='text-[10px] text-gray-400'>Active workspace</p>
+                <p className='text-[10px] text-gray-400'>{t('business.active_workspace')}</p>
               </div>
             </div>
             <ChevronDown
@@ -129,7 +124,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             className='flex w-full items-center gap-2 rounded-xl border border-dashed border-primary-200 px-3 py-2.5 text-[13px] font-medium text-primary-600 hover:bg-primary-50 hover:border-primary-300 transition-all'
           >
             <Plus className='h-4 w-4' />
-            Create Business
+            {t('actions.create_business')}
           </button>
         )}
 
@@ -180,7 +175,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium text-primary-600 hover:bg-primary-50 transition-colors'
                 >
                   <Plus className='h-3.5 w-3.5' />
-                  New Business
+                  {t('actions.new_business')}
                 </button>
               </div>
             </div>
@@ -193,8 +188,6 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         onClose={() => setShowCreateModal(false)}
       />
 
-      {/* Quick actions — shortcuts to the two highest-frequency flows.
-          Both deep-link to the page; the page's existing CTA opens its modal. */}
       <div className='px-4 mt-1 mb-3 space-y-1.5'>
         <NavLink
           to='/sales'
@@ -202,7 +195,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           className='flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-[13px] font-semibold text-white shadow-sm shadow-primary-500/20 transition-all duration-200 hover:bg-primary-700 active:scale-[0.99]'
         >
           <Plus className='h-4 w-4' strokeWidth={2.4} />
-          Record sale
+          {t('actions.record_sale')}
         </NavLink>
         <NavLink
           to='/tax'
@@ -210,7 +203,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           className='flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:border-primary-200 hover:bg-primary-50/40 hover:text-primary-700'
         >
           <Zap className='h-4 w-4 text-amber-500' strokeWidth={2.2} />
-          Calculate tax
+          {t('actions.calculate_tax')}
         </NavLink>
       </div>
 
@@ -278,7 +271,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   className='h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110'
                   strokeWidth={isActive ? 2 : 1.8}
                 />
-                Admin Panel
+                {t('admin_panel')}
               </>
             )}
           </NavLink>

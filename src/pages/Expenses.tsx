@@ -88,6 +88,7 @@ export default function Expenses() {
   const [category, setCategory] = useState<string>('other');
   const [description, setDescription] = useState('');
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [isDeductible, setIsDeductible] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/expenses` : '';
@@ -126,6 +127,7 @@ export default function Expenses() {
   const resetForm = () => {
     setAmount(''); setCategory('other'); setDescription('');
     setExpenseDate(new Date().toISOString().slice(0, 10));
+    setIsDeductible(true);
     setEditId(null); setShowForm(false);
   };
 
@@ -133,13 +135,14 @@ export default function Expenses() {
     setEditId(exp.id); setAmount(String(Number(exp.amount))); setCategory(exp.category);
     setDescription(exp.description || '');
     setExpenseDate(new Date(exp.expenseDate).toISOString().slice(0, 10));
+    setIsDeductible(exp.isDeductible ?? true);
     setShowForm(true);
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const body = { amount: Number(amount), category, description, expenseDate };
+    const body = { amount: Number(amount), category, description, expenseDate, isDeductible };
     try {
       if (editId) {
         await api.put(`${basePath}/${editId}`, body);
@@ -297,6 +300,23 @@ export default function Expenses() {
             </div>
             <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} required />
             <Input label="Expense Date" type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} required />
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 sm:col-span-2">
+              <input
+                id="isDeductible"
+                type="checkbox"
+                checked={isDeductible}
+                onChange={(e) => setIsDeductible(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <div className="flex-1">
+                <label htmlFor="isDeductible" className="block text-sm font-medium text-gray-900 cursor-pointer">
+                  Tax deductible
+                </label>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Uncheck if this is a personal expense or not allowable for tax purposes
+                </p>
+              </div>
+            </div>
             <div className="flex items-end gap-2 sm:col-span-2">
               <Button type="submit" isLoading={saving}>{editId ? 'Update' : 'Create'}</Button>
               <Button type="button" variant="secondary" onClick={resetForm}>Cancel</Button>
@@ -385,7 +405,16 @@ export default function Expenses() {
                   <td className="px-4 py-3 text-gray-600">{formatDate(exp.expenseDate)}</td>
                   <td className="px-4 py-3 text-gray-700">{exp.description || '—'}</td>
                   <td className="px-4 py-3 capitalize text-gray-600">{exp.category}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatNaira(Number(exp.amount))}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                    <div className="flex items-center justify-end gap-2">
+                      <span>{formatNaira(Number(exp.amount))}</span>
+                      {!exp.isDeductible && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                          Non-deductible
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(exp)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><Pencil className="h-4 w-4" /></button>

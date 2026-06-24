@@ -10,9 +10,9 @@ function PasswordRule({ met, label }: { met: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2">
       {met ? (
-        <Check className="h-3.5 w-3.5 text-green-500" />
+        <Check className="h-4 w-4 text-green-500" strokeWidth={2.5} />
       ) : (
-        <X className="h-3.5 w-3.5 text-gray-300" />
+        <X className="h-4 w-4 text-gray-300" strokeWidth={2.5} />
       )}
       <span className={`text-xs font-body ${met ? 'text-green-600' : 'text-gray-400'}`}>
         {label}
@@ -106,7 +106,7 @@ export default function Register() {
               className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
               tabIndex={-1}
             >
-              {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              {showPassword ? <EyeOff className="h-5 w-5" strokeWidth={2.5} /> : <Eye className="h-5 w-5" strokeWidth={2.5} />}
             </button>
           </div>
 
@@ -141,13 +141,13 @@ export default function Register() {
             className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
             tabIndex={-1}
           >
-            {showConfirm ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+            {showConfirm ? <EyeOff className="h-5 w-5" strokeWidth={2.5} /> : <Eye className="h-5 w-5" strokeWidth={2.5} />}
           </button>
         </div>
 
         <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-lg">
           Create account
-          {!isLoading && <ArrowRight className="h-4 w-4 ml-2" />}
+          {!isLoading && <ArrowRight className="h-4.5 w-4.5 ml-2" strokeWidth={2.5} />}
         </Button>
       </form>
 

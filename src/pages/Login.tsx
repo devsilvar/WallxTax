@@ -68,14 +68,14 @@ export default function Login() {
               className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
               tabIndex={-1}
             >
-              {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              {showPassword ? <EyeOff className="h-5 w-5" strokeWidth={2.5} /> : <Eye className="h-5 w-5" strokeWidth={2.5} />}
             </button>
           </div>
         </div>
 
         <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-lg">
           Sign in
-          {!isLoading && <ArrowRight className="h-4 w-4 ml-2" />}
+          {!isLoading && <ArrowRight className="h-4.5 w-4.5 ml-2" strokeWidth={2.5} />}
         </Button>
       </form>
 

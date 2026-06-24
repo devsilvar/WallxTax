@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
@@ -25,6 +26,9 @@ import {
   Zap,
   Copy,
   BadgeCheck,
+  Eye,
+  EyeOff,
+  Shield,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button.tsx';
@@ -41,6 +45,14 @@ function formatMerchantId(id: string | undefined): string {
   if (!id) return 'PMT-0000000';
   const digits = id.replace(/^PMTW/i, '').replace(/^PMT-?/i, '');
   return `PMT-${digits}`;
+}
+
+// ─── BVN masking helper ─────────────────────────────────────
+// Shows: ••••••• 1234 when masked, full 11 digits when revealed
+function maskBvn(bvn: string, revealed: boolean): string {
+  if (!bvn) return '—';
+  if (revealed) return bvn;
+  return `•••••••${bvn.slice(-4)}`;
 }
 
 // ─── Types ──────────────────────────────────────────────────
@@ -349,6 +361,7 @@ async function fetchDashboardBundle(bid: string): Promise<DashboardBundle> {
 // ─── Component ──────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { t } = useTranslation('dashboard');
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const businessStoreLoading = useBusinessStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
@@ -374,6 +387,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(!seed);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
+  const [bvnRevealed, setBvnRevealed] = useState(false);
 
   useEffect(() => {
     if (!activeBusiness) return;
@@ -518,7 +532,7 @@ export default function Dashboard() {
                   ring so it reads as premium against the dark gradient. */}
               <div className='relative shrink-0'>
                 <div className='absolute inset-0 rounded-2xl bg-white/20 blur-xl' />
-                <div className='relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-white/25 to-white/5 backdrop-blur-md border border-white/30 shadow-lg shadow-black/10'>
+                <div className='relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center '>
                   <TimeOfDayIcon
                     bucket={todBucket}
                     className='h-12 w-12 sm:h-14 sm:w-14 drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]'
@@ -565,6 +579,40 @@ export default function Dashboard() {
                 </span>
                 <Copy className='h-3 w-3 text-primary-200/70 opacity-0 transition-opacity group-hover:opacity-100' />
               </button>
+
+              {/* BVN display - masked by default, click to reveal */}
+              {user?.bvn ? (
+                <button
+                  type='button'
+                  onClick={() => setBvnRevealed(!bvnRevealed)}
+                  title={bvnRevealed ? 'Hide BVN' : 'Show BVN'}
+                  className='group flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1.5 hover:bg-white/20 transition-colors'
+                >
+                  <Shield className='h-3.5 w-3.5 text-emerald-200' />
+                  <span className='text-[11px] font-medium text-primary-100'>
+                    BVN
+                  </span>
+                  <span className='text-[12px] font-bold text-white tracking-wider tabular-nums'>
+                    {maskBvn(user.bvn, bvnRevealed)}
+                  </span>
+                  {bvnRevealed ? (
+                    <EyeOff className='h-3 w-3 text-primary-200/70' />
+                  ) : (
+                    <Eye className='h-3 w-3 text-primary-200/70' />
+                  )}
+                </button>
+              ) : (
+                <Link
+                  to='/account'
+                  className='flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-amber-200/30 px-3 py-1.5 hover:bg-white/20 transition-colors'
+                  title='Verify your identity to receive payments'
+                >
+                  <Shield className='h-3.5 w-3.5 text-amber-200' />
+                  <span className='text-[11px] font-medium text-amber-100'>
+                    BVN Not Verified
+                  </span>
+                </Link>
+              )}
 
               {/* Business health indicator */}
               <div className='flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 px-3 py-1.5'>
@@ -644,21 +692,21 @@ export default function Dashboard() {
       {/* ── Stat Cards ──────────────────────────────── */}
       <div className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 stagger-children'>
         <StatCard
-          label='Total Sales'
+          label={t('kpis.total_sales')}
           value={formatNaira(lt?.totalSales ?? 0)}
           icon={ArrowUpRight}
           bgLight='bg-emerald-50'
           iconColor='text-emerald-500'
         />
         <StatCard
-          label='Total Expenses'
+          label={t('kpis.expenses')}
           value={formatNaira(lt?.totalExpenses ?? 0)}
           icon={ArrowDownRight}
           bgLight='bg-amber-50'
           iconColor='text-amber-500'
         />
         <StatCard
-          label='Tax Payable'
+          label={t('kpis.tax_payable')}
           value={formatNaira(lt?.totalTaxPayable ?? 0)}
           icon={CircleDollarSign}
           bgLight='bg-red-50'
@@ -681,7 +729,7 @@ export default function Dashboard() {
             <div className='flex items-center gap-2'>
               <div className='h-2 w-2 rounded-full bg-primary-400 animate-pulse-soft' />
               <h2 className='text-sm font-semibold text-gray-900'>
-                This Month
+                {t('kpis.this_month')}
               </h2>
             </div>
             {currentMonth && statusDot(currentMonth.paymentStatus)}
@@ -749,7 +797,7 @@ export default function Dashboard() {
                 icon={<ArrowDownRight className='h-3.5 w-3.5 text-amber-500' />}
               />
               <MetricRow
-                label='Gross Profit'
+                label={t('kpis.gross_profit')}
                 value={formatNaira(Number(currentMonth.grossProfit))}
                 icon={<TrendingUp className='h-3.5 w-3.5 text-blue-500' />}
               />

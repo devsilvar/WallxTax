@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User as UserIcon, Settings as SettingsIcon, LogOut, Shield } from 'lucide-react';
+import { User as UserIcon, Settings as SettingsIcon, LogOut, Shield, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import { useLanguageStore } from '@/stores/language.store';
 
 /**
  * Top-bar user menu. Replaces the static avatar tile and the user/logout
@@ -12,8 +14,10 @@ import { useAuthStore } from '@/stores/auth.store.ts';
  */
 export default function UserMenu() {
   const navigate = useNavigate();
+  const { t } = useTranslation('nav');
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const { language, setLanguage } = useLanguageStore();
 
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -98,7 +102,7 @@ export default function UserMenu() {
               className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               <UserIcon className="h-4 w-4 text-gray-400" strokeWidth={2} />
-              View profile
+              {t('settings')}
             </button>
             <button
               role="menuitem"
@@ -106,7 +110,7 @@ export default function UserMenu() {
               className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               <SettingsIcon className="h-4 w-4 text-gray-400" strokeWidth={2} />
-              Settings
+              {t('settings')}
             </button>
             {isAdmin && (
               <button
@@ -115,9 +119,41 @@ export default function UserMenu() {
                 className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
                 <Shield className="h-4 w-4 text-gray-400" strokeWidth={2} />
-                Admin panel
+                {t('admin')}
               </button>
             )}
+          </div>
+
+          {/* Language toggle */}
+          <div className="border-t border-gray-100 py-1">
+            <div className="px-4 py-2">
+              <div className="flex items-center gap-2.5 mb-2">
+                <Globe className="h-4 w-4 text-gray-400" strokeWidth={2} />
+                <span className="text-xs font-medium text-gray-500">{t('language')}</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setLanguage('en')}
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    language === 'en'
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('english')}
+                </button>
+                <button
+                  onClick={() => setLanguage('pcm')}
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    language === 'pcm'
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('pidgin')}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-gray-100 py-1">
@@ -127,7 +163,7 @@ export default function UserMenu() {
               className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" strokeWidth={2} />
-              Log out
+              {t('logout')}
             </button>
           </div>
         </div>

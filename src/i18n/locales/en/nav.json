@@ -1,0 +1,33 @@
+{
+  "dashboard": "Dashboard",
+  "sales": "Sales",
+  "unverified": "Unverified",
+  "expenses": "Expenses",
+  "invoices": "Invoices",
+  "ai_assistant": "AI Assistant",
+  "tax_reports": "Tax Reports",
+  "payments": "Payments",
+  "bank_account": "Bank Account",
+  "reminders": "Reminders",
+  "settings": "Settings",
+  "logout": "Log out",
+  "admin": "Admin",
+  "admin_panel": "Admin Panel",
+  "language": "Language",
+  "english": "English",
+  "pidgin": "Pidgin",
+  "sections": {
+    "operate": "Operate",
+    "money": "Money",
+    "account": "Account"
+  },
+  "actions": {
+    "record_sale": "Record sale",
+    "calculate_tax": "Calculate tax",
+    "create_business": "Create Business",
+    "new_business": "New Business"
+  },
+  "business": {
+    "active_workspace": "Active workspace"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "dashboard": "Dashboard",
+  "sales": "Sales wey you sell",
+  "unverified": "No confirm yet",
+  "expenses": "Money wey you spend",
+  "invoices": "Invoice dem",
+  "ai_assistant": "AI Helper",
+  "tax_reports": "Tax Report",
+  "payments": "Payment",
+  "bank_account": "Bank Account",
+  "reminders": "Reminder",
+  "settings": "Settings",
+  "logout": "Comot",
+  "admin": "Admin",
+  "admin_panel": "Admin Panel",
+  "language": "Language",
+  "english": "English",
+  "pidgin": "Pidgin",
+  "sections": {
+    "operate": "Wetin you dey do",
+    "money": "Money matter",
+    "account": "Your tins"
+  },
+  "actions": {
+    "record_sale": "Enter sale",
+    "calculate_tax": "Count tax",
+    "create_business": "Create Business",
+    "new_business": "New Business"
+  },
+  "business": {
+    "active_workspace": "Na dis one you dey use"
+  }
+}

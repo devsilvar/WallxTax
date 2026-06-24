@@ -12,6 +12,19 @@ import type {
 } from '@/types/index.ts';
 
 /**
+ * Convert base64 string to Blob
+ */
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
+/**
  * Invoice store.
  *
  * Deliberately keeps `activeInvoice` separate from the list, because the detail
@@ -180,9 +193,8 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
   },
 
   /**
-   * Build a wa.me deep link for WhatsApp delivery. The backend doesn't actually
-   * send anything — it returns a URL that the SME opens, which launches
-   * WhatsApp pre-filled. The caller is expected to window.open() the waUrl.
+   * Build a wa.me deep link for WhatsApp delivery and get the PDF file.
+   * The backend returns JSON with base64-encoded PDF.
    */
   sendInvoiceByWhatsApp: async (businessId, id) => {
     const { data } = await api.post(`${basePath(businessId)}/${id}/send-whatsapp`);
@@ -191,11 +203,18 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     const message = String(data?.meta?.message ?? '');
     const pdfUrl = String(data?.meta?.pdfUrl ?? '');
     const to = String(data?.meta?.to ?? '');
+    const filename = String(data?.meta?.filename ?? 'invoice.pdf');
+    const pdfBase64 = String(data?.meta?.pdfBase64 ?? '');
+    
+    // Convert base64 to Blob
+    const pdfBlob = pdfBase64 ? base64ToBlob(pdfBase64, 'application/pdf') : null;
+    
     set((s) => ({
       activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
-      invoices: patchInList(s.invoices, updated),
+      invoices: updated ? patchInList(s.invoices, updated) : s.invoices,
     }));
-    return { invoice: updated, waUrl, message, pdfUrl, to };
+    
+    return { invoice: updated, waUrl, message, pdfUrl, to, pdfBlob, filename };
   },
 
   markInvoicePaid: async (businessId, id, payload) => {
