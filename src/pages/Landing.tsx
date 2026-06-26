@@ -29,6 +29,10 @@ import {
   Globe2,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
+import nigerian1 from '@/assets/nigerian1.jfif';
+import nigerian2 from '@/assets/nigerian2.jpg';
+import nigerian3 from '@/assets/nigerian3.jfif';
+import nigerian4 from '@/assets/nigerian4.jfif';
 
 /* ─── Custom Hooks ─── */
 function useScrollAnimation<T extends HTMLElement = HTMLDivElement>() {
@@ -369,19 +373,16 @@ export default function Landing() {
             <ScrollReveal delay={0}>
               <div className='inline-flex items-center gap-2 bg-white rounded-full border border-gray-200 px-4 py-2 mb-6 sm:mb-10 shadow-sm hover:shadow-md transition-shadow duration-300'>
                 <div className='flex -space-x-2'>
-                  {[
-                    'https://i.pravatar.cc/150?img=12',
-                    'https://i.pravatar.cc/150?img=33',
-                    'https://i.pravatar.cc/150?img=8',
-                    'https://i.pravatar.cc/150?img=47',
-                  ].map((avatar, i) => (
-                    <img
-                      key={i}
-                      src={avatar}
-                      alt={`Business owner ${i + 1}`}
-                      className='h-7 w-7 rounded-full border-2 border-white object-cover'
-                    />
-                  ))}
+                  {[nigerian1, nigerian2, nigerian3, nigerian4].map(
+                    (avatar, i) => (
+                      <img
+                        key={i}
+                        src={avatar}
+                        alt={`Business owner ${i + 1}`}
+                        className='h-7 w-7 rounded-full border-2 border-white object-cover'
+                      />
+                    ),
+                  )}
                 </div>
                 <span className='font-body text-sm font-semibold text-gray-700 pl-1'>
                   Trusted by 2,500+ businesses
@@ -441,8 +442,7 @@ export default function Landing() {
             <ScrollReveal delay={200}>
               <p className='mx-auto mt-4 sm:mt-5 max-w-xl sm:max-w-2xl font-body text-base sm:text-lg lg:text-xl leading-relaxed text-gray-500 px-2'>
                 Track sales, auto-compute FIRS-compliant taxes, and pay online
-                in minutes. Built exclusively for Nigerian businesses who want
-                clarity, not complexity.
+                in minutes. Built exclusively for Nigerian MSME's and SMBs
               </p>
             </ScrollReveal>
 
@@ -1412,7 +1412,6 @@ export default function Landing() {
                         {item.feature}
                       </span>
                     </div>
-
                   </div>
 
                   {/* Content Section */}

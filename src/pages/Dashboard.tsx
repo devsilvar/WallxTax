@@ -516,7 +516,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Welcome Banner ───────────────────────────── */}
-      <div className='animate-slide-up relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 p-6 text-white shadow-xl shadow-primary-900/20'>
+      <div className='animate-slide-up relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 p-5 sm:p-6 text-white shadow-xl shadow-primary-900/20'>
         {/* Decorative elements */}
         <div className='absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/[0.04]' />
         <div className='absolute -right-4 top-8 h-24 w-24 rounded-full bg-white/[0.06]' />
@@ -524,9 +524,9 @@ export default function Dashboard() {
         {/* Shimmer overlay */}
         <div className='absolute inset-0 animate-shimmer pointer-events-none' />
 
-        <div className='relative flex items-start justify-between'>
-          <div>
-            <div className='flex items-start gap-4'>
+        <div className='relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+          <div className='min-w-0'>
+            <div className='flex items-start gap-3 sm:gap-4'>
               {/* Time-of-day tile — the icon is the visual anchor of the
                   banner. The tile gives it room to breathe and a soft glow
                   ring so it reads as premium against the dark gradient. */}
@@ -539,16 +539,16 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
-              <div>
-                <p className='text-primary-200 text-sm font-medium'>
+              <div className='min-w-0'>
+                <p className='text-primary-200 text-xs sm:text-sm font-medium'>
                   {getGreetingLabel()}
                 </p>
-                <h1 className='mt-1 text-2xl font-bold tracking-tight capitalize'>
+                <h1 className='mt-1 text-xl sm:text-2xl font-bold tracking-tight capitalize truncate'>
                   {userName}
                 </h1>
                 <p className='mt-2 text-primary-200/80 text-[13px]'>
                   Here's your overview for{' '}
-                  <span className='text-white font-semibold'>
+                  <span className='text-white font-semibold break-words'>
                     {activeBusiness.businessName}
                   </span>
                 </p>
@@ -632,7 +632,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 shrink-0'>
             <Link to='/sales'>
               <button className='flex items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 px-3 py-2 sm:px-3.5 sm:py-2.5 text-[12px] sm:text-[13px] font-medium text-white hover:bg-white/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]'>
                 <Plus className='h-3.5 w-3.5' />{' '}
