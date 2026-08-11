@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
+import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import {
   TrendingUp,
   AlertCircle,
@@ -389,6 +390,12 @@ export default function Dashboard() {
   const [showCreateBiz, setShowCreateBiz] = useState(false);
   const [bvnRevealed, setBvnRevealed] = useState(false);
 
+  // Subscribe to dashboard invalidation events
+  const invalidationCounter = useDashboardEvents((s) => s.invalidationCounter);
+  
+  // Ref for debouncing refetch calls
+  const refetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   useEffect(() => {
     if (!activeBusiness) return;
 
@@ -443,6 +450,58 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, [activeBusiness]);
+
+  // Debounced refetch helper — prevents excessive API calls when multiple
+  // mutations happen rapidly (e.g., bulk import, rapid manual entries).
+  // Waits 500ms after the last invalidation before refetching.
+  const debouncedRefetch = useCallback((bid: string) => {
+    // Clear any pending refetch
+    if (refetchTimeoutRef.current) {
+      clearTimeout(refetchTimeoutRef.current);
+    }
+    
+    // Schedule new refetch in 500ms
+    refetchTimeoutRef.current = setTimeout(() => {
+      if (import.meta.env.DEV) {
+        console.log('[Dashboard] Refetching due to invalidation');
+      }
+      
+      setIsRefreshing(true);
+      fetchDashboardBundle(bid)
+        .then((bundle) => {
+          dashboardCache.set(bid, { data: bundle, fetchedAt: Date.now() });
+          setDashboard(bundle.dashboard);
+          setRecentSales(bundle.recentSales);
+          setRecentExpenses(bundle.recentExpenses);
+          setRecentReports(bundle.recentReports);
+          setReminders(bundle.reminders);
+        })
+        .catch((err) => {
+          if (import.meta.env.DEV) {
+            console.error('[Dashboard] Refetch failed:', err);
+          }
+          // Soft failure — keep showing cached data
+        })
+        .finally(() => {
+          setIsRefreshing(false);
+        });
+    }, 500);
+  }, []);
+
+  // Refetch dashboard when invalidation counter changes (data mutations)
+  useEffect(() => {
+    if (!activeBusiness) return;
+    if (invalidationCounter === 0) return; // Skip initial mount
+    
+    debouncedRefetch(activeBusiness.id);
+    
+    // Cleanup debounce timer on unmount
+    return () => {
+      if (refetchTimeoutRef.current) {
+        clearTimeout(refetchTimeoutRef.current);
+      }
+    };
+  }, [invalidationCounter, activeBusiness, debouncedRefetch]);
 
   // Wait for businesses to load first — don't show empty state before we know if any exist.
   if (businessStoreLoading) {

@@ -1619,7 +1619,7 @@ export default function Landing() {
                 subtitle: 'Clean workspace, clear finances',
               },
               {
-                image: '/images/team-collaboration.jpg',
+                image: '/images/team-efficiency.jpg',
                 title: 'Team Efficiency',
                 subtitle: 'Collaborative financial management',
                 span: 'sm:col-span-1 lg:col-span-2 lg:row-span-1',

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '@/lib/axios.ts';
 import { STALE, isFresh } from '@/lib/cache.ts';
+import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import type {
   Invoice,
   InvoiceListQuery,
@@ -224,6 +225,8 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
       invoices: patchInList(s.invoices, updated),
     }));
+    // Marking invoice paid creates a SalesTransaction, so invalidate dashboard
+    useDashboardEvents.getState().invalidateDashboard('invoice_paid');
     return updated;
   },
 

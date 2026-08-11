@@ -17,6 +17,7 @@ import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { Expense, Pagination } from '@/types/index.ts';
@@ -66,6 +67,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function Expenses() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
@@ -147,9 +149,11 @@ export default function Expenses() {
       if (editId) {
         await api.put(`${basePath}/${editId}`, body);
         toast.success('Expense updated');
+        invalidateDashboard('expense_updated');
       } else {
         await api.post(basePath, body);
         toast.success('Expense created');
+        invalidateDashboard('expense_created');
       }
       resetForm();
       fetchExpenses();
@@ -164,6 +168,7 @@ export default function Expenses() {
     try {
       await api.delete(`${basePath}/${id}`);
       toast.success('Expense deleted');
+      invalidateDashboard('expense_deleted');
       fetchExpenses();
       fetchSummary();
     } catch (err: any) { toast.error(err.response?.data?.error?.message || 'Failed'); }

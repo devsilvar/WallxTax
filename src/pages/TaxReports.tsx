@@ -23,6 +23,7 @@ import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxReport, Pagination } from '@/types/index.ts';
@@ -125,6 +126,7 @@ function ChartSkeleton() {
 
 function TaxReportsList({ highlightedReportId }: { highlightedReportId: string | null }) {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
   const [reports, setReports] = useState<TaxReport[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
@@ -180,6 +182,8 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
     try {
       const res = await api.post(`${taxPath}/calculate`, { month: Number(calcMonth), year: Number(calcYear) });
       toast.success('Tax calculated');
+      // Calculation refreshes the report the dashboard reads — tell it to refetch
+      invalidateDashboard('tax_calculated');
       setWarnings(res.data.warnings || []);
       setShowCalc(false); fetchReports();
     } catch (err: any) {
@@ -191,6 +195,7 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
     try {
       await api.post(`${taxPath}/reports/${id}/finalize`);
       toast.success('Report finalized');
+      invalidateDashboard('tax_finalized');
       fetchReports();
     } catch (err: any) { toast.error(err.response?.data?.error?.message || 'Failed'); }
   };
@@ -212,6 +217,7 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
         window.open(url, '_blank');
         toast.success('Redirecting to payment...');
       }
+      invalidateDashboard('tax_paid');
       fetchReports();
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Payment failed');

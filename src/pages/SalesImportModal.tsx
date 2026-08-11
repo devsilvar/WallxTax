@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import api from '@/lib/axios.ts';
+import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import toast from 'react-hot-toast';
 import type {
   SalesImportPreview,
@@ -185,6 +186,8 @@ export default function SalesImportModal({ isOpen, businessId, onClose, onImport
       setResult(res.data.data);
       setStep('result');
       toast.success(`Imported ${res.data.data.imported} sales`);
+      // Imported rows are real sales — the dashboard must refresh its totals
+      useDashboardEvents.getState().invalidateDashboard('sales_imported');
       onImported();
     } catch (err: unknown) {
       const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;

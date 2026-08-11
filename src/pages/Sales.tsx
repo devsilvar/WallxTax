@@ -19,6 +19,7 @@ import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination } from '@/types/index.ts';
@@ -30,6 +31,8 @@ const SOURCES = [
   'pos',
   'online_store',
   'manual',
+  'cash',
+  'invoice',
 ] as const;
 const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
 
@@ -93,12 +96,15 @@ const SOURCE_COLORS: Record<string, string> = {
   pos: 'bg-amber-500',
   online_store: 'bg-emerald-500',
   manual: 'bg-gray-400',
+  cash: 'bg-green-600',
+  invoice: 'bg-indigo-500',
 };
 
 // ─── Component ──────────────────────────────────────────────
 
 export default function Sales() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
   const [sales, setSales] = useState<SalesTransaction[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
@@ -250,9 +256,11 @@ export default function Sales() {
         }
         
         toast.success('Sale updated');
+        invalidateDashboard('sale_updated');
       } else {
         await api.post(basePath, body);
         toast.success('Sale created');
+        invalidateDashboard('sale_created');
       }
       resetForm();
       fetchSales();
@@ -269,6 +277,7 @@ export default function Sales() {
     try {
       await api.delete(`${basePath}/${id}`);
       toast.success('Sale deleted');
+      invalidateDashboard('sale_deleted');
       fetchSales();
       fetchSummary();
     } catch (err: any) {
