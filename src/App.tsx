@@ -11,6 +11,8 @@ import GuestRoute from '@/routes/GuestRoute.tsx';
 import Landing from '@/pages/Landing.tsx';
 import Login from '@/pages/Login.tsx';
 import Register from '@/pages/Register.tsx';
+import ForgotPassword from '@/pages/ForgotPassword.tsx';
+import ResetPassword from '@/pages/ResetPassword.tsx';
 import Dashboard from '@/pages/Dashboard.tsx';
 import Sales from '@/pages/Sales.tsx';
 import Expenses from '@/pages/Expenses.tsx';
@@ -61,6 +63,8 @@ export default function App() {
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
             </Route>
           </Route>
 

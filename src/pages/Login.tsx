@@ -71,6 +71,11 @@ export default function Login() {
               {showPassword ? <EyeOff className="h-5 w-5" strokeWidth={2.5} /> : <Eye className="h-5 w-5" strokeWidth={2.5} />}
             </button>
           </div>
+          <div className="mt-2 text-right">
+            <Link to="/forgot-password" className="font-body text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors">
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-lg">
