@@ -43,7 +43,12 @@ export default function BankSelect({
     if (!banks) return [];
     const q = query.trim().toLowerCase();
     if (!q) return banks;
-    return banks.filter((b) => b.name.toLowerCase().includes(q));
+    // Match by name OR bank code — needed so users can find a specific NIBSS
+    // code (e.g. Paystack's test-mode fixture uses code "007") when they
+    // don't know/trust the bank's display name for that code.
+    return banks.filter(
+      (b) => b.name.toLowerCase().includes(q) || b.code.includes(q),
+    );
   }, [banks, query]);
 
   // Outside-click + Escape to close.
@@ -99,6 +104,7 @@ export default function BankSelect({
                 {selected.name.charAt(0)}
               </span>
               <span className="truncate">{selected.name}</span>
+              <span className="shrink-0 text-xs text-gray-400">· {selected.code}</span>
             </>
           ) : (
             <span className="truncate text-gray-400">
@@ -122,7 +128,7 @@ export default function BankSelect({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search banks…"
+              placeholder="Search by bank name or code…"
               className="w-full border-0 bg-transparent p-0 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
             />
           </div>
@@ -159,6 +165,7 @@ export default function BankSelect({
                         {b.name.charAt(0)}
                       </span>
                       <span className="truncate">{b.name}</span>
+                      <span className="shrink-0 text-[11px] text-gray-400">{b.code}</span>
                     </span>
                     {isActive && <Check className="h-4 w-4 shrink-0 text-primary-600" />}
                   </button>
