@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ChevronLeft, ChevronRight, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Users, ChevronLeft, ChevronRight, Eye, ToggleLeft, ToggleRight, ShieldCheck, ShieldAlert } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import api from '@/lib/axios.ts';
@@ -18,6 +18,7 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   const fetchUsers = () => {
     setIsLoading(true);
@@ -37,6 +38,17 @@ export default function AdminUsers() {
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed');
     } finally { setToggling(null); }
+  };
+
+  const handleToggleVerification = async (u: AdminUser) => {
+    setVerifying(u.id);
+    try {
+      await api.patch(`/admin/users/${u.id}/email-verification`, { isVerified: !u.isVerified });
+      toast.success(`Email ${u.isVerified ? 'unverified' : 'verified'}`);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to update verification');
+    } finally { setVerifying(null); }
   };
 
   return (
@@ -96,6 +108,14 @@ export default function AdminUsers() {
                     <td className="px-6 py-4 text-gray-400">{formatDate(u.createdAt)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button 
+                          onClick={() => handleToggleVerification(u)} 
+                          disabled={verifying === u.id} 
+                          className={`rounded-md p-2 ${u.isVerified ? 'text-green-400 hover:bg-green-50 hover:text-green-600' : 'text-yellow-400 hover:bg-yellow-50 hover:text-yellow-600'}`} 
+                          title={u.isVerified ? 'Unverify email' : 'Verify email'}
+                        >
+                          {u.isVerified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                        </button>
                         <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-md p-2 text-gray-300 hover:bg-gray-100 hover:text-gray-700" title="View details">
                           <Eye className="h-4 w-4" />
                         </button>
@@ -121,10 +141,21 @@ export default function AdminUsers() {
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
                     <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{u.role}</span>
                     <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{u.isActive ? 'Active' : 'Inactive'}</span>
+                    <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${u.isVerified ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                      {u.isVerified ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
+                      {u.isVerified ? 'Verified' : 'Unverified'}
+                    </span>
                   </div>
                   <p className="mt-2 text-xs text-gray-400">Joined {formatDate(u.createdAt)} · {u._count.businesses} business{u._count.businesses !== 1 ? 'es' : ''}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <button 
+                    onClick={() => handleToggleVerification(u)} 
+                    disabled={verifying === u.id} 
+                    className={`rounded-md p-2 ${u.isVerified ? 'text-green-400 hover:bg-green-50 hover:text-green-600' : 'text-yellow-400 hover:bg-yellow-50 hover:text-yellow-600'}`}
+                  >
+                    {u.isVerified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                  </button>
                   <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-md p-2 text-gray-300 hover:bg-gray-100 hover:text-gray-700"><Eye className="h-4 w-4" /></button>
                   <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded-md p-2 ${u.isActive ? 'text-gray-300 hover:bg-red-50 hover:text-red-600' : 'text-gray-300 hover:bg-green-50 hover:text-green-600'}`}>
                     {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}

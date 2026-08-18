@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
+import DVADiagnostics from '@/components/DVADiagnostics.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import {
@@ -560,6 +561,9 @@ export default function Dashboard() {
 
   return (
     <div className='space-y-6 relative'>
+      {/* DVA Diagnostics Panel - Only in development mode */}
+      {import.meta.env.DEV && <DVADiagnostics />}
+      
       {/* Refreshing pill — shown while a background revalidation is in flight.
           Cached data is already on screen; this just hints at "we're checking
           for updates" so the user knows not to panic if a number ticks. */}

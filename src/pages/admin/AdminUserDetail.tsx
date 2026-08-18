@@ -17,6 +17,7 @@ export default function AdminUserDetail() {
   const [user, setUser] = useState<AdminUserDetailType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     api.get(`/admin/users/${userId}`)
@@ -34,6 +35,18 @@ export default function AdminUserDetail() {
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed');
     } finally { setToggling(false); }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!user) return;
+    setVerifying(true);
+    try {
+      await api.patch(`/admin/users/${user.id}/email-verification`, { isVerified: !user.isVerified });
+      toast.success(`Email ${user.isVerified ? 'unverified' : 'verified'} successfully`);
+      setUser({ ...user, isVerified: !user.isVerified });
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to update verification status');
+    } finally { setVerifying(false); }
   };
 
   if (isLoading) return <div className="py-20 text-center text-gray-400">Loading...</div>;
@@ -68,14 +81,24 @@ export default function AdminUserDetail() {
               {user.isActive ? 'Active' : 'Inactive'}
             </span>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Button
               size="sm"
               variant={user.isActive ? 'danger' : 'primary'}
               onClick={handleToggle}
               isLoading={toggling}
+              className="w-full"
             >
               {user.isActive ? 'Deactivate User' : 'Activate User'}
+            </Button>
+            <Button
+              size="sm"
+              variant={user.isVerified ? 'secondary' : 'primary'}
+              onClick={handleVerifyEmail}
+              isLoading={verifying}
+              className="w-full"
+            >
+              {user.isVerified ? 'Unverify Email' : 'Verify Email'}
             </Button>
           </div>
         </Card>
