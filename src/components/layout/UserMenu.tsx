@@ -101,14 +101,6 @@ export default function UserMenu() {
               onClick={() => go('/settings')}
               className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
-              <UserIcon className="h-4 w-4 text-gray-400" strokeWidth={2} />
-              {t('settings')}
-            </button>
-            <button
-              role="menuitem"
-              onClick={() => go('/settings')}
-              className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
               <SettingsIcon className="h-4 w-4 text-gray-400" strokeWidth={2} />
               {t('settings')}
             </button>

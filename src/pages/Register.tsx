@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import PhoneInput from '@/components/ui/PhoneInput.tsx';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, ArrowRight, Check, X } from 'lucide-react';
 
@@ -24,6 +25,8 @@ function PasswordRule({ met, label }: { met: boolean; label: string }) {
 export default function Register() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [localDigits, setLocalDigits] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +46,11 @@ export default function Register() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (localDigits.length > 0 && localDigits.length < 10) {
+      setPhoneError('Please enter all 10 digits of your mobile number (e.g. 803 123 4567)');
+      toast.error('Please enter a valid 10-digit mobile number');
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -82,13 +90,22 @@ export default function Register() {
           required
         />
 
-        <Input
-          label="Phone Number"
-          type="tel"
+        <PhoneInput
+          label="Phone number"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="e.g. 2348012345678"
+          onChange={(fullE164, digits) => {
+            setPhone(fullE164);
+            setLocalDigits(digits);
+            if (digits.length > 0 && digits.length < 10) {
+              setPhoneError('Please enter all 10 digits (e.g. 803 123 4567)');
+            } else {
+              setPhoneError(null);
+            }
+          }}
+          error={phoneError}
+          helperText="Enter 10 or 11 digits (e.g. 080... or 80...). Saved as +234..."
         />
+
 
         <div>
           <div className="relative">

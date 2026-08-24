@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
-import DVADiagnostics from '@/components/DVADiagnostics.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
+
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import {
   TrendingUp,
@@ -547,7 +547,7 @@ export default function Dashboard() {
   return (
     <div className='space-y-6 relative'>
       {/* DVA Diagnostics Panel - Only in development mode */}
-      {import.meta.env.DEV && <DVADiagnostics />}
+      {/* {import.meta.env.DEV && <DVADiagnostics />} */}
       
       {/* Refreshing pill — shown while a background revalidation is in flight.
           Cached data is already on screen; this just hints at "we're checking
@@ -575,21 +575,35 @@ export default function Dashboard() {
         <div className='relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
           <div className='min-w-0'>
             <div className='flex items-start gap-3 sm:gap-4'>
-              {/* Time-of-day tile — the icon is the visual anchor of the
-                  banner. The tile gives it room to breathe and a soft glow
-                  ring so it reads as premium against the dark gradient. */}
+              {/* Company Logo or Time-of-day tile — visual anchor of the banner */}
               <div className='relative shrink-0'>
                 <div className='absolute inset-0 rounded-2xl bg-white/20 blur-xl' />
-                <div className='relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center '>
-                  <TimeOfDayIcon
-                    bucket={todBucket}
-                    className='h-12 w-12 sm:h-14 sm:w-14 drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]'
-                  />
+                <div className='relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center'>
+                  {activeBusiness.logoUrl ? (
+                    <div className='h-14 w-14 sm:h-16 sm:w-16 rounded-full overflow-hidden border-2 border-white/30 shadow-lg ring-2 ring-white/10 bg-white/10 flex items-center justify-center'>
+                      <img
+                        src={activeBusiness.logoUrl}
+                        alt={`${activeBusiness.businessName} logo`}
+                        className='h-full w-full object-cover'
+                      />
+                    </div>
+                  ) : (
+                    <TimeOfDayIcon
+                      bucket={todBucket}
+                      className='h-12 w-12 sm:h-14 sm:w-14 drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]'
+                    />
+                  )}
                 </div>
               </div>
               <div className='min-w-0'>
-                <p className='text-primary-200 text-xs sm:text-sm font-medium'>
-                  {getGreetingLabel()}
+                <p className='text-primary-200 text-xs sm:text-sm font-medium flex items-center gap-1.5'>
+                  {activeBusiness.logoUrl && (
+                    <TimeOfDayIcon
+                      bucket={todBucket}
+                      className='h-3.5 w-3.5 opacity-80 shrink-0'
+                    />
+                  )}
+                  <span>{getGreetingLabel()}</span>
                 </p>
                 <h1 className='mt-1 text-xl sm:text-2xl font-bold tracking-tight capitalize truncate'>
                   {userName}
@@ -602,6 +616,7 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
+
 
             {/* Merchant ID + Health row */}
             <div className='mt-4 flex flex-wrap items-center gap-2'>

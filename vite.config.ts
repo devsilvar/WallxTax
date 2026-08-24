@@ -20,6 +20,7 @@ export default defineConfig({
     },
   },
   build: {
+    assetsInlineLimit: 4096, // Only inline assets < 4kB; keep woff2 files separate
     rollupOptions: {
       output: {
         manualChunks(id) {

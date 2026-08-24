@@ -104,8 +104,16 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             className='flex w-full items-center justify-between gap-2 rounded-xl border border-gray-100 bg-gradient-to-r from-gray-50/80 to-gray-50/40 px-3 py-2.5 text-left transition-all duration-200 hover:border-primary-200 hover:bg-gradient-to-r hover:from-primary-50/50 hover:to-primary-50/20 group'
           >
             <div className='flex items-center gap-2.5 min-w-0'>
-              <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-white text-[12px] font-bold shrink-0 shadow-sm shadow-primary-500/20'>
-                {activeBusiness.businessName.charAt(0).toUpperCase()}
+              <div className='flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white text-[12px] font-bold shrink-0 shadow-sm shadow-primary-500/20 overflow-hidden'>
+                {activeBusiness.logoUrl ? (
+                  <img
+                    src={activeBusiness.logoUrl}
+                    alt={activeBusiness.businessName}
+                    className='h-full w-full object-cover'
+                  />
+                ) : (
+                  activeBusiness.businessName.charAt(0).toUpperCase()
+                )}
               </div>
               <div className='min-w-0'>
                 <p className='text-[13px] font-semibold text-gray-900 truncate'>
@@ -151,13 +159,21 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 >
                   <div className='flex items-center gap-2.5'>
                     <div
-                      className={`flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-bold ${
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold overflow-hidden shrink-0 ${
                         biz.id === activeBusiness?.id
                           ? 'bg-gradient-to-br from-primary-500 to-primary-700 text-white'
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
-                      {biz.businessName.charAt(0).toUpperCase()}
+                      {biz.logoUrl ? (
+                        <img
+                          src={biz.logoUrl}
+                          alt={biz.businessName}
+                          className='h-full w-full object-cover'
+                        />
+                      ) : (
+                        biz.businessName.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <span className='truncate'>{biz.businessName}</span>
                   </div>
@@ -166,6 +182,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   )}
                 </button>
               ))}
+
               <div className='border-t border-gray-50 mt-1 pt-1 px-1.5'>
                 <button
                   onClick={() => {

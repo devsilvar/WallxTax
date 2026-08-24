@@ -7,7 +7,9 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import PhoneInput from '@/components/ui/PhoneInput.tsx';
 import BankSelect from '@/components/BankSelect.tsx';
+
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import api from '@/lib/axios.ts';
@@ -802,12 +804,22 @@ export default function Account() {
                   </div>
                   <p className="text-sm text-gray-500 ml-12 -mt-2">Paystack requires a phone number on file before it can verify your identity.</p>
                   <div className="ml-12">
-                    <Input label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} error={phoneError} />
+                    <PhoneInput
+                      label="Phone number"
+                      required
+                      value={phone}
+                      onChange={(fullE164) => {
+                        setPhone(fullE164);
+                        setPhoneError('');
+                      }}
+                      error={phoneError}
+                    />
                     <div className="flex gap-2 mt-3">
                       <Button type="submit" isLoading={savingPhone}>Save &amp; continue</Button>
                       <Button variant="ghost" onClick={() => setShowPhoneForm(false)}>Cancel</Button>
                     </div>
                   </div>
+
                 </form>
               ) : awaitingValidation ? (
                 <div className="text-center py-10">

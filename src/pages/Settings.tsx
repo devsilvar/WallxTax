@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   User,
   Building2,
@@ -20,7 +20,9 @@ import {
   Copy,
   Check,
   Briefcase,
+  Upload,
 } from 'lucide-react';
+
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
@@ -72,6 +74,7 @@ export default function Settings() {
   const [profitMargin, setProfitMargin] = useState(20);
   const [taxReminderDay, setTaxReminderDay] = useState(25);
   const [savingBiz, setSavingBiz] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
@@ -126,7 +129,42 @@ export default function Settings() {
       profitMargin !== initial.profitMargin ||
       taxReminderDay !== initial.taxReminderDay);
 
+  const handleLogoUpload = async (file: File) => {
+    if (!biz) return;
+    setLogoUploading(true);
+    try {
+      const form = new FormData();
+      form.append('logo', file);
+      await api.post(`/businesses/${biz.id}/logo`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await fetchBusinesses(true);
+      toast.success('Company logo uploaded successfully');
+    } catch (err: any) {
+      const apiErr = err?.response?.data?.error;
+      toast.error(apiErr?.message || 'Failed to upload company logo');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    if (!biz) return;
+    setLogoUploading(true);
+    try {
+      await api.delete(`/businesses/${biz.id}/logo`);
+      await fetchBusinesses(true);
+      toast.success('Company logo removed');
+    } catch (err: any) {
+      const apiErr = err?.response?.data?.error;
+      toast.error(apiErr?.message || 'Failed to remove logo');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   const handleBusinessUpdate = async (e: FormEvent) => {
+
     e.preventDefault();
     if (!biz) return;
     setSavingBiz(true);
@@ -302,12 +340,17 @@ export default function Settings() {
               setProfitMargin={setProfitMargin}
               taxReminderDay={taxReminderDay}
               setTaxReminderDay={setTaxReminderDay}
+              logoUrl={biz.logoUrl}
+              logoUploading={logoUploading}
+              onUploadLogo={handleLogoUpload}
+              onRemoveLogo={handleLogoRemove}
               isDirty={isDirty}
               savingBiz={savingBiz}
               onSubmit={handleBusinessUpdate}
               onReset={handleResetBusiness}
             />
           )}
+
 
           {activeTab === 'business' && !biz && (
             <Card>
@@ -410,6 +453,20 @@ function ProfilePanel({
             </button>
           }
         >
+          <div className="px-6 pt-4 pb-2 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center shrink-0 shadow-sm">
+              {biz.logoUrl ? (
+                <img src={biz.logoUrl} alt={biz.businessName} className="h-full w-full object-cover" />
+              ) : (
+                <Building2 className="h-6 w-6 text-gray-400" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-gray-900 truncate">{biz.businessName}</h3>
+              <p className="text-xs text-gray-500">{businessTypeLabel(biz.businessType)}</p>
+            </div>
+          </div>
+
           <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
             <DetailRow icon={Building2} label="Business name" value={biz.businessName} />
             <DetailRow icon={User} label="Owner" value={biz.ownerName} />
@@ -441,6 +498,118 @@ function ProfilePanel({
   );
 }
 
+// ─── Logo upload card ──────────────────────────────────────
+
+function LogoUploadCard({
+  logoUrl,
+  uploading,
+  onUpload,
+  onRemove,
+}: {
+  logoUrl?: string | null;
+  uploading: boolean;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [imgErr, setImgErr] = useState(false);
+
+  useEffect(() => {
+    setImgErr(false);
+  }, [logoUrl]);
+
+  const handleFile = (f: File) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+    if (!allowed.includes(f.type)) {
+      toast.error('Only JPEG, PNG, WebP or SVG images are accepted.');
+      return;
+    }
+    if (f.size > 2 * 1024 * 1024) {
+      toast.error('Image must be 2 MB or smaller.');
+      return;
+    }
+    if (f.type === 'image/svg+xml') {
+      toast('SVG logo detected — Cloudinary will automatically optimize it for web and PDF invoices.', {
+        icon: '✨',
+      });
+    }
+    onUpload(f);
+  };
+
+  return (
+    <Card title="Company logo" subtitle="Shown on invoices, statements, and your dashboard banner.">
+      <div className="flex flex-col sm:flex-row items-center gap-6 px-6 pb-6">
+        {/* Preview Circle */}
+        <div className="relative shrink-0 h-20 w-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 shadow-sm">
+          {logoUrl && !imgErr ? (
+            <img
+              src={logoUrl}
+              alt="Company logo"
+              className="h-full w-full object-cover"
+              onError={() => setImgErr(true)}
+            />
+          ) : (
+            <Building2 className="h-8 w-8 text-gray-300" />
+          )}
+        </div>
+
+        {/* Dropzone & Actions */}
+        <div className="flex-1 w-full space-y-2">
+          <div
+            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 cursor-pointer transition-colors ${
+              dragActive
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+            }`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragActive(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) handleFile(f);
+            }}
+          >
+            <Upload className="h-5 w-5 text-gray-400 mb-1" />
+            <p className="text-xs font-medium text-gray-600">
+              {uploading ? 'Uploading to Cloudinary…' : 'Click or drag company logo to upload'}
+            </p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              PNG, JPEG, WebP, SVG • Maximum 2 MB
+            </p>
+          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+              e.target.value = '';
+            }}
+          />
+          {logoUrl && (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={uploading}
+              className="text-[12px] font-medium text-red-500 hover:text-red-600 transition-colors"
+            >
+              Remove logo
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ─── Business panel ────────────────────────────────────────
 
 interface BusinessPanelProps {
@@ -462,6 +631,10 @@ interface BusinessPanelProps {
   setProfitMargin: (v: number) => void;
   taxReminderDay: number;
   setTaxReminderDay: (v: number) => void;
+  logoUrl?: string | null;
+  logoUploading: boolean;
+  onUploadLogo: (file: File) => void;
+  onRemoveLogo: () => void;
   isDirty: boolean;
   savingBiz: boolean;
   onSubmit: (e: FormEvent) => void;
@@ -470,10 +643,19 @@ interface BusinessPanelProps {
 
 function BusinessPanel(props: BusinessPanelProps) {
   return (
-    <form onSubmit={props.onSubmit} className="space-y-5">
-      {/* Basic information */}
-      <Card title="Basic information" subtitle="Identifying details for this business.">
-        <div className="grid grid-cols-1 gap-4 px-6 pb-6 sm:grid-cols-2">
+    <div className="space-y-5">
+      <LogoUploadCard
+        logoUrl={props.logoUrl}
+        uploading={props.logoUploading}
+        onUpload={props.onUploadLogo}
+        onRemove={props.onRemoveLogo}
+      />
+
+      <form onSubmit={props.onSubmit} className="space-y-5">
+        {/* Basic information */}
+        <Card title="Basic information" subtitle="Identifying details for this business.">
+          <div className="grid grid-cols-1 gap-4 px-6 pb-6 sm:grid-cols-2">
+
           <Input
             label="Business name"
             value={props.bizName}
@@ -616,8 +798,10 @@ function BusinessPanel(props: BusinessPanelProps) {
         </div>
       </div>
     </form>
+  </div>
   );
 }
+
 
 // ─── Security panel ────────────────────────────────────────
 

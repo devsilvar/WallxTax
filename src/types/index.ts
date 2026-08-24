@@ -35,9 +35,12 @@ export interface Business {
   settlementAccountName?: string;
   platformCommissionPct?: number;
   settlementConnectedAt?: string;
+  logoUrl?: string | null;
+  logoPublicId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
 
 export interface SalesTransaction {
   id: string;
