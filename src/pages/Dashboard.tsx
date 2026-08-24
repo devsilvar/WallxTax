@@ -36,6 +36,7 @@ import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import { useReminderStore } from '@/stores/reminder.store.ts';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense } from '@/types/index.ts';
 
@@ -83,14 +84,6 @@ interface TrendItem {
   paymentStatus: string;
   isFinalized: boolean;
   isLocked: boolean;
-}
-
-interface Reminder {
-  id: string;
-  reminderType: string;
-  scheduledDate: string;
-  message: string;
-  isSent: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -330,7 +323,6 @@ interface DashboardBundle {
   recentSales: SalesTransaction[];
   recentExpenses: Expense[];
   recentReports: TaxReport[];
-  reminders: Reminder[];
 }
 
 interface CachedBundle {
@@ -341,22 +333,18 @@ interface CachedBundle {
 const dashboardCache = new Map<string, CachedBundle>();
 
 async function fetchDashboardBundle(bid: string): Promise<DashboardBundle> {
-  const [dashRes, salesRes, expensesRes, reportsRes, remindersRes] =
+  const [dashRes, salesRes, expensesRes, reportsRes] =
     await Promise.all([
       api.get(`/businesses/${bid}/tax/dashboard?months=6`),
       api.get(`/businesses/${bid}/sales?limit=5`),
       api.get(`/businesses/${bid}/expenses?limit=5`),
       api.get(`/businesses/${bid}/tax/reports?limit=3`),
-      api
-        .get(`/businesses/${bid}/reminders/active`)
-        .catch(() => ({ data: { data: [] } })),
     ]);
   return {
     dashboard: dashRes.data.data,
     recentSales: salesRes.data.data,
     recentExpenses: expensesRes.data.data,
     recentReports: reportsRes.data.data,
-    reminders: remindersRes.data.data || [],
   };
 }
 
@@ -383,13 +371,13 @@ export default function Dashboard() {
   const [recentReports, setRecentReports] = useState<TaxReport[]>(
     seed?.data.recentReports ?? [],
   );
-  const [reminders, setReminders] = useState<Reminder[]>(
-    seed?.data.reminders ?? [],
-  );
   const [isLoading, setIsLoading] = useState(!seed);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
   const [bvnRevealed, setBvnRevealed] = useState(false);
+
+  // Use reminder store instead of fetching duplicate data
+  const activeReminders = useReminderStore((s) => s.activeReminders);
 
   // Subscribe to dashboard invalidation events
   const invalidationCounter = useDashboardEvents((s) => s.invalidationCounter);
@@ -413,7 +401,6 @@ export default function Dashboard() {
       setRecentSales(cached.data.recentSales);
       setRecentExpenses(cached.data.recentExpenses);
       setRecentReports(cached.data.recentReports);
-      setReminders(cached.data.reminders);
       setIsLoading(false);
     } else {
       setIsLoading(true);
@@ -434,7 +421,6 @@ export default function Dashboard() {
         setRecentSales(bundle.recentSales);
         setRecentExpenses(bundle.recentExpenses);
         setRecentReports(bundle.recentReports);
-        setReminders(bundle.reminders);
       })
       .catch(() => {
         // Soft failure: keep the cached frame on screen rather than wiping
@@ -475,7 +461,6 @@ export default function Dashboard() {
           setRecentSales(bundle.recentSales);
           setRecentExpenses(bundle.recentExpenses);
           setRecentReports(bundle.recentReports);
-          setReminders(bundle.reminders);
         })
         .catch((err) => {
           if (import.meta.env.DEV) {
@@ -734,13 +719,13 @@ export default function Dashboard() {
       )}
 
       {/* ── Active Reminders ────────────────────────── */}
-      {reminders.length > 0 && (
+      {activeReminders.length > 0 && (
         <div className='animate-scale-in flex items-start gap-3 rounded-xl bg-blue-50/60 border border-blue-200/50 px-5 py-3.5 hover:border-blue-300/60 transition-colors duration-200'>
           <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100/80 shrink-0 mt-0.5'>
             <Bell className='h-4 w-4 text-blue-500' />
           </div>
           <div className='flex-1 min-w-0 space-y-1'>
-            {reminders.slice(0, 3).map((r) => (
+            {activeReminders.slice(0, 3).map((r) => (
               <p key={r.id} className='text-[13px] text-blue-700 truncate'>
                 {r.message}{' '}
                 <span className='text-blue-400'>
