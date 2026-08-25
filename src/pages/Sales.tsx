@@ -14,7 +14,9 @@ import {
   Upload,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
+import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
 import Card from '@/components/ui/Card.tsx';
+
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
@@ -117,8 +119,10 @@ export default function Sales() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
 
   // Summary state
+
   const now = new Date();
   const [summaryMonth, setSummaryMonth] = useState(now.getMonth() + 1);
   const [summaryYear, setSummaryYear] = useState(now.getFullYear());
@@ -315,6 +319,12 @@ export default function Sales() {
           </p>
         </div>
         <div className='flex flex-wrap gap-2 self-start sm:self-auto'>
+          <Button
+            variant={showOverview ? 'primary' : 'secondary'}
+            onClick={() => setShowOverview(!showOverview)}
+          >
+            <TrendingUp className='h-4 w-4' /> {showOverview ? 'Hide Trends' : 'Trends & Insights'}
+          </Button>
           <Button variant='secondary' onClick={() => setShowImport(true)}>
             <Upload className='h-4 w-4' /> Import from Excel
           </Button>
@@ -329,8 +339,14 @@ export default function Sales() {
         </div>
       </div>
 
+      {/* Financial Overview & Cashflow Trends (Collapsible) */}
+      {showOverview && (
+        <SalesExpenseChart className='animate-scale-in' />
+      )}
+
       {/* Monthly Summary */}
       <Card>
+
         <div className='flex items-center justify-between mb-4'>
           <h2 className='text-lg font-semibold text-gray-900 flex items-center gap-2'>
             <BarChart3 className='h-5 w-5 text-primary-500' />

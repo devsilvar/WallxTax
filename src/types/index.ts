@@ -437,3 +437,74 @@ export interface Bank {
   type: string | null;
   active: boolean;
 }
+
+// ─── Sales & Expenses Overview ─────────────────────────────
+export type OverviewPeriodKey = '7d' | '30d' | '3m' | '6m' | '12m' | 'ytd' | 'all' | 'custom';
+
+export interface SalesOverviewTimelinePoint {
+  date: string;
+  label: string;
+  sales: number;
+  expenses: number;
+  netProfit: number;
+  profitMargin: number;
+  salesCount: number;
+  expensesCount: number;
+}
+
+export interface SalesOverviewResponse {
+  period: {
+    key: OverviewPeriodKey;
+    from: string;
+    to: string;
+    granularity: 'day' | 'month';
+  };
+  kpis: {
+    totalSales: number;
+    totalExpenses: number;
+    netProfit: number;
+    profitMargin: number;
+    salesCount: number;
+    expensesCount: number;
+    deltas: {
+      salesPct: number | null;
+      expensesPct: number | null;
+      netProfitPct: number | null;
+    };
+  };
+  timeline: SalesOverviewTimelinePoint[];
+  breakdown: {
+    salesBySource: Array<{ source: string; amount: number; percentage: number }>;
+    expensesByCategory: Array<{ category: string; amount: number; percentage: number }>;
+  };
+}
+
+// ─── Dedicated Virtual Account (DVA) ────────────────────────
+export interface DvaTransactionRow {
+  id: string;
+  amount: number | string;
+  status: string;
+  referenceId?: string | null;
+  customerName?: string | null;
+  customerHint?: string | null;
+  transactionDate: string;
+  needsVerification: boolean;
+  verifiedAt?: string | null;
+  createdAt: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface DvaTransactionsResponse {
+  success: boolean;
+  data: DvaTransactionRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+
