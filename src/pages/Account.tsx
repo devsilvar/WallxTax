@@ -29,9 +29,11 @@ interface DVAData {
   status: 'active' | 'pending' | 'none' | 'failed';
   accountNumber?: string;
   bankName?: string;
+  accountName?: string;
   message?: string;
   failedAt?: string;
 }
+
 
 interface Transaction {
   id: string;
@@ -333,6 +335,8 @@ export default function Account() {
     }
   };
 
+  const displayAccountName = dva?.accountName || biz?.ownerName || biz?.businessName || '';
+
   const handleCopy = (value: string) => {
     navigator.clipboard.writeText(value);
     toast.success('Copied to clipboard');
@@ -340,7 +344,7 @@ export default function Account() {
 
   const handleShare = async () => {
     if (!dva?.accountNumber) return;
-    const text = `Pay ${biz?.businessName}\nBank: ${dva.bankName || 'Wema Bank'}\nAccount: ${dva.accountNumber}\nName: ${biz?.businessName}`;
+    const text = `Pay ${biz?.businessName}\nBank: ${dva.bankName || 'Wema Bank'}\nAccount Number: ${dva.accountNumber}\nAccount Name: ${displayAccountName}`;
     
     if (navigator.share) {
       try {
@@ -354,6 +358,7 @@ export default function Account() {
     navigator.clipboard.writeText(text);
     toast.success('Account details copied to clipboard');
   };
+
 
   const handleDownloadStatement = async () => {
     if (!biz) return;
@@ -660,9 +665,11 @@ export default function Account() {
                   <p className="font-mono text-xl sm:text-2xl font-bold text-white tracking-widest tabular-nums mt-0.5">
                     {dva.accountNumber}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-1 text-xs text-purple-200">
-                    <span className="text-[11px] text-purple-300/70">Account Name:</span>
-                    <span className="font-semibold text-white truncate max-w-[220px]">{biz.businessName}</span>
+                  <div className="mt-1 flex flex-col gap-0.5 text-xs text-purple-200">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-purple-300/70">Account Name:</span>
+                      <span className="font-semibold text-white truncate max-w-[220px]">{displayAccountName}</span>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -673,6 +680,7 @@ export default function Account() {
                 >
                   <Copy className="h-4 w-4 text-purple-200" />
                 </button>
+
               </div>
 
 
@@ -1143,14 +1151,15 @@ export default function Account() {
               <div className="bg-white p-4 rounded-lg flex flex-col items-center shadow-xs">
                 <Suspense fallback={<Loader2 className="h-10 w-10 animate-spin text-gray-300 my-12" />}>
                   <QRCode
-                    value={`Pay ${biz.businessName}\nBank: ${dva.bankName || 'Wema Bank'}\nAccount: ${dva.accountNumber}\nName: ${biz.businessName}`}
+                    value={`Pay ${biz.businessName}\nBank: ${dva.bankName || 'Wema Bank'}\nAccount Number: ${dva.accountNumber}\nAccount Name: ${displayAccountName}`}
                     size={170}
                     level="M"
                     marginSize={2}
                   />
                 </Suspense>
                 <p className="text-center font-mono text-2xl font-bold text-gray-900 mt-4 tracking-widest tabular-nums">{dva.accountNumber}</p>
-                <p className="text-center text-xs text-gray-600 mt-1">{dva.bankName || 'Wema Bank'} · {biz.businessName}</p>
+                <p className="text-center text-xs text-gray-600 mt-1">{dva.bankName || 'Wema Bank'} · <span className="font-semibold text-gray-900">{displayAccountName}</span></p>
+
               </div>
             </div>
             <div className="flex gap-2">

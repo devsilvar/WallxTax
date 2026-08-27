@@ -335,9 +335,9 @@ export default function SalesExpenseChart({
       )}
 
       {/* ── KPI Summary Strip (Minimalist 4-Column Row) ────── */}
-      <div className='grid grid-cols-2 gap-4 sm:grid-cols-4 border-b border-gray-100 px-5 py-4 bg-white divide-y sm:divide-y-0 sm:divide-x divide-gray-100'>
+      <div className='grid grid-cols-2 gap-3 sm:grid-cols-4 border-b border-gray-100 px-4 py-3 bg-white divide-y sm:divide-y-0 sm:divide-x divide-gray-100'>
         {/* Total Sales */}
-        <div className='pt-2 sm:pt-0 sm:px-3 first:pl-0'>
+        <div className='pt-2 sm:pt-0 sm:px-2.5 first:pl-0'>
           <p className='text-xs font-medium text-gray-500'>Total Sales</p>
           <p className='mt-1 text-lg sm:text-xl font-semibold text-gray-900 tabular-nums'>
             {formatNaira(kpis?.totalSales ?? 0)}
@@ -359,7 +359,7 @@ export default function SalesExpenseChart({
         </div>
 
         {/* Total Expenses */}
-        <div className='pt-2 sm:pt-0 sm:px-3'>
+        <div className='pt-2 sm:pt-0 sm:px-2.5'>
           <p className='text-xs font-medium text-gray-500'>Total Expenses</p>
           <p className='mt-1 text-lg sm:text-xl font-semibold text-gray-900 tabular-nums'>
             {formatNaira(kpis?.totalExpenses ?? 0)}
@@ -381,7 +381,7 @@ export default function SalesExpenseChart({
         </div>
 
         {/* Net Profit */}
-        <div className='pt-2 sm:pt-0 sm:px-3'>
+        <div className='pt-2 sm:pt-0 sm:px-2.5'>
           <p className='text-xs font-medium text-gray-500'>Net Profit</p>
           <p
             className={`mt-1 text-lg sm:text-xl font-semibold tabular-nums ${
@@ -407,7 +407,7 @@ export default function SalesExpenseChart({
         </div>
 
         {/* Profit Margin */}
-        <div className='pt-2 sm:pt-0 sm:px-3 last:pr-0'>
+        <div className='pt-2 sm:pt-0 sm:px-2.5 last:pr-0'>
           <p className='text-xs font-medium text-gray-500'>Profit Margin</p>
           <div className='mt-1 flex items-baseline gap-2'>
             <p className='text-lg sm:text-xl font-semibold text-gray-900 tabular-nums'>
