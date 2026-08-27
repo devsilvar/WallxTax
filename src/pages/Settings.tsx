@@ -21,12 +21,18 @@ import {
   Check,
   Briefcase,
   Upload,
+  Laptop,
+  Smartphone,
+  ShieldCheck,
+  LogOut,
+  Trash2,
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { usePinStore } from '@/stores/pin.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 
@@ -845,10 +851,265 @@ function SecurityPanel({
     },
   ];
 
+  // PIN Store
+  const hasPin = usePinStore((s) => s.hasPin);
+  const pinSetAt = usePinStore((s) => s.pinSetAt);
+  const fetchStatus = usePinStore((s) => s.fetchStatus);
+  const setupPin = usePinStore((s) => s.setupPin);
+  const changePin = usePinStore((s) => s.changePin);
+  const sessions = usePinStore((s) => s.sessions);
+  const loadingSessions = usePinStore((s) => s.loadingSessions);
+  const fetchSessions = usePinStore((s) => s.fetchSessions);
+  const revokeSession = usePinStore((s) => s.revokeSession);
+  const revokeOtherSessions = usePinStore((s) => s.revokeOtherSessions);
+
+  // Setup PIN Form
+  const [newPin, setNewPin] = useState('');
+  const [pinPassword, setPinPassword] = useState('');
+  const [savingPin, setSavingPin] = useState(false);
+
+  // Change PIN Form
+  const [showChangePin, setShowChangePin] = useState(false);
+  const [currentPinVal, setCurrentPinVal] = useState('');
+  const [updatedPinVal, setUpdatedPinVal] = useState('');
+  const [changingPin, setChangingPin] = useState(false);
+
+  useEffect(() => {
+    fetchStatus();
+    fetchSessions();
+  }, []);
+
+  const handleSetupPin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (newPin.length !== 4) {
+      toast.error('PIN must be exactly 4 digits');
+      return;
+    }
+    if (!pinPassword) {
+      toast.error('Account password is required');
+      return;
+    }
+    setSavingPin(true);
+    const ok = await setupPin(newPin, pinPassword);
+    if (ok) {
+      setNewPin('');
+      setPinPassword('');
+    }
+    setSavingPin(false);
+  };
+
+  const handleChangePin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (updatedPinVal.length !== 4) {
+      toast.error('New PIN must be exactly 4 digits');
+      return;
+    }
+    setChangingPin(true);
+    const ok = await changePin(updatedPinVal, currentPinVal);
+    if (ok) {
+      setCurrentPinVal('');
+      setUpdatedPinVal('');
+      setShowChangePin(false);
+    }
+    setChangingPin(false);
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* ── Transaction PIN Card ────────────────────────────── */}
       <Card
-        title="Change password"
+        title="4-Digit Transaction PIN"
+        subtitle="Authorize tax payouts, settlement withdrawals, and sensitive financial mutations."
+      >
+        <div className="p-6">
+          {hasPin ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-950">Transaction PIN Active</h4>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      Your financial mutations are protected with a 4-digit bcrypt hash.
+                      {pinSetAt ? ` (Configured ${new Date(pinSetAt).toLocaleDateString('en-GB')})` : ''}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowChangePin(!showChangePin)}
+                  className="text-xs"
+                >
+                  {showChangePin ? 'Cancel' : 'Change PIN'}
+                </Button>
+              </div>
+
+              {showChangePin && (
+                <form onSubmit={handleChangePin} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3 animate-fade-in">
+                  <h4 className="text-xs font-bold text-gray-900">Change Transaction PIN</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                        Current PIN
+                      </label>
+                      <Input
+                        type="password"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={4}
+                        placeholder="Current 4-digit PIN"
+                        value={currentPinVal}
+                        onChange={(e) => setCurrentPinVal(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        required
+                        className="text-xs tracking-widest font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
+                        New 4-Digit PIN
+                      </label>
+                      <Input
+                        type="password"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={4}
+                        placeholder="New 4-digit PIN"
+                        value={updatedPinVal}
+                        onChange={(e) => setUpdatedPinVal(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        required
+                        className="text-xs tracking-widest font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Button type="submit" size="sm" isLoading={changingPin} className="text-xs">
+                      Update PIN
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-amber-800 text-xs">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                <p>
+                  You haven&apos;t configured a Transaction PIN yet. A 4-digit PIN is required before initiating tax remittances or modifying payout bank details.
+                </p>
+              </div>
+
+              <form onSubmit={handleSetupPin} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-xl">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    New 4-Digit PIN
+                  </label>
+                  <Input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    placeholder="Enter 4 digits (e.g. 8492)"
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    required
+                    className="text-xs tracking-widest font-mono"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">Avoid simple digits like 0000 or 1234.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Account Password (Confirm Identity)
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Enter login password"
+                    value={pinPassword}
+                    onChange={(e) => setPinPassword(e.target.value)}
+                    required
+                    className="text-xs"
+                  />
+                </div>
+                <div className="sm:col-span-2 pt-1">
+                  <Button type="submit" size="sm" isLoading={savingPin} className="text-xs">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Configure Transaction PIN
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* ── Active Device Sessions Card ──────────────────────── */}
+      <Card
+        title="Active Device Sessions"
+        subtitle="Manage active devices and remote logins for this account."
+        action={
+          sessions.filter((s) => !s.isCurrent).length > 0 ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => revokeOtherSessions()}
+              className="text-xs text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Log Out All Other Devices
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="divide-y divide-gray-100">
+          {loadingSessions ? (
+            <div className="p-6 text-center text-xs text-gray-500">Loading active sessions...</div>
+          ) : sessions.length === 0 ? (
+            <div className="p-6 text-center text-xs text-gray-500">No other active sessions detected.</div>
+          ) : (
+            sessions.map((s) => {
+              const isMobile = s.deviceInfo?.includes('iOS') || s.deviceInfo?.includes('Android');
+              return (
+                <div key={s.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
+                      {isMobile ? <Smartphone className="h-4 w-4" /> : <Laptop className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-gray-900">{s.deviceInfo || 'Browser Session'}</h4>
+                        {s.isCurrent && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                            Current Device
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {s.ipAddress ? `IP: ${s.ipAddress} • ` : ''}
+                        Last active: {new Date(s.lastActiveAt).toLocaleString('en-GB')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!s.isCurrent && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => revokeSession(s.id)}
+                      className="text-xs text-gray-500 hover:text-red-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Revoke
+                    </Button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Card>
+
+      {/* ── Change Password Card ─────────────────────────────── */}
+      <Card
+        title="Change Password"
         subtitle="Choose a strong password you don't use anywhere else."
       >
         <form onSubmit={onSubmit} className="grid gap-5 px-6 pb-6 lg:grid-cols-[1fr_280px]">
@@ -907,7 +1168,7 @@ function SecurityPanel({
         </form>
       </Card>
 
-      <Card title="Session" subtitle="Where this account is currently signed in.">
+      <Card title="Account Overview" subtitle="User registration & status metadata.">
         <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
           <DetailRow icon={Mail} label="Signed in as" value={user?.email || '—'} />
           <DetailRow
@@ -917,14 +1178,6 @@ function SecurityPanel({
           />
         </dl>
       </Card>
-
-      {/* Danger / advisory */}
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <p className="text-[13px] text-amber-800">
-          For your security, changing your password signs you out of all other devices.
-        </p>
-      </div>
     </div>
   );
 }

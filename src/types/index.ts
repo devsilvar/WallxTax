@@ -507,4 +507,44 @@ export interface DvaTransactionsResponse {
   };
 }
 
+// ─── Unified Financial Ledger ────────────────────────────────
+export interface UnifiedLedgerRow {
+  id: string;
+  scope: 'dva_bank' | 'general_sales' | 'tax_outflow';
+  entryType: 'credit' | 'debit';
+  sourceType: 'dva_transfer' | 'manual_sale' | 'invoice_payment' | 'pos' | 'tax_payment' | 'refund';
+  amount: number;
+  runningBalance: number;
+  classification: string;
+  description: string;
+  reference: string;
+  date: string;
+  status: 'settled' | 'pending' | 'reversed' | 'refunded';
+  counterparty: string;
+  isTaxable: boolean;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface UnifiedLedgerSummary {
+  openingBalance: number;
+  totalCredits: number;
+  totalDebits: number;
+  closingBalance: number;
+}
+
+export interface UnifiedLedgerResponse {
+  success: boolean;
+  scope: 'dva_bank' | 'all_income';
+  summary: UnifiedLedgerSummary;
+  data: UnifiedLedgerRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 

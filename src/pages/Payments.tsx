@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { CreditCard, ChevronLeft, ChevronRight, RefreshCw, FileText } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
@@ -8,6 +8,7 @@ import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxPayment, Pagination } from '@/types/index.ts';
 import { mapPaystackError } from '@/lib/paystack-errors';
+import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel';
 
 const STATUSES = ['pending', 'processing', 'completed', 'failed', 'refunded'] as const;
 
@@ -60,6 +61,7 @@ export default function Payments() {
   const [filterStatus, setFilterStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<TransactionDetailData | null>(null);
 
   const taxPath = biz ? `/businesses/${biz.id}/tax` : '';
 
@@ -133,7 +135,26 @@ export default function Payments() {
             </thead>
             <tbody className="font-body text-sm">
               {payments.map((p) => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
+                <tr
+                  key={p.id}
+                  onClick={() =>
+                    setSelectedPayment({
+                      id: p.id,
+                      type: 'tax_payment',
+                      amount: Number(p.amountPaid),
+                      status: p.paymentStatus,
+                      date: p.createdAt,
+                      referenceId: p.transactionReference,
+                      paymentMethod: p.paymentMethod,
+                      taxReportId: p.taxReportId,
+                      remittanceStatus: p.remittanceStatus,
+                      firsRemittanceRef: p.firsRemittanceRef,
+                      firsReceiptUrl: p.firsReceiptUrl,
+                      businessId: biz.id,
+                    })
+                  }
+                  className="border-b border-gray-50 hover:bg-gray-50/80 cursor-pointer transition-colors"
+                >
                   <td className="px-4 py-3 text-gray-600">{formatDate(p.createdAt)}</td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{p.transactionReference}</td>
                   <td className="px-4 py-3 capitalize text-gray-600">{p.paymentMethod}</td>
@@ -141,11 +162,38 @@ export default function Payments() {
                   <td className="px-4 py-3">{statusBadge(p.paymentStatus)}</td>
                   <td className="px-4 py-3">{remittanceBadge(p)}</td>
                   <td className="px-4 py-3 text-right">
-                    {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
-                      <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
-                        <RefreshCw className="h-3.5 w-3.5" /> Verify
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {p.paymentStatus === 'completed' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setSelectedPayment({
+                              id: p.id,
+                              type: 'tax_payment',
+                              amount: Number(p.amountPaid),
+                              status: p.paymentStatus,
+                              date: p.createdAt,
+                              referenceId: p.transactionReference,
+                              paymentMethod: p.paymentMethod,
+                              taxReportId: p.taxReportId,
+                              remittanceStatus: p.remittanceStatus,
+                              firsRemittanceRef: p.firsRemittanceRef,
+                              firsReceiptUrl: p.firsReceiptUrl,
+                              businessId: biz.id,
+                            })
+                          }
+                          className="h-8 text-xs font-semibold text-gray-700"
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" /> Receipt
+                        </Button>
+                      )}
+                      {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
+                        <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
+                          <RefreshCw className="h-3.5 w-3.5" /> Verify
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -156,7 +204,26 @@ export default function Payments() {
         {/* Mobile card list */}
         <div className="md:hidden space-y-3">
           {payments.map((p) => (
-            <Card key={p.id} className="p-4">
+            <Card
+              key={p.id}
+              className="p-4 cursor-pointer hover:border-gray-300 transition-colors"
+              onClick={() =>
+                setSelectedPayment({
+                  id: p.id,
+                  type: 'tax_payment',
+                  amount: Number(p.amountPaid),
+                  status: p.paymentStatus,
+                  date: p.createdAt,
+                  referenceId: p.transactionReference,
+                  paymentMethod: p.paymentMethod,
+                  taxReportId: p.taxReportId,
+                  remittanceStatus: p.remittanceStatus,
+                  firsRemittanceRef: p.firsRemittanceRef,
+                  firsReceiptUrl: p.firsReceiptUrl,
+                  businessId: biz.id,
+                })
+              }
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -171,11 +238,38 @@ export default function Payments() {
                     <div className="mt-2">{remittanceBadge(p)}</div>
                   )}
                 </div>
-                {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
-                  <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id} className="shrink-0">
-                    <RefreshCw className="h-3.5 w-3.5" /> Verify
-                  </Button>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {p.paymentStatus === 'completed' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setSelectedPayment({
+                          id: p.id,
+                          type: 'tax_payment',
+                          amount: Number(p.amountPaid),
+                          status: p.paymentStatus,
+                          date: p.createdAt,
+                          referenceId: p.transactionReference,
+                          paymentMethod: p.paymentMethod,
+                          taxReportId: p.taxReportId,
+                          remittanceStatus: p.remittanceStatus,
+                          firsRemittanceRef: p.firsRemittanceRef,
+                          firsReceiptUrl: p.firsReceiptUrl,
+                          businessId: biz.id,
+                        })
+                      }
+                      className="h-8 text-xs font-semibold text-gray-700"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
+                    <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
+                      <RefreshCw className="h-3.5 w-3.5" /> Verify
+                    </Button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
@@ -192,6 +286,13 @@ export default function Payments() {
           </div>
         </div>
       )}
+
+      {/* ── Transaction Detail Slide-Over ─────────────────────── */}
+      <TransactionDetailPanel
+        isOpen={Boolean(selectedPayment)}
+        onClose={() => setSelectedPayment(null)}
+        transaction={selectedPayment}
+      />
     </div>
   );
 }

@@ -4,11 +4,15 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   noPadding?: boolean;
+  onClick?: () => void;
 }
 
-export default function Card({ children, className = '', noPadding }: CardProps) {
+export default function Card({ children, className = '', noPadding, onClick }: CardProps) {
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white shadow-sm ${noPadding ? '' : 'p-4 sm:p-6'} ${className}`}>
+    <div
+      onClick={onClick}
+      className={`rounded-lg border border-gray-200 bg-white shadow-sm ${noPadding ? '' : 'p-4 sm:p-6'} ${className}`}
+    >
       {children}
     </div>
   );
