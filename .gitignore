@@ -26,6 +26,7 @@ dist-ssr
 # Documentation & notes
 *.md
 *.txt
+!frontendplan.md
 !rules.txt
 
 # Executables
