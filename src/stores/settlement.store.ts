@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import api, { getErrorMessage } from '@/lib/api';
+import api, { getErrorMessage } from '@/lib/axios';
 import toast from 'react-hot-toast';
 
 export interface SettlementAccountInfo {

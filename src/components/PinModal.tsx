@@ -9,6 +9,7 @@ interface PinModalProps {
   onSuccess: (stepUpToken: string) => void;
   title?: string;
   subtitle?: string;
+  description?: string;
 }
 
 export default function PinModal({
@@ -17,6 +18,7 @@ export default function PinModal({
   onSuccess,
   title = 'Authorize Financial Transaction',
   subtitle = 'Enter your 4-digit Transaction PIN to confirm this action.',
+  description,
 }: PinModalProps) {
   const [digits, setDigits] = useState(['', '', '', '']);
   const [showPin, setShowPin] = useState(false);
@@ -114,7 +116,7 @@ export default function PinModal({
               <Lock className="h-5 w-5 text-indigo-400" />
               <h2 className="text-sm font-bold">{title}</h2>
             </div>
-            <p className="text-[11px] text-gray-300 mt-1">{subtitle}</p>
+            <p className="text-[11px] text-gray-300 mt-1">{description ?? subtitle}</p>
           </div>
           <button
             type="button"
