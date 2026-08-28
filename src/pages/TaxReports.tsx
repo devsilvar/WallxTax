@@ -22,6 +22,7 @@ import {
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import PaymentConfirmationModal from '@/components/PaymentConfirmationModal.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api from '@/lib/axios.ts';
@@ -141,8 +142,8 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
   // Warnings from calculation
   const [warnings, setWarnings] = useState<{ type: string; message: string }[]>([]);
 
-  // Pay state
-  const [paying, setPaying] = useState<string | null>(null);
+  // Pre-Payment Confirmation Bill Modal
+  const [paymentModalReport, setPaymentModalReport] = useState<TaxReport | null>(null);
 
   // Highlight-on-scroll: track the currently-flashing row so we can strip the
   // class after a timeout. Using a ref map lets us scroll to the element
@@ -206,22 +207,6 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
       toast.success('Report un-finalized');
       fetchReports();
     } catch (err: any) { toast.error(err.response?.data?.error?.message || 'Failed'); }
-  };
-
-  const handlePay = async (reportId: string) => {
-    setPaying(reportId);
-    try {
-      const { data } = await api.post(`${taxPath}/pay`, { taxReportId: reportId });
-      const url = data.data.authorizationUrl;
-      if (url) {
-        window.open(url, '_blank');
-        toast.success('Redirecting to payment...');
-      }
-      invalidateDashboard('tax_paid');
-      fetchReports();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Payment failed');
-    } finally { setPaying(null); }
   };
 
   if (!biz) return <p className="py-20 text-center text-gray-400">Select a business first.</p>;
@@ -316,7 +301,7 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
                             <Clock className="h-4 w-4" /> Un-finalize
                           </Button>
                           {r.paymentStatus !== 'completed' && (
-                            <Button size="sm" onClick={() => handlePay(r.id)} isLoading={paying === r.id}>
+                            <Button size="sm" onClick={() => setPaymentModalReport(r)}>
                               <CreditCard className="h-4 w-4" /> Pay Now
                             </Button>
                           )}
@@ -335,6 +320,17 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
           })}
         </div>
       )}
+
+      {/* Pre-Payment Assessment & PIN Confirmation Modal */}
+      <PaymentConfirmationModal
+        isOpen={Boolean(paymentModalReport)}
+        onClose={() => setPaymentModalReport(null)}
+        report={paymentModalReport}
+        business={biz}
+        onSuccess={() => {
+          fetchReports();
+        }}
+      />
 
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">

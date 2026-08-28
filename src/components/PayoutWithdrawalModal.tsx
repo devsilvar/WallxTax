@@ -5,10 +5,8 @@ import {
   ShieldCheck,
   ArrowRight,
   CheckCircle2,
-  AlertCircle,
-  Clock,
-  Sparkles,
   Lock,
+  AlertTriangle,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -40,7 +38,7 @@ export default function PayoutWithdrawalModal({
 
   const available = preview.availableForWithdrawal || 0;
   const numAmount = parseFloat(amountStr) || 0;
-  const isAmountValid = numAmount >= 1000 && numAmount <= available;
+  const isAmountValid = numAmount >= 100 && numAmount <= available;
 
   const handleMaxClick = () => {
     setAmountStr(String(Math.floor(available)));
@@ -49,8 +47,8 @@ export default function PayoutWithdrawalModal({
   const handleInitiate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAmountValid) {
-      if (numAmount < 1000) {
-        toast.error('Minimum withdrawal amount is ₦1,000.00');
+      if (numAmount < 100) {
+        toast.error('Minimum withdrawal amount is ₦100.00');
       } else if (numAmount > available) {
         toast.error('Amount exceeds available withdrawable balance');
       }
@@ -214,6 +212,49 @@ export default function PayoutWithdrawalModal({
                   </div>
                 </div>
 
+                {/* Security & Balance Status Alerts */}
+                {!preview.security.hasPin && (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-amber-900">4-Digit Transaction PIN Required</p>
+                      <p className="text-amber-700 mt-0.5">
+                        You have not set up your transaction PIN yet. Please configure your PIN in{' '}
+                        <a href="/settings" className="font-bold underline text-amber-900">
+                          Settings &gt; Security
+                        </a>{' '}
+                        to authorize withdrawals.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {preview.security.isPinLocked && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-red-900">Transaction PIN Temporarily Locked</p>
+                      <p className="text-red-700 mt-0.5">
+                        Your PIN is locked for 15 minutes due to 3 consecutive incorrect attempts.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {available < 100 && (
+                  <div className="rounded-xl bg-purple-50/90 border border-purple-200 p-3.5 flex items-start gap-2.5">
+                    <Lock className="h-4 w-4 text-purple-700 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-purple-950">No Withdrawable Balance</p>
+                      <p className="text-purple-800 mt-0.5">
+                        {preview.totalInflows === 0
+                          ? 'Your virtual account has not received any digital bank transfers yet.'
+                          : `Your digital inflows of ${formatNaira(preview.totalInflows)} are currently reserved in escrow (${formatNaira(preview.taxReserve)}) for statutory 7.5% tax remittance.`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Amount Input */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -223,7 +264,8 @@ export default function PayoutWithdrawalModal({
                     <button
                       type="button"
                       onClick={handleMaxClick}
-                      className="text-xs font-bold text-purple-700 hover:text-purple-900 transition-colors cursor-pointer"
+                      disabled={available < 100}
+                      className="text-xs font-bold text-purple-700 hover:text-purple-900 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       Withdraw Max
                     </button>
@@ -234,17 +276,18 @@ export default function PayoutWithdrawalModal({
                     </span>
                     <Input
                       type="number"
-                      min={1000}
+                      min={100}
                       max={available}
                       step={100}
-                      placeholder="e.g. 50,000"
+                      placeholder={available >= 100 ? 'e.g. 50,000' : '0.00'}
                       value={amountStr}
                       onChange={(e) => setAmountStr(e.target.value)}
                       className="pl-8 font-mono text-base font-bold"
+                      disabled={available < 100}
                       required
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400">Minimum withdrawal: ₦1,000.00</p>
+                  <p className="text-[11px] text-gray-400">Minimum withdrawal: ₦100.00</p>
                 </div>
 
                 {/* Optional Narration */}
@@ -279,8 +322,8 @@ export default function PayoutWithdrawalModal({
                     variant="primary"
                     type="submit"
                     isLoading={withdrawing}
-                    disabled={!isAmountValid || available < 1000}
-                    className="bg-purple-900 hover:bg-purple-950 text-white"
+                    disabled={!isAmountValid || available < 100 || !preview.security.hasPin || preview.security.isPinLocked}
+                    className="bg-purple-900 hover:bg-purple-950 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
@@ -297,7 +340,7 @@ export default function PayoutWithdrawalModal({
         onClose={() => setShowPinModal(false)}
         onSuccess={handlePinSubmit}
         title="Confirm Withdrawal"
-        description={`Enter your 4-digit PIN to authorize withdrawal of ${formatNaira(numAmount)} to ${preview.settlementAccount.bankName}`}
+        subtitle={`Enter your 4-digit PIN to authorize withdrawal of ${formatNaira(numAmount)} to ${preview.settlementAccount.bankName}`}
       />
     </>
   );

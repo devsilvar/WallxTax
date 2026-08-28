@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, ChevronLeft, ChevronRight, RefreshCw, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CreditCard, ChevronLeft, ChevronRight, RefreshCw, FileText, RotateCcw } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
@@ -54,6 +55,7 @@ function remittanceBadge(p: TaxPayment) {
 }
 
 export default function Payments() {
+  const navigate = useNavigate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const [payments, setPayments] = useState<TaxPayment[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -61,6 +63,7 @@ export default function Payments() {
   const [filterStatus, setFilterStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [abandoning, setAbandoning] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<TransactionDetailData | null>(null);
 
   const taxPath = biz ? `/businesses/${biz.id}/tax` : '';
@@ -89,6 +92,20 @@ export default function Payments() {
         toast.error(`${mapped.title}: ${mapped.body}`);
       }
     } finally { setVerifying(null); }
+  };
+
+  const handleAbandon = async (id: string) => {
+    if (!confirm('Are you sure you want to reset this pending payment session? Your monthly tax report will return to pending status so you can initiate a fresh checkout.')) return;
+    setAbandoning(id);
+    try {
+      await api.post(`${taxPath}/payments/${id}/abandon`);
+      toast.success('Payment session reset');
+      fetchPayments();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to reset payment');
+    } finally {
+      setAbandoning(null);
+    }
   };
 
   if (!biz) return <p className="py-20 text-center text-gray-400">Select a business first.</p>;
@@ -189,8 +206,18 @@ export default function Payments() {
                         </Button>
                       )}
                       {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
-                        <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
-                          <RefreshCw className="h-3.5 w-3.5" /> Verify
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
+                            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Verify
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-gray-500 hover:text-red-600" onClick={() => handleAbandon(p.id)} isLoading={abandoning === p.id} title="Reset stale payment session">
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset
+                          </Button>
+                        </>
+                      )}
+                      {p.paymentStatus === 'failed' && (
+                        <Button size="sm" variant="secondary" className="text-xs" onClick={() => navigate('/tax')}>
+                          Retry in Tax
                         </Button>
                       )}
                     </div>
@@ -238,7 +265,7 @@ export default function Payments() {
                     <div className="mt-2">{remittanceBadge(p)}</div>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col items-end gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {p.paymentStatus === 'completed' && (
                     <Button
                       size="sm"
@@ -261,12 +288,22 @@ export default function Payments() {
                       }
                       className="h-8 text-xs font-semibold text-gray-700"
                     >
-                      <FileText className="h-3.5 w-3.5" />
+                      <FileText className="h-3.5 w-3.5 mr-1" /> Receipt
                     </Button>
                   )}
                   {(p.paymentStatus === 'pending' || p.paymentStatus === 'processing') && (
-                    <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
-                      <RefreshCw className="h-3.5 w-3.5" /> Verify
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => handleVerify(p.id)} isLoading={verifying === p.id}>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-600" onClick={() => handleAbandon(p.id)} isLoading={abandoning === p.id}>
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                  {p.paymentStatus === 'failed' && (
+                    <Button size="sm" variant="secondary" className="text-xs" onClick={() => navigate('/tax')}>
+                      Retry
                     </Button>
                   )}
                 </div>

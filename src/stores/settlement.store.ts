@@ -1,6 +1,16 @@
 import { create } from 'zustand';
-import api, { getErrorMessage } from '@/lib/api';
+import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const res = (err as any).response;
+    if (res?.data?.error?.message) return res.data.error.message;
+    if (res?.data?.message) return res.data.message;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
 
 export interface SettlementAccountInfo {
   isConnected: boolean;

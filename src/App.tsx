@@ -31,6 +31,7 @@ const TestTransferSimulator = lazy(() => import('@/pages/TestTransferSimulator.t
 const AIAssistant = lazy(() => import('@/pages/AIAssistant.tsx'));
 const TaxReports = lazy(() => import('@/pages/TaxReports.tsx'));
 const Payments = lazy(() => import('@/pages/Payments.tsx'));
+const PaymentCallback = lazy(() => import('@/pages/PaymentCallback.tsx'));
 const Reminders = lazy(() => import('@/pages/Reminders.tsx'));
 const Settings = lazy(() => import('@/pages/Settings.tsx'));
 const Account = lazy(() => import('@/pages/Account.tsx'));
@@ -87,6 +88,7 @@ export default function App() {
                 <Route path="/ai" element={<AIAssistant />} />
                 <Route path="/tax" element={<TaxReports />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/payments/callback" element={<PaymentCallback />} />
                 <Route path="/reminders" element={<Reminders />} />
                 <Route path="/account" element={<Account />} />
                 <Route path="/settings" element={<Settings />} />

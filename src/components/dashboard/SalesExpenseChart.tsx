@@ -215,8 +215,8 @@ export default function SalesExpenseChart({
       className={`overflow-hidden border-gray-200/80 bg-white shadow-xs ${className}`}
     >
       {/* ── Header ────────────────────────────────────────── */}
-      <div className='flex flex-col gap-3 border-b border-gray-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between'>
-        <div className='flex items-center gap-2.5'>
+      <div className='flex flex-col gap-3 border-b border-gray-100 px-2 py-1 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex items-center gap-2'>
           <BarChart3 className='h-4 w-4 text-gray-500 stroke-[2]' />
           <div className='flex items-center gap-2'>
             <h2 className='text-sm font-semibold text-gray-900'>

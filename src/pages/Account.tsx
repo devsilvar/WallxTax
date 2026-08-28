@@ -5,7 +5,7 @@ import {
   Building2, Share2, ArrowDownLeft, Download,
   Clock, CheckCheck, Phone, ShieldCheck,
   Search, ChevronRight, ChevronLeft, Eye, EyeOff, Wallet, ArrowUpRight,
-  BookOpen, ArrowRight
+  BookOpen, ArrowRight, Receipt
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -93,9 +93,10 @@ export default function Account() {
   const [showQR, setShowQR] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [salesChannelFilter, setSalesChannelFilter] = useState<'all' | 'dva' | 'cash_pos' | 'invoices'>('all');
 
   // URL Tab Support (?tab=wallet | ?tab=ledger)
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') === 'ledger' ? 'ledger' : 'wallet';
 
   // Ledger Store State
@@ -574,7 +575,7 @@ export default function Account() {
         </div>
       </div>
 
-      {/* ── Tab Switcher (Commented out per review for Admin dashboard consolidation) ──
+      {/* ── Tab Switcher ────────────────────────────────────────── */}
       <div className="flex items-center gap-2 border-b border-gray-200/80 pb-px">
         <button
           type="button"
@@ -602,7 +603,6 @@ export default function Account() {
           <span>Financial Ledger &amp; Statements</span>
         </button>
       </div>
-      */}
 
       {/* ── Wallet Tab Content ─────────────────────────────────── */}
       {activeTab === 'wallet' && (
@@ -1135,8 +1135,8 @@ export default function Account() {
                     variant="primary"
                     size="sm"
                     onClick={() => setShowPayoutModal(true)}
-                    disabled={(settlementPreview?.availableForWithdrawal ?? 0) < 1000}
-                    className="w-full text-xs bg-purple-900 hover:bg-purple-950 text-white"
+                    disabled={!biz.settlementAccountNumber}
+                    className="w-full text-xs bg-purple-900 hover:bg-purple-950 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Withdraw Funds <ArrowRight className="h-3.5 w-3.5 ml-1" />
                   </Button>
@@ -1234,24 +1234,26 @@ export default function Account() {
               <button
                 type="button"
                 onClick={() => biz?.id && setLedgerScope(biz.id, 'dva_bank')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   ledgerScope === 'dva_bank'
                     ? 'bg-white text-gray-900 shadow-xs font-bold'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                🏦 Digital Bank Account (DVA)
+                <Landmark className="h-3.5 w-3.5 text-purple-700" />
+                <span>Virtual Bank Account (DVA)</span>
               </button>
               <button
                 type="button"
                 onClick={() => biz?.id && setLedgerScope(biz.id, 'all_income')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   ledgerScope === 'all_income'
                     ? 'bg-white text-gray-900 shadow-xs font-bold'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                📊 All Business Sales &amp; Invoices
+                <Receipt className="h-3.5 w-3.5 text-indigo-700" />
+                <span>All Sales &amp; Revenue</span>
               </button>
             </div>
           </div>
@@ -1267,14 +1269,18 @@ export default function Account() {
 
               <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
                 <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Money Received (+)</p>
-                <p className="text-lg font-bold text-emerald-600 font-mono mt-1">+{formatNaira(ledgerSummary.totalCredits)}</p>
+                <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
+                  {ledgerSummary.totalCredits > 0 ? `+${formatNaira(ledgerSummary.totalCredits)}` : formatNaira(0)}
+                </p>
                 <p className="text-[10px] text-emerald-600/70 mt-0.5">Bank transfers received</p>
               </div>
 
-              <div className="rounded-xl border border-red-100 bg-gradient-to-b from-red-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wider">Tax Remitted (-)</p>
-                <p className="text-lg font-bold text-red-600 font-mono mt-1">-{formatNaira(ledgerSummary.totalDebits)}</p>
-                <p className="text-[10px] text-red-600/70 mt-0.5">FIRS tax debits</p>
+              <div className="rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/40 to-white p-4 shadow-xs">
+                <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Tax Remitted (-)</p>
+                <p className={`text-lg font-bold font-mono mt-1 ${ledgerSummary.totalDebits > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                  {ledgerSummary.totalDebits > 0 ? `-${formatNaira(ledgerSummary.totalDebits)}` : formatNaira(0)}
+                </p>
+                <p className="text-[10px] text-gray-500 mt-0.5">FIRS tax debits</p>
               </div>
 
               <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-xs text-white">
@@ -1286,31 +1292,27 @@ export default function Account() {
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="rounded-xl border border-purple-100 bg-gradient-to-b from-purple-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Gross Sales Revenue</p>
+                <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Total Recorded Sales</p>
                 <p className="text-lg font-bold text-purple-900 font-mono mt-1">{formatNaira(ledgerSummary.totalCredits)}</p>
-                <p className="text-[10px] text-purple-600/70 mt-0.5">Total recorded sales</p>
+                <p className="text-[10px] text-purple-600/70 mt-0.5">Gross revenue across all channels</p>
               </div>
 
               <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Bank Transfers (DVA)</p>
+                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Digital Transfers (DVA)</p>
                 <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
-                  +{formatNaira(
-                    ledgerItems
-                      .filter((it) => it.sourceType === 'dva_transfer')
-                      .reduce((sum, it) => sum + it.amount, 0)
-                  )}
+                  {ledgerItems.filter((it) => it.sourceType === 'dva_transfer').reduce((s, it) => s + it.amount, 0) > 0
+                    ? `+${formatNaira(ledgerItems.filter((it) => it.sourceType === 'dva_transfer').reduce((s, it) => s + it.amount, 0))}`
+                    : formatNaira(0)}
                 </p>
-                <p className="text-[10px] text-emerald-600/70 mt-0.5">Auto-captured digital inflows</p>
+                <p className="text-[10px] text-emerald-600/70 mt-0.5">Auto-captured bank transfers</p>
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50/40 to-white p-4 shadow-xs">
                 <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Cash &amp; POS Sales</p>
                 <p className="text-lg font-bold text-blue-600 font-mono mt-1">
-                  +{formatNaira(
-                    ledgerItems
-                      .filter((it) => it.sourceType === 'manual_sale' || it.sourceType === 'pos')
-                      .reduce((sum, it) => sum + it.amount, 0)
-                  )}
+                  {ledgerItems.filter((it) => it.sourceType === 'manual_sale' || it.sourceType === 'pos').reduce((s, it) => s + it.amount, 0) > 0
+                    ? `+${formatNaira(ledgerItems.filter((it) => it.sourceType === 'manual_sale' || it.sourceType === 'pos').reduce((s, it) => s + it.amount, 0))}`
+                    : formatNaira(0)}
                 </p>
                 <p className="text-[10px] text-blue-600/70 mt-0.5">Physical till &amp; POS collections</p>
               </div>
@@ -1318,11 +1320,9 @@ export default function Account() {
               <div className="rounded-xl border border-indigo-100 bg-gradient-to-b from-indigo-50/40 to-white p-4 shadow-xs">
                 <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">Invoice Settlements</p>
                 <p className="text-lg font-bold text-indigo-600 font-mono mt-1">
-                  +{formatNaira(
-                    ledgerItems
-                      .filter((it) => it.sourceType === 'invoice_payment')
-                      .reduce((sum, it) => sum + it.amount, 0)
-                  )}
+                  {ledgerItems.filter((it) => it.sourceType === 'invoice_payment').reduce((s, it) => s + it.amount, 0) > 0
+                    ? `+${formatNaira(ledgerItems.filter((it) => it.sourceType === 'invoice_payment').reduce((s, it) => s + it.amount, 0))}`
+                    : formatNaira(0)}
                 </p>
                 <p className="text-[10px] text-indigo-600/70 mt-0.5">Paid customer invoices</p>
               </div>
@@ -1334,35 +1334,76 @@ export default function Account() {
             {/* Filter Bar */}
             <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gray-50/50">
               {/* Type Filter */}
-              <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-lg self-start">
-                <button
-                  type="button"
-                  onClick={() => biz?.id && setLedgerType(biz.id, 'all')}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                    ledgerType === 'all' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  All ({ledgerPagination.total})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => biz?.id && setLedgerType(biz.id, 'credit')}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                    ledgerType === 'credit' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Credits (+)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => biz?.id && setLedgerType(biz.id, 'debit')}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                    ledgerType === 'debit' ? 'bg-white text-red-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Debits (-)
-                </button>
-              </div>
+              {ledgerScope === 'dva_bank' ? (
+                <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-lg self-start">
+                  <button
+                    type="button"
+                    onClick={() => biz?.id && setLedgerType(biz.id, 'all')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      ledgerType === 'all' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    All Movements ({ledgerPagination.total})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => biz?.id && setLedgerType(biz.id, 'credit')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      ledgerType === 'credit' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Money Received (+)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => biz?.id && setLedgerType(biz.id, 'debit')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      ledgerType === 'debit' ? 'bg-white text-red-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Tax Remitted (-)
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-lg self-start">
+                  <button
+                    type="button"
+                    onClick={() => setSalesChannelFilter('all')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      salesChannelFilter === 'all' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    All Channels ({ledgerPagination.total})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSalesChannelFilter('dva')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      salesChannelFilter === 'dva' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Bank Transfers (DVA)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSalesChannelFilter('cash_pos')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      salesChannelFilter === 'cash_pos' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Cash &amp; POS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSalesChannelFilter('invoices')}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      salesChannelFilter === 'invoices' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Invoices
+                  </button>
+                </div>
+              )}
 
               {/* Search Box */}
               <div className="flex-1 max-w-sm flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5">
@@ -1404,19 +1445,34 @@ export default function Account() {
                   </p>
                 </div>
               ) : (
-                ledgerItems.map((item) => (
+                (ledgerScope === 'all_income' && salesChannelFilter !== 'all'
+                  ? ledgerItems.filter((it) => {
+                      if (salesChannelFilter === 'dva') return it.sourceType === 'dva_transfer';
+                      if (salesChannelFilter === 'cash_pos') return it.sourceType === 'manual_sale' || it.sourceType === 'pos';
+                      if (salesChannelFilter === 'invoices') return it.sourceType === 'invoice_payment';
+                      return true;
+                    })
+                  : ledgerItems
+                ).map((item) => (
                   <div
                     key={item.id}
                     onClick={() =>
                       setSelectedTxn({
                         id: item.id,
-                        type: item.sourceType === 'tax_payment' ? 'tax_payment' : 'dva_inflow',
+                        type:
+                          item.sourceType === 'tax_payment'
+                            ? 'tax_payment'
+                            : item.sourceType === 'invoice_payment'
+                            ? 'invoice_payment'
+                            : 'dva_inflow',
                         amount: item.amount,
                         status: item.status,
                         date: item.date,
                         referenceId: item.reference,
                         description: item.description,
                         customerHint: item.counterparty,
+                        customerName: item.counterparty,
+                        paymentMethod: item.sourceType,
                         businessId: biz?.id || '',
                         virtualAccountNumber: dva?.accountNumber,
                         virtualAccountBank: dva?.bankName,
