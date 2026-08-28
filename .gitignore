@@ -27,6 +27,7 @@ dist-ssr
 *.md
 *.txt
 !frontendplan.md
+!rules.txt
 
 # Executables
 *.exe

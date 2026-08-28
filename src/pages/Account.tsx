@@ -5,7 +5,7 @@ import {
   Building2, Share2, ArrowDownLeft, Download,
   Clock, CheckCheck, Phone, ShieldCheck,
   Search, ChevronRight, ChevronLeft, Eye, EyeOff, Wallet, ArrowUpRight,
-  BookOpen
+  BookOpen, ArrowRight
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -22,6 +22,8 @@ import type { Bank, DvaTransactionRow, DvaTransactionsResponse } from '@/types';
 import { mapPaystackError, type BackendErrorLike } from '@/lib/paystack-errors';
 import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel';
 import StatementExportModal from '@/components/StatementExportModal';
+import { useSettlementStore } from '@/stores/settlement.store.ts';
+import PayoutWithdrawalModal from '@/components/PayoutWithdrawalModal.tsx';
 
 // Lazy-load QR renderer
 const QRCode = lazy(() =>
@@ -109,6 +111,13 @@ export default function Account() {
   const setLedgerType = useLedgerStore((s) => s.setTypeFilter);
   const setLedgerSearch = useLedgerStore((s) => s.setSearchQuery);
   const setLedgerPage = useLedgerStore((s) => s.setPage);
+
+  // Settlement & Payout state
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const settlementPreview = useSettlementStore((s) => s.preview);
+  const fetchSettlementPreview = useSettlementStore((s) => s.fetchPreview);
+  const toggleAutoSplit = useSettlementStore((s) => s.toggleAutoSplit);
+  const updatingAutoSplit = useSettlementStore((s) => s.updatingAutoSplit);
 
   // Settlement connection state
   const [showSettlementForm, setShowSettlementForm] = useState(false);
@@ -202,8 +211,9 @@ export default function Account() {
     if (biz?.id) {
       fetchDVA();
       fetchTransactions();
+      fetchSettlementPreview(biz.id);
     }
-  }, [biz?.id, fetchDVA, fetchTransactions]);
+  }, [biz?.id, fetchDVA, fetchTransactions, fetchSettlementPreview]);
 
   useEffect(() => {
     if ((showBvnForm || showSettlementForm) && !banks) {
@@ -1099,20 +1109,73 @@ export default function Account() {
             </div>
 
             {settlementConnected && !showSettlementForm ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {/* Bank Details Pill */}
                 <div className="rounded-xl bg-gray-50 border border-gray-200/70 p-3.5">
-                  <p className="text-xs font-semibold text-gray-900">{biz.settlementAccountName}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-900">{biz.settlementAccountName}</p>
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700">
+                      <ShieldCheck className="h-3 w-3" /> Verified
+                    </span>
+                  </div>
                   <p className="text-xs text-gray-600 mt-0.5 font-mono">
                     {biz.settlementBankName} · •••• {biz.settlementAccountNumber?.slice(-4)}
                   </p>
                 </div>
+
+                {/* Available for Instant Withdrawal Box */}
+                <div className="rounded-xl bg-purple-50/60 border border-purple-100 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-purple-900 font-medium">Available to Withdraw</span>
+                    <span className="font-mono font-bold text-purple-950 text-sm">
+                      {formatNaira(settlementPreview?.availableForWithdrawal ?? 0)}
+                    </span>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowPayoutModal(true)}
+                    disabled={(settlementPreview?.availableForWithdrawal ?? 0) < 1000}
+                    className="w-full text-xs bg-purple-900 hover:bg-purple-950 text-white"
+                  >
+                    Withdraw Funds <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </div>
+
+                {/* Auto-Split 7.5% Tax Toggle */}
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-900">7.5% Tax Auto-Split</p>
+                    <p className="text-[10px] text-gray-500">Retain tax in escrow on inflow</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={updatingAutoSplit}
+                    onClick={() =>
+                      biz?.id &&
+                      toggleAutoSplit(biz.id, {
+                        enabled: !settlementPreview?.autoSplit.enabled,
+                      })
+                    }
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                      settlementPreview?.autoSplit.enabled ? 'bg-purple-800' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        settlementPreview?.autoSplit.enabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
                   onClick={() => { setShowSettlementForm(true); setResolvedName(''); }}
-                  className="w-full text-xs"
+                  className="w-full text-xs text-gray-500 hover:text-gray-900"
                 >
-                  Change Bank
+                  Change Settlement Bank
                 </Button>
               </div>
             ) : !settlementConnected && !showSettlementForm ? (
@@ -1515,6 +1578,20 @@ export default function Account() {
         businessId={biz?.id || ''}
         businessName={biz?.businessName || ''}
       />
+
+      {/* ── Instant Balance Withdrawal Modal ───────────────────── */}
+      {biz?.id && (
+        <PayoutWithdrawalModal
+          isOpen={showPayoutModal}
+          onClose={() => setShowPayoutModal(false)}
+          businessId={biz.id}
+          onSuccess={() => {
+            fetchDVA();
+            fetchTransactions();
+            fetchSettlementPreview(biz.id);
+          }}
+        />
+      )}
     </div>
   );
 }

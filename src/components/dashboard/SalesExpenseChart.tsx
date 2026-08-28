@@ -59,7 +59,12 @@ const PERIOD_OPTIONS: Array<{ key: OverviewPeriodKey; label: string }> = [
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string; dataKey: string }>;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+    dataKey: string;
+  }>;
   label?: string;
   timelinePoint?: SalesOverviewTimelinePoint;
 }
@@ -69,8 +74,10 @@ function FinancialTooltip({ active, payload, label }: CustomTooltipProps) {
 
   const sales = payload.find((p) => p.dataKey === 'sales')?.value ?? 0;
   const expenses = payload.find((p) => p.dataKey === 'expenses')?.value ?? 0;
-  const netProfit = payload.find((p) => p.dataKey === 'netProfit')?.value ?? (sales - expenses);
-  const profitMargin = sales > 0 ? ((netProfit / sales) * 100).toFixed(1) : '0.0';
+  const netProfit =
+    payload.find((p) => p.dataKey === 'netProfit')?.value ?? sales - expenses;
+  const profitMargin =
+    sales > 0 ? ((netProfit / sales) * 100).toFixed(1) : '0.0';
 
   return (
     <div className='rounded-xl border border-gray-100 bg-white/95 p-3.5 shadow-xl backdrop-blur-md min-w-[200px] text-xs font-body'>
@@ -157,10 +164,14 @@ export default function SalesExpenseChart({
         q.from = customFrom;
         q.to = customTo;
       }
-      const res = await api.get(`/businesses/${biz.id}/sales/overview`, { params: q });
+      const res = await api.get(`/businesses/${biz.id}/sales/overview`, {
+        params: q,
+      });
       setData(res.data.data);
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Failed to load financial overview';
+      const msg =
+        err.response?.data?.error?.message ||
+        'Failed to load financial overview';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -200,9 +211,11 @@ export default function SalesExpenseChart({
   const hasData = timeline.some((t) => t.sales > 0 || t.expenses > 0);
 
   return (
-    <Card className={`overflow-hidden border-gray-200/80 bg-white shadow-xs ${className}`}>
+    <Card
+      className={`overflow-hidden border-gray-200/80 bg-white shadow-xs ${className}`}
+    >
       {/* ── Header ────────────────────────────────────────── */}
-      <div className='flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='flex flex-col gap-3 border-b border-gray-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-2.5'>
           <BarChart3 className='h-4 w-4 text-gray-500 stroke-[2]' />
           <div className='flex items-center gap-2'>
@@ -344,17 +357,22 @@ export default function SalesExpenseChart({
           </p>
           <div className='mt-0.5 flex items-center gap-2 text-xs'>
             <span className='text-gray-400 font-body'>
-              {kpis?.salesCount ?? 0} txn{(kpis?.salesCount ?? 0) === 1 ? '' : 's'}
+              {kpis?.salesCount ?? 0} txn
+              {(kpis?.salesCount ?? 0) === 1 ? '' : 's'}
             </span>
-            {kpis?.deltas.salesPct !== null && kpis?.deltas.salesPct !== undefined && (
-              <span
-                className={`font-medium tabular-nums ${
-                  kpis.deltas.salesPct >= 0 ? 'text-emerald-600' : 'text-rose-500'
-                }`}
-              >
-                {kpis.deltas.salesPct >= 0 ? '+' : ''}{kpis.deltas.salesPct}%
-              </span>
-            )}
+            {kpis?.deltas.salesPct !== null &&
+              kpis?.deltas.salesPct !== undefined && (
+                <span
+                  className={`font-medium tabular-nums ${
+                    kpis.deltas.salesPct >= 0
+                      ? 'text-emerald-600'
+                      : 'text-rose-500'
+                  }`}
+                >
+                  {kpis.deltas.salesPct >= 0 ? '+' : ''}
+                  {kpis.deltas.salesPct}%
+                </span>
+              )}
           </div>
         </div>
 
@@ -366,17 +384,22 @@ export default function SalesExpenseChart({
           </p>
           <div className='mt-0.5 flex items-center gap-2 text-xs'>
             <span className='text-gray-400 font-body'>
-              {kpis?.expensesCount ?? 0} expense{(kpis?.expensesCount ?? 0) === 1 ? '' : 's'}
+              {kpis?.expensesCount ?? 0} expense
+              {(kpis?.expensesCount ?? 0) === 1 ? '' : 's'}
             </span>
-            {kpis?.deltas.expensesPct !== null && kpis?.deltas.expensesPct !== undefined && (
-              <span
-                className={`font-medium tabular-nums ${
-                  kpis.deltas.expensesPct <= 0 ? 'text-emerald-600' : 'text-amber-600'
-                }`}
-              >
-                {kpis.deltas.expensesPct >= 0 ? '+' : ''}{kpis.deltas.expensesPct}%
-              </span>
-            )}
+            {kpis?.deltas.expensesPct !== null &&
+              kpis?.deltas.expensesPct !== undefined && (
+                <span
+                  className={`font-medium tabular-nums ${
+                    kpis.deltas.expensesPct <= 0
+                      ? 'text-emerald-600'
+                      : 'text-amber-600'
+                  }`}
+                >
+                  {kpis.deltas.expensesPct >= 0 ? '+' : ''}
+                  {kpis.deltas.expensesPct}%
+                </span>
+              )}
           </div>
         </div>
 
@@ -394,15 +417,19 @@ export default function SalesExpenseChart({
             <span className='text-gray-400 font-body'>
               {(kpis?.netProfit ?? 0) >= 0 ? 'Profitable' : 'Loss'}
             </span>
-            {kpis?.deltas.netProfitPct !== null && kpis?.deltas.netProfitPct !== undefined && (
-              <span
-                className={`font-medium tabular-nums ${
-                  kpis.deltas.netProfitPct >= 0 ? 'text-emerald-600' : 'text-rose-500'
-                }`}
-              >
-                {kpis.deltas.netProfitPct >= 0 ? '+' : ''}{kpis.deltas.netProfitPct}%
-              </span>
-            )}
+            {kpis?.deltas.netProfitPct !== null &&
+              kpis?.deltas.netProfitPct !== undefined && (
+                <span
+                  className={`font-medium tabular-nums ${
+                    kpis.deltas.netProfitPct >= 0
+                      ? 'text-emerald-600'
+                      : 'text-rose-500'
+                  }`}
+                >
+                  {kpis.deltas.netProfitPct >= 0 ? '+' : ''}
+                  {kpis.deltas.netProfitPct}%
+                </span>
+              )}
           </div>
         </div>
 
@@ -418,8 +445,8 @@ export default function SalesExpenseChart({
                 (kpis?.profitMargin ?? 0) >= 30
                   ? 'bg-emerald-500'
                   : (kpis?.profitMargin ?? 0) >= 15
-                  ? 'bg-amber-500'
-                  : 'bg-rose-500'
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500'
               }`}
             />
           </div>
@@ -438,7 +465,12 @@ export default function SalesExpenseChart({
         ) : error ? (
           <div className='flex h-72 flex-col items-center justify-center text-center'>
             <p className='text-sm text-red-500 font-medium'>{error}</p>
-            <Button size='sm' variant='secondary' onClick={fetchOverview} className='mt-3'>
+            <Button
+              size='sm'
+              variant='secondary'
+              onClick={fetchOverview}
+              className='mt-3'
+            >
               Retry
             </Button>
           </div>
@@ -460,7 +492,11 @@ export default function SalesExpenseChart({
                   data={timeline}
                   margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray='3 3' stroke='#f1f5f9' vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray='3 3'
+                    stroke='#f1f5f9'
+                    vertical={false}
+                  />
                   <XAxis
                     dataKey='label'
                     stroke='#94a3b8'
@@ -512,19 +548,55 @@ export default function SalesExpenseChart({
                 >
                   <defs>
                     <linearGradient id='colorSales' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='5%' stopColor='#10b981' stopOpacity={0.35} />
-                      <stop offset='95%' stopColor='#10b981' stopOpacity={0.0} />
+                      <stop
+                        offset='5%'
+                        stopColor='#10b981'
+                        stopOpacity={0.35}
+                      />
+                      <stop
+                        offset='95%'
+                        stopColor='#10b981'
+                        stopOpacity={0.0}
+                      />
                     </linearGradient>
-                    <linearGradient id='colorExpenses' x1='0' y1='0' x2='0' y2='1'>
+                    <linearGradient
+                      id='colorExpenses'
+                      x1='0'
+                      y1='0'
+                      x2='0'
+                      y2='1'
+                    >
                       <stop offset='5%' stopColor='#f59e0b' stopOpacity={0.3} />
-                      <stop offset='95%' stopColor='#f59e0b' stopOpacity={0.0} />
+                      <stop
+                        offset='95%'
+                        stopColor='#f59e0b'
+                        stopOpacity={0.0}
+                      />
                     </linearGradient>
-                    <linearGradient id='colorProfit' x1='0' y1='0' x2='0' y2='1'>
-                      <stop offset='5%' stopColor='#6366f1' stopOpacity={0.25} />
-                      <stop offset='95%' stopColor='#6366f1' stopOpacity={0.0} />
+                    <linearGradient
+                      id='colorProfit'
+                      x1='0'
+                      y1='0'
+                      x2='0'
+                      y2='1'
+                    >
+                      <stop
+                        offset='5%'
+                        stopColor='#6366f1'
+                        stopOpacity={0.25}
+                      />
+                      <stop
+                        offset='95%'
+                        stopColor='#6366f1'
+                        stopOpacity={0.0}
+                      />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray='3 3' stroke='#f1f5f9' vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray='3 3'
+                    stroke='#f1f5f9'
+                    vertical={false}
+                  />
                   <XAxis
                     dataKey='label'
                     stroke='#94a3b8'
@@ -613,7 +685,9 @@ export default function SalesExpenseChart({
                   ))}
                 </div>
               ) : (
-                <p className='text-xs text-gray-400 font-body'>No sales in period</p>
+                <p className='text-xs text-gray-400 font-body'>
+                  No sales in period
+                </p>
               )}
             </div>
 
@@ -644,7 +718,9 @@ export default function SalesExpenseChart({
                   ))}
                 </div>
               ) : (
-                <p className='text-xs text-gray-400 font-body'>No expenses in period</p>
+                <p className='text-xs text-gray-400 font-body'>
+                  No expenses in period
+                </p>
               )}
             </div>
           </div>
