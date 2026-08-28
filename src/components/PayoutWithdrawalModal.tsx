@@ -11,7 +11,7 @@ import {
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { formatNaira } from '@/lib/format';
-import { useSettlementStore } from '@/stores/settlement.store';
+import { useSettlementStore, type SettlementPayoutItem } from '@/stores/settlement.store';
 import PinModal from '@/components/PinModal.tsx';
 import toast from 'react-hot-toast';
 
@@ -32,7 +32,7 @@ export default function PayoutWithdrawalModal({
   const [amountStr, setAmountStr] = useState('');
   const [narration, setNarration] = useState('');
   const [showPinModal, setShowPinModal] = useState(false);
-  const [completedPayout, setCompletedPayout] = useState<any | null>(null);
+  const [completedPayout, setCompletedPayout] = useState<SettlementPayoutItem | null>(null);
 
   if (!isOpen || !preview) return null;
 

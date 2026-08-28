@@ -16,14 +16,19 @@ export interface ApiError {
   name?: string;
 }
 
-export function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown, fallback?: string): string {
   if (axios.isAxiosError<{ error?: { message?: string } }>(error)) {
-    return error.response?.data?.error?.message || error.message || 'An error occurred';
+    return (
+      error.response?.data?.error?.message ||
+      error.message ||
+      fallback ||
+      'An error occurred'
+    );
   }
   if (error instanceof Error) {
-    return error.message;
+    return error.message || fallback || 'An unexpected error occurred';
   }
-  return 'An unexpected error occurred';
+  return fallback || 'An unexpected error occurred';
 }
 
 // API base URL.
