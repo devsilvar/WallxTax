@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Lock,
   AlertTriangle,
+  Clock,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -292,7 +293,7 @@ export default function PayoutWithdrawalModal({
                 {/* Amount Input */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-gray-700">
+                    <label htmlFor="withdrawal-amount" className="text-xs font-semibold text-gray-700">
                       Withdrawal Amount (₦)
                     </label>
                     <button
@@ -305,10 +306,12 @@ export default function PayoutWithdrawalModal({
                     </button>
                   </div>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-mono font-bold text-sm">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-mono font-bold text-sm pointer-events-none">
                       ₦
                     </span>
                     <Input
+                      id="withdrawal-amount"
+                      name="withdrawal-amount"
                       type="number"
                       min={100}
                       max={available}
@@ -316,9 +319,11 @@ export default function PayoutWithdrawalModal({
                       placeholder={available >= 100 ? 'e.g. 50,000' : '0.00'}
                       value={amountStr}
                       onChange={(e) => setAmountStr(e.target.value)}
-                      className="pl-8 font-mono text-base font-bold"
+                      className="pl-8 font-mono text-base font-bold text-gray-900"
                       disabled={available < 100}
                       required
+                      autoComplete="off"
+                      autoFocus
                     />
                   </div>
                   <p className="text-[11px] text-gray-400">Minimum withdrawal: ₦100.00</p>
@@ -326,16 +331,19 @@ export default function PayoutWithdrawalModal({
 
                 {/* Optional Narration */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label htmlFor="withdrawal-narration" className="text-xs font-medium text-gray-700">
                     Narration / Note <span className="text-gray-400">(Optional)</span>
                   </label>
                   <Input
+                    id="withdrawal-narration"
+                    name="withdrawal-narration"
                     type="text"
                     maxLength={100}
                     placeholder="e.g. Working capital transfer"
                     value={narration}
                     onChange={(e) => setNarration(e.target.value)}
-                    className="text-xs"
+                    className="text-xs text-gray-900"
+                    autoComplete="off"
                   />
                 </div>
 
@@ -379,7 +387,7 @@ export default function PayoutWithdrawalModal({
 
       {/* Confirmation Dialog */}
       {showConfirmation && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
           <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-100 animate-scale-up">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-amber-50/50">
@@ -392,6 +400,13 @@ export default function PayoutWithdrawalModal({
                   <p className="text-xs text-gray-500">Review details before proceeding</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowConfirmation(false)}
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
             {/* Body */}
@@ -404,18 +419,18 @@ export default function PayoutWithdrawalModal({
                   </span>
                 </div>
                 <div className="border-t border-gray-200 pt-2.5">
-                  <div className="text-xs text-gray-600">
-                    <p className="font-medium">Destination</p>
-                    <p className="mt-1">{preview.settlementAccount.bankName}</p>
-                    <p className="font-mono">
+                  <div className="text-xs text-gray-700">
+                    <p className="font-semibold text-gray-900 mb-1">Destination</p>
+                    <p className="text-gray-800">{preview.settlementAccount.bankName}</p>
+                    <p className="font-mono text-gray-700 mt-0.5">
                       {preview.settlementAccount.accountNumber} · {preview.settlementAccount.accountName}
                     </p>
                   </div>
                 </div>
                 {narration && (
                   <div className="border-t border-gray-200 pt-2.5">
-                    <p className="text-xs font-medium text-gray-500">Narration</p>
-                    <p className="text-xs text-gray-700 mt-0.5">{narration}</p>
+                    <p className="text-xs font-semibold text-gray-900 mb-1">Narration</p>
+                    <p className="text-xs text-gray-700">{narration}</p>
                   </div>
                 )}
               </div>
