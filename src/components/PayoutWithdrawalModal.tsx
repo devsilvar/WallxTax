@@ -31,6 +31,7 @@ export default function PayoutWithdrawalModal({
   const { preview, withdrawBalance, withdrawing } = useSettlementStore();
   const [amountStr, setAmountStr] = useState('');
   const [narration, setNarration] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [completedPayout, setCompletedPayout] = useState<SettlementPayoutItem | null>(null);
 
@@ -65,6 +66,12 @@ export default function PayoutWithdrawalModal({
       return;
     }
 
+    // Show confirmation step instead of going directly to PIN
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmProceed = () => {
+    setShowConfirmation(false);
     setShowPinModal(true);
   };
 
@@ -86,8 +93,11 @@ export default function PayoutWithdrawalModal({
     setCompletedPayout(null);
     setAmountStr('');
     setNarration('');
+    setShowConfirmation(false);
     onClose();
   };
+
+  const isPending = completedPayout?.status === 'pending';
 
   return (
     <>
@@ -120,13 +130,17 @@ export default function PayoutWithdrawalModal({
             {completedPayout ? (
               /* Success View */
               <div className="flex flex-col items-center text-center py-4 space-y-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 animate-bounce-subtle">
-                  <CheckCircle2 className="h-8 w-8" />
+                <div className={`flex h-16 w-16 items-center justify-center rounded-full ${isPending ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'} animate-bounce-subtle`}>
+                  {isPending ? <Clock className="h-8 w-8" /> : <CheckCircle2 className="h-8 w-8" />}
                 </div>
                 <div>
-                  <h4 className="text-lg font-bold text-gray-900">Withdrawal Initiated!</h4>
+                  <h4 className="text-lg font-bold text-gray-900">
+                    {isPending ? 'Withdrawal Request Submitted!' : 'Withdrawal Initiated!'}
+                  </h4>
                   <p className="text-xs text-gray-500 mt-1">
-                    Your payout has been queued and is transferring directly to your commercial bank.
+                    {isPending 
+                      ? 'Your funds are reserved and awaiting admin approval. You\'ll be notified once approved.'
+                      : 'Your payout has been queued and is transferring directly to your commercial bank.'}
                   </p>
                 </div>
 
@@ -155,7 +169,27 @@ export default function PayoutWithdrawalModal({
                       {completedPayout.transferReference}
                     </span>
                   </div>
+                  {isPending && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Status</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        <Clock className="h-3 w-3" /> Awaiting Approval
+                      </span>
+                    </div>
+                  )}
                 </div>
+
+                {isPending && (
+                  <div className="w-full rounded-xl bg-amber-50 border border-amber-200 p-3.5 flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-amber-900">Approval typically takes 1-2 business hours</p>
+                      <p className="text-amber-700 mt-0.5">
+                        Check the settlement history to track your request status. Your balance reflects the reserved amount.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <Button variant="primary" className="w-full mt-2" onClick={handleCloseAll}>
                   Done
@@ -342,6 +376,83 @@ export default function PayoutWithdrawalModal({
         title="Confirm Withdrawal"
         subtitle={`Enter your 4-digit PIN to authorize withdrawal of ${formatNaira(numAmount)} to ${preview.settlementAccount.bankName}`}
       />
+
+      {/* Confirmation Dialog */}
+      {showConfirmation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs animate-fade-in">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-100 animate-scale-up">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-amber-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Confirm Withdrawal Request</h3>
+                  <p className="text-xs text-gray-500">Review details before proceeding</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="rounded-xl bg-gray-50 p-4 border border-gray-200/70 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-gray-500">Amount</span>
+                  <span className="text-lg font-bold text-gray-900 font-mono">
+                    {formatNaira(numAmount)}
+                  </span>
+                </div>
+                <div className="border-t border-gray-200 pt-2.5">
+                  <div className="text-xs text-gray-600">
+                    <p className="font-medium">Destination</p>
+                    <p className="mt-1">{preview.settlementAccount.bankName}</p>
+                    <p className="font-mono">
+                      {preview.settlementAccount.accountNumber} · {preview.settlementAccount.accountName}
+                    </p>
+                  </div>
+                </div>
+                {narration && (
+                  <div className="border-t border-gray-200 pt-2.5">
+                    <p className="text-xs font-medium text-gray-500">Narration</p>
+                    <p className="text-xs text-gray-700 mt-0.5">{narration}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 flex items-start gap-2.5">
+                <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-semibold text-amber-900">Approval Required</p>
+                  <p className="text-amber-700 mt-0.5">
+                    Funds will be reserved immediately and released to your bank once an admin approves your request. 
+                    This typically takes 1-2 business hours during business days.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button 
+                  variant="secondary" 
+                  type="button" 
+                  onClick={() => setShowConfirmation(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  type="button"
+                  onClick={handleConfirmProceed}
+                  className="bg-purple-900 hover:bg-purple-950 text-white"
+                >
+                  Continue to PIN <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -66,6 +66,7 @@ export default function Settings() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const biz = useBusinessStore((s) => s.activeBusiness);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
+  const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
 
   const [activeTab, setActiveTab] = useState<TabId>('profile');
 
@@ -140,10 +141,13 @@ export default function Settings() {
     setLogoUploading(true);
     try {
       const form = new FormData();
-      form.append('logo', file);
-      await api.post(`/businesses/${biz.id}/logo`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      form.append('logo', file, file.name);
+      const res = await api.post(`/businesses/${biz.id}/logo`, form, {
+        headers: { 'Content-Type': undefined },
       });
+      if (res.data?.data) {
+        setActiveBusiness(res.data.data);
+      }
       await fetchBusinesses(true);
       toast.success('Company logo uploaded successfully');
     } catch (err: any) {
@@ -158,7 +162,10 @@ export default function Settings() {
     if (!biz) return;
     setLogoUploading(true);
     try {
-      await api.delete(`/businesses/${biz.id}/logo`);
+      const res = await api.delete(`/businesses/${biz.id}/logo`);
+      if (res.data?.data) {
+        setActiveBusiness(res.data.data);
+      }
       await fetchBusinesses(true);
       toast.success('Company logo removed');
     } catch (err: any) {
@@ -526,17 +533,21 @@ function LogoUploadCard({
   }, [logoUrl]);
 
   const handleFile = (f: File) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
-    if (!allowed.includes(f.type)) {
+    const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'jfif'];
+    const ext = f.name.split('.').pop()?.toLowerCase() || '';
+    const isMimeValid = f.type.startsWith('image/') || f.type === 'image/svg+xml';
+    const isExtValid = validExtensions.includes(ext);
+
+    if (!isMimeValid && !isExtValid) {
       toast.error('Only JPEG, PNG, WebP or SVG images are accepted.');
       return;
     }
-    if (f.size > 2 * 1024 * 1024) {
-      toast.error('Image must be 2 MB or smaller.');
+    if (f.size > 5 * 1024 * 1024) {
+      toast.error('Image must be 5 MB or smaller.');
       return;
     }
-    if (f.type === 'image/svg+xml') {
-      toast('SVG logo detected — Cloudinary will automatically optimize it for web and PDF invoices.', {
+    if (f.type === 'image/svg+xml' || ext === 'svg') {
+      toast('SVG logo detected — will be optimized for web and PDF invoices.', {
         icon: '✨',
       });
     }
@@ -552,7 +563,7 @@ function LogoUploadCard({
             <img
               src={logoUrl}
               alt="Company logo"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-1"
               onError={() => setImgErr(true)}
             />
           ) : (
@@ -583,16 +594,16 @@ function LogoUploadCard({
           >
             <Upload className="h-5 w-5 text-gray-400 mb-1" />
             <p className="text-xs font-medium text-gray-600">
-              {uploading ? 'Uploading to Cloudinary…' : 'Click or drag company logo to upload'}
+              {uploading ? 'Uploading company logo…' : 'Click or drag company logo to upload'}
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              PNG, JPEG, WebP, SVG • Maximum 2 MB
+              PNG, JPEG, WebP, SVG • Maximum 5 MB
             </p>
           </div>
           <input
             ref={inputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/svg+xml"
+            accept="image/*,.png,.jpg,.jpeg,.webp,.svg"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -605,7 +616,7 @@ function LogoUploadCard({
               type="button"
               onClick={onRemove}
               disabled={uploading}
-              className="text-[12px] font-medium text-red-500 hover:text-red-600 transition-colors"
+              className="text-[12px] font-medium text-red-500 hover:text-red-600 transition-colors cursor-pointer"
             >
               Remove logo
             </button>

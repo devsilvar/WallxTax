@@ -54,10 +54,11 @@ export interface SettlementPayoutItem {
   destinationAccountNum: string;
   destinationAccountName: string;
   transferReference: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   initiatedAt: string;
   completedAt: string | null;
   narration: string | null;
+  failureReason: string | null;
 }
 
 interface SettlementStore {
@@ -141,16 +142,36 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
 
   withdrawBalance: async (businessId, input) => {
     set({ withdrawing: true });
-    const toastId = toast.loading('Initiating instant withdrawal…');
+    const toastId = toast.loading('Submitting withdrawal request…');
     try {
       const res = await api.post(`/businesses/${businessId}/settlement/withdraw`, input);
-      toast.success('Withdrawal initiated successfully', { id: toastId });
+      
+      // Handle pending status (awaiting admin approval)
+      if (res.data.data.status === 'pending') {
+        toast.success('Withdrawal request submitted. Awaiting admin approval.', { id: toastId });
+      } else {
+        toast.success('Withdrawal initiated successfully', { id: toastId });
+      }
+      
       // Refresh preview and history
       get().fetchPreview(businessId);
       get().fetchHistory(businessId, 1);
       return res.data.data;
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Withdrawal failed'), { id: toastId });
+    } catch (err: any) {
+      const errorCode = err?.response?.data?.error?.code;
+      const errorMessage = err?.response?.data?.error?.message;
+      
+      // Handle specific error codes
+      if (errorCode === 'DUPLICATE_WITHDRAWAL_REQUEST') {
+        toast.error('You already have a withdrawal request for this amount awaiting approval. Check its status or wait for it to be processed.', { id: toastId });
+      } else if (errorCode === 'WITHDRAWAL_IN_PROGRESS') {
+        toast.error('A withdrawal request is already being processed. Please wait a few seconds and try again.', { id: toastId });
+      } else if (errorCode === 'INSUFFICIENT_FUNDS') {
+        toast.error('Insufficient funds available for withdrawal', { id: toastId });
+      } else {
+        toast.error(errorMessage || getErrorMessage(err, 'Withdrawal failed'), { id: toastId });
+      }
+      
       // Refresh preview to update PIN attempts count
       get().fetchPreview(businessId);
       return null;

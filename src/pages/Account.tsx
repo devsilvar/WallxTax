@@ -5,7 +5,7 @@ import {
   Building2, Share2, ArrowDownLeft, Download,
   Clock, CheckCheck, Phone, ShieldCheck,
   Search, ChevronRight, ChevronLeft, Eye, EyeOff, Wallet, ArrowUpRight,
-  BookOpen, ArrowRight, Receipt
+  BookOpen, ArrowRight, Receipt, Lock
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -1169,14 +1169,18 @@ export default function Account() {
                   </button>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setShowSettlementForm(true); setResolvedName(''); }}
-                  className="w-full text-xs text-gray-500 hover:text-gray-900"
-                >
-                  Change Settlement Bank
-                </Button>
+                {/* Payout Bank Lock Notice */}
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 mt-3">
+                  <div className="flex items-start gap-2">
+                    <Lock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-600" />
+                    <div>
+                      <p className="font-semibold text-blue-900">Bank Account Locked</p>
+                      <p className="mt-0.5 text-blue-700">
+                        Your payout bank is locked for security. Contact support if you need to change it.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : !settlementConnected && !showSettlementForm ? (
               <div className="text-center py-4">

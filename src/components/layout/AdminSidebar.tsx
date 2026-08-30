@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   Building2,
+  Wallet,
   ScrollText,
   ArrowLeft,
   LogOut,
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/businesses', label: 'Businesses', icon: Building2 },
+  { to: '/admin/withdrawals', label: 'Withdrawals', icon: Wallet },
   { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
 ];
 
