@@ -1,3 +1,7 @@
+/**
+ * Frontend Entry Point - PayMyTax by WallX
+ * Deployment verification: Last updated 2026-08-31
+ */
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
