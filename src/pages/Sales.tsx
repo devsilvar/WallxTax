@@ -12,7 +12,6 @@ import {
   Filter,
   XCircle,
   Upload,
-  Download,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
 import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';

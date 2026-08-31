@@ -4,7 +4,7 @@ import {
   Landmark, Copy, Loader2, RefreshCw, AlertTriangle, CheckCircle2,
   Building2, Share2, ArrowDownLeft, Download,
   Clock, CheckCheck, Phone, ShieldCheck, Lock,
-  Search, ChevronRight, ChevronLeft, Eye, EyeOff, Wallet, ArrowUpRight, ArrowRight
+  Search, ChevronRight, Eye, EyeOff, Wallet, ArrowUpRight, ArrowRight
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -91,7 +91,6 @@ export default function Account() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
-  const [salesChannelFilter, setSalesChannelFilter] = useState<'all' | 'dva' | 'cash_pos' | 'invoices'>('all');
 
   // Settlement & Payout state
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -1249,7 +1248,6 @@ export default function Account() {
           description={`Enter your 4-digit transaction PIN to ${
             settlementPreview?.autoSplit.enabled ? 'disable' : 'enable'
           } 7.5% tax auto-split.`}
-          actionLabel="Confirm"
         />
       )}
 

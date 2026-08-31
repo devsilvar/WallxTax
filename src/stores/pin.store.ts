@@ -184,6 +184,4 @@ export const usePinStore = create<PinState>((set, get) => ({
       return false;
     }
   },
-
-  clearStepUpToken: () => set({ stepUpToken: null }),
 }));
