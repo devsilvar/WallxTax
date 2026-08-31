@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState, lazy, Suspense } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Landmark, Copy, Loader2, RefreshCw, AlertTriangle, CheckCircle2,
   Building2, Share2, ArrowDownLeft, Download,
-  Clock, CheckCheck, Phone, ShieldCheck,
-  Search, ChevronRight, ChevronLeft, Eye, EyeOff, Wallet, ArrowUpRight,
-  BookOpen, ArrowRight, Receipt, Lock
+  Clock, CheckCheck, Phone, ShieldCheck, Lock,
+  Search, ChevronRight, ChevronLeft, Eye, EyeOff, Wallet, ArrowUpRight, ArrowRight
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -15,15 +14,15 @@ import BankSelect from '@/components/BankSelect.tsx';
 
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
-import { useLedgerStore } from '@/stores/ledger.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { Bank, DvaTransactionRow, DvaTransactionsResponse } from '@/types';
 import { mapPaystackError, type BackendErrorLike } from '@/lib/paystack-errors';
 import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel';
-import StatementExportModal from '@/components/StatementExportModal';
 import { useSettlementStore } from '@/stores/settlement.store.ts';
 import PayoutWithdrawalModal from '@/components/PayoutWithdrawalModal.tsx';
+import PinModal from '@/components/PinModal.tsx';
+import StatementExportModal from '@/components/StatementExportModal.tsx';
 
 // Lazy-load QR renderer
 const QRCode = lazy(() =>
@@ -92,33 +91,16 @@ export default function Account() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [salesChannelFilter, setSalesChannelFilter] = useState<'all' | 'dva' | 'cash_pos' | 'invoices'>('all');
-
-  // URL Tab Support (?tab=wallet | ?tab=ledger)
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'ledger' ? 'ledger' : 'wallet';
-
-  // Ledger Store State
-  const ledgerItems = useLedgerStore((s) => s.items);
-  const ledgerSummary = useLedgerStore((s) => s.summary);
-  const ledgerScope = useLedgerStore((s) => s.scope);
-  const ledgerType = useLedgerStore((s) => s.typeFilter);
-  const ledgerSearch = useLedgerStore((s) => s.searchQuery);
-  const ledgerLoading = useLedgerStore((s) => s.loading);
-  const ledgerPagination = useLedgerStore((s) => s.pagination);
-  const fetchLedger = useLedgerStore((s) => s.fetchLedger);
-  const setLedgerScope = useLedgerStore((s) => s.setScope);
-  const setLedgerType = useLedgerStore((s) => s.setTypeFilter);
-  const setLedgerSearch = useLedgerStore((s) => s.setSearchQuery);
-  const setLedgerPage = useLedgerStore((s) => s.setPage);
 
   // Settlement & Payout state
   const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const settlementPreview = useSettlementStore((s) => s.preview);
   const fetchSettlementPreview = useSettlementStore((s) => s.fetchPreview);
   const toggleAutoSplit = useSettlementStore((s) => s.toggleAutoSplit);
   const updatingAutoSplit = useSettlementStore((s) => s.updatingAutoSplit);
+  const [showAutoSplitPinModal, setShowAutoSplitPinModal] = useState(false);
 
   // Settlement connection state
   const [showSettlementForm, setShowSettlementForm] = useState(false);
@@ -225,12 +207,6 @@ export default function Account() {
         .finally(() => setBanksLoading(false));
     }
   }, [showBvnForm, showSettlementForm, banks]);
-
-  useEffect(() => {
-    if (biz?.id && activeTab === 'ledger') {
-      fetchLedger(biz.id);
-    }
-  }, [biz?.id, activeTab, fetchLedger]);
 
   useEffect(() => {
     if (!awaitingValidation || !biz?.id) return;
@@ -559,55 +535,16 @@ export default function Account() {
           >
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowExportModal(true)}
-            className="text-xs"
-          >
-            <Download className="h-3.5 w-3.5" /> Bank Statement
-          </Button>
-          <Link to="/sales">
+          <Link to="/transactions">
             <Button size="sm" variant="secondary" className="text-xs">
-              Sales Ledger <ChevronRight className="h-3.5 w-3.5" />
+              Transaction History <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* ── Tab Switcher ────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-gray-200/80 pb-px">
-        <button
-          type="button"
-          onClick={() => setSearchParams({ tab: 'wallet' })}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'wallet'
-              ? 'border-primary-600 text-primary-600 bg-primary-50/40 rounded-t-lg'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
-          }`}
-        >
-          <Wallet className="h-4 w-4" />
-          <span>Digital Account &amp; NUBAN</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSearchParams({ tab: 'ledger' })}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'ledger'
-              ? 'border-primary-600 text-primary-600 bg-primary-50/40 rounded-t-lg'
-              : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
-          }`}
-        >
-          <BookOpen className="h-4 w-4" />
-          <span>Financial Ledger &amp; Statements</span>
-        </button>
-      </div>
-
-      {/* ── Wallet Tab Content ─────────────────────────────────── */}
-      {activeTab === 'wallet' && (
-        <>
-          {/* ── Onboarding Stepper (if not active yet) ───────────────── */}
+      {/* ── Wallet Content ─────────────────────────────────── */}
+      {/* ── Onboarding Stepper (if not active yet) ───────────────── */}
           {dva?.status !== 'active' && (
         <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs p-5 sm:p-6">
           <div className="flex items-center">
@@ -1151,12 +1088,7 @@ export default function Account() {
                   <button
                     type="button"
                     disabled={updatingAutoSplit}
-                    onClick={() =>
-                      biz?.id &&
-                      toggleAutoSplit(biz.id, {
-                        enabled: !settlementPreview?.autoSplit.enabled,
-                      })
-                    }
+                    onClick={() => setShowAutoSplitPinModal(true)}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
                       settlementPreview?.autoSplit.enabled ? 'bg-purple-800' : 'bg-gray-200'
                     }`}
@@ -1219,354 +1151,7 @@ export default function Account() {
           </div>
         </div>
       </div>
-      </>
-      )}
-
-      {/* ── Financial Ledger Tab Content ──────────────────────── */}
-      {activeTab === 'ledger' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Scope Selector Card */}
-          <div className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-bold text-gray-900">Ledger View Scope</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Switch between dedicated digital bank movements and total sales revenue
-              </p>
-            </div>
-
-            <div className="inline-flex rounded-lg bg-gray-100 p-1 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => biz?.id && setLedgerScope(biz.id, 'dva_bank')}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  ledgerScope === 'dva_bank'
-                    ? 'bg-white text-gray-900 shadow-xs font-bold'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Landmark className="h-3.5 w-3.5 text-purple-700" />
-                <span>Virtual Bank Account (DVA)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => biz?.id && setLedgerScope(biz.id, 'all_income')}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  ledgerScope === 'all_income'
-                    ? 'bg-white text-gray-900 shadow-xs font-bold'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Receipt className="h-3.5 w-3.5 text-indigo-700" />
-                <span>All Sales &amp; Revenue</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 4-Card Summary Strip */}
-          {ledgerScope === 'dva_bank' ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-gray-200/70 bg-gradient-to-b from-gray-50/50 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Opening Balance</p>
-                <p className="text-lg font-bold text-gray-800 font-mono mt-1">{formatNaira(ledgerSummary.openingBalance)}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">Balance brought forward</p>
-              </div>
-
-              <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Money Received (+)</p>
-                <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
-                  {ledgerSummary.totalCredits > 0 ? `+${formatNaira(ledgerSummary.totalCredits)}` : formatNaira(0)}
-                </p>
-                <p className="text-[10px] text-emerald-600/70 mt-0.5">Bank transfers received</p>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Tax Remitted (-)</p>
-                <p className={`text-lg font-bold font-mono mt-1 ${ledgerSummary.totalDebits > 0 ? 'text-red-600' : 'text-gray-800'}`}>
-                  {ledgerSummary.totalDebits > 0 ? `-${formatNaira(ledgerSummary.totalDebits)}` : formatNaira(0)}
-                </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">FIRS tax debits</p>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-xs text-white">
-                <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Digital Bank Balance</p>
-                <p className="text-lg font-bold text-emerald-400 font-mono mt-1">{formatNaira(ledgerSummary.closingBalance)}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Current Wema DVA balance</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-purple-100 bg-gradient-to-b from-purple-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Total Recorded Sales</p>
-                <p className="text-lg font-bold text-purple-900 font-mono mt-1">{formatNaira(ledgerSummary.totalCredits)}</p>
-                <p className="text-[10px] text-purple-600/70 mt-0.5">Gross revenue across all channels</p>
-              </div>
-
-              <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Digital Transfers (DVA)</p>
-                <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
-                  {ledgerItems.filter((it) => it.sourceType === 'dva_transfer').reduce((s, it) => s + it.amount, 0) > 0
-                    ? `+${formatNaira(ledgerItems.filter((it) => it.sourceType === 'dva_transfer').reduce((s, it) => s + it.amount, 0))}`
-                    : formatNaira(0)}
-                </p>
-                <p className="text-[10px] text-emerald-600/70 mt-0.5">Auto-captured bank transfers</p>
-              </div>
-
-              <div className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Cash &amp; POS Sales</p>
-                <p className="text-lg font-bold text-blue-600 font-mono mt-1">
-                  {ledgerItems.filter((it) => it.sourceType === 'manual_sale' || it.sourceType === 'pos').reduce((s, it) => s + it.amount, 0) > 0
-                    ? `+${formatNaira(ledgerItems.filter((it) => it.sourceType === 'manual_sale' || it.sourceType === 'pos').reduce((s, it) => s + it.amount, 0))}`
-                    : formatNaira(0)}
-                </p>
-                <p className="text-[10px] text-blue-600/70 mt-0.5">Physical till &amp; POS collections</p>
-              </div>
-
-              <div className="rounded-xl border border-indigo-100 bg-gradient-to-b from-indigo-50/40 to-white p-4 shadow-xs">
-                <p className="text-[11px] font-semibold text-indigo-700 uppercase tracking-wider">Invoice Settlements</p>
-                <p className="text-lg font-bold text-indigo-600 font-mono mt-1">
-                  {ledgerItems.filter((it) => it.sourceType === 'invoice_payment').reduce((s, it) => s + it.amount, 0) > 0
-                    ? `+${formatNaira(ledgerItems.filter((it) => it.sourceType === 'invoice_payment').reduce((s, it) => s + it.amount, 0))}`
-                    : formatNaira(0)}
-                </p>
-                <p className="text-[10px] text-indigo-600/70 mt-0.5">Paid customer invoices</p>
-              </div>
-            </div>
-          )}
-
-          {/* Ledger Table Container */}
-          <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
-            {/* Filter Bar */}
-            <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gray-50/50">
-              {/* Type Filter */}
-              {ledgerScope === 'dva_bank' ? (
-                <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-lg self-start">
-                  <button
-                    type="button"
-                    onClick={() => biz?.id && setLedgerType(biz.id, 'all')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      ledgerType === 'all' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    All Movements ({ledgerPagination.total})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => biz?.id && setLedgerType(biz.id, 'credit')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      ledgerType === 'credit' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Money Received (+)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => biz?.id && setLedgerType(biz.id, 'debit')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      ledgerType === 'debit' ? 'bg-white text-red-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Tax Remitted (-)
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-lg self-start">
-                  <button
-                    type="button"
-                    onClick={() => setSalesChannelFilter('all')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      salesChannelFilter === 'all' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    All Channels ({ledgerPagination.total})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSalesChannelFilter('dva')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      salesChannelFilter === 'dva' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Bank Transfers (DVA)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSalesChannelFilter('cash_pos')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      salesChannelFilter === 'cash_pos' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Cash &amp; POS
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSalesChannelFilter('invoices')}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                      salesChannelFilter === 'invoices' ? 'bg-white text-indigo-700 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Invoices
-                  </button>
-                </div>
-              )}
-
-              {/* Search Box */}
-              <div className="flex-1 max-w-sm flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5">
-                <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                <input
-                  type="text"
-                  value={ledgerSearch}
-                  onChange={(e) => biz?.id && setLedgerSearch(biz.id, e.target.value)}
-                  placeholder="Search narration, reference, counterparty…"
-                  className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 focus:outline-none"
-                />
-                {ledgerSearch && (
-                  <button
-                    type="button"
-                    onClick={() => biz?.id && setLedgerSearch(biz.id, '')}
-                    className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Rows Feed */}
-            <div className="divide-y divide-gray-100">
-              {ledgerLoading ? (
-                <div className="flex flex-col items-center justify-center py-14 gap-2">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <p className="text-xs text-gray-500 font-medium">Loading financial ledger…</p>
-                </div>
-              ) : ledgerItems.length === 0 ? (
-                <div className="flex flex-col items-center py-16 text-center px-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
-                    <BookOpen className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">No ledger entries found</p>
-                  <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                    Transactions and settlements for this business will be recorded here automatically.
-                  </p>
-                </div>
-              ) : (
-                (ledgerScope === 'all_income' && salesChannelFilter !== 'all'
-                  ? ledgerItems.filter((it) => {
-                      if (salesChannelFilter === 'dva') return it.sourceType === 'dva_transfer';
-                      if (salesChannelFilter === 'cash_pos') return it.sourceType === 'manual_sale' || it.sourceType === 'pos';
-                      if (salesChannelFilter === 'invoices') return it.sourceType === 'invoice_payment';
-                      return true;
-                    })
-                  : ledgerItems
-                ).map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() =>
-                      setSelectedTxn({
-                        id: item.id,
-                        type:
-                          item.sourceType === 'tax_payment'
-                            ? 'tax_payment'
-                            : item.sourceType === 'invoice_payment'
-                            ? 'invoice_payment'
-                            : 'dva_inflow',
-                        amount: item.amount,
-                        status: item.status,
-                        date: item.date,
-                        referenceId: item.reference,
-                        description: item.description,
-                        customerHint: item.counterparty,
-                        customerName: item.counterparty,
-                        paymentMethod: item.sourceType,
-                        businessId: biz?.id || '',
-                        virtualAccountNumber: dva?.accountNumber,
-                        virtualAccountBank: dva?.bankName,
-                      })
-                    }
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                  >
-                    <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
-                        item.entryType === 'credit'
-                          ? 'bg-emerald-50 border-emerald-100 text-emerald-600 group-hover:bg-emerald-100'
-                          : 'bg-red-50 border-red-100 text-red-600 group-hover:bg-red-100'
-                      } transition-colors`}
-                    >
-                      {item.entryType === 'credit' ? (
-                        <ArrowDownLeft className="h-4 w-4 stroke-[2]" />
-                      ) : (
-                        <ArrowUpRight className="h-4 w-4 stroke-[2]" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs font-bold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
-                          {item.description}
-                        </p>
-                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 capitalize">
-                          {item.classification}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-1">
-                        <span>{formatDate(item.date)}</span>
-                        <span>·</span>
-                        <span className="text-gray-700 font-medium truncate max-w-[140px]">{item.counterparty}</span>
-                        <span>·</span>
-                        <span className="font-mono text-[10px] text-gray-400 truncate max-w-[120px]">{item.reference}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <p
-                        className={`text-sm font-bold tabular-nums font-mono ${
-                          item.entryType === 'credit' ? 'text-emerald-600' : 'text-red-600'
-                        }`}
-                      >
-                        {item.entryType === 'credit' ? '+' : '-'}
-                        {formatNaira(item.amount)}
-                      </p>
-                      <p className="text-[11px] font-mono text-gray-400 mt-0.5">
-                        Bal: <span className="font-semibold text-gray-700">{formatNaira(item.runningBalance)}</span>
-                      </p>
-                    </div>
-
-                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-600 transition-colors shrink-0" />
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Pagination Controls */}
-            {ledgerPagination.totalPages > 1 && (
-              <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <span className="text-xs text-gray-500">
-                  Page {ledgerPagination.page} of {ledgerPagination.totalPages} ({ledgerPagination.total} entries)
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!ledgerPagination.hasPrev}
-                    onClick={() => biz?.id && setLedgerPage(biz.id, ledgerPagination.page - 1)}
-                    className="text-xs cursor-pointer"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!ledgerPagination.hasNext}
-                    onClick={() => biz?.id && setLedgerPage(biz.id, ledgerPagination.page + 1)}
-                    className="text-xs cursor-pointer"
-                  >
-                    Next <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* ── Modals ────────────────────────────────────────────── */}
 
       {/* ── Scan to Pay QR Modal ─────────────────────────────── */}
       {showQR && dva?.accountNumber && (
@@ -1632,13 +1217,6 @@ export default function Account() {
       />
 
       {/* ── Statement Export Modal ────────────────────────────── */}
-      <StatementExportModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        businessId={biz?.id || ''}
-        businessName={biz?.businessName || ''}
-      />
-
       {/* ── Instant Balance Withdrawal Modal ───────────────────── */}
       {biz?.id && (
         <PayoutWithdrawalModal
@@ -1650,6 +1228,38 @@ export default function Account() {
             fetchTransactions();
             fetchSettlementPreview(biz.id);
           }}
+        />
+      )}
+
+      {/* ── Auto-Split PIN Verification Modal ────────────────────── */}
+      {biz?.id && (
+        <PinModal
+          isOpen={showAutoSplitPinModal}
+          onClose={() => setShowAutoSplitPinModal(false)}
+          onSuccess={async (pin: string) => {
+            setShowAutoSplitPinModal(false);
+            if (biz?.id) {
+              await toggleAutoSplit(biz.id, {
+                enabled: !settlementPreview?.autoSplit.enabled,
+                pin,
+              });
+            }
+          }}
+          title="Confirm Auto-Split Update"
+          description={`Enter your 4-digit transaction PIN to ${
+            settlementPreview?.autoSplit.enabled ? 'disable' : 'enable'
+          } 7.5% tax auto-split.`}
+          actionLabel="Confirm"
+        />
+      )}
+
+      {/* ── Statement Export Modal ────────────────────── */}
+      {biz?.id && (
+        <StatementExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          businessId={biz.id}
+          businessName={biz.businessName}
         />
       )}
     </div>

@@ -6,7 +6,7 @@ import { usePinStore } from '@/stores/pin.store';
 interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (stepUpToken: string) => void;
+  onSuccess: (pin: string) => void;
   title?: string;
   subtitle?: string;
   description?: string;
@@ -88,8 +88,8 @@ export default function PinModal({
     setVerifying(true);
     try {
       const res = await verifyPin(pin);
-      if (res.valid && res.stepUpToken) {
-        onSuccess(res.stepUpToken);
+      if (res.valid) {
+        onSuccess(pin);
         onClose();
       } else {
         setDigits(['', '', '', '']);
@@ -182,7 +182,7 @@ export default function PinModal({
                   )}
                 </button>
 
-                {remainingAttempts < 3 && remainingAttempts > 0 && (
+                {remainingAttempts < 5 && remainingAttempts > 0 && (
                   <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" /> {remainingAttempts} attempt(s) left
                   </span>

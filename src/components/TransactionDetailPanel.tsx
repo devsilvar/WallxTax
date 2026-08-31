@@ -19,7 +19,7 @@ import {
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
-export type TransactionDetailType = 'dva_inflow' | 'tax_payment' | 'invoice_payment';
+export type TransactionDetailType = 'dva_inflow' | 'tax_payment' | 'invoice_payment' | 'sales_transaction';
 
 export interface TransactionDetailData {
   id: string;
@@ -32,6 +32,7 @@ export interface TransactionDetailData {
   customerName?: string | null;
   customerHint?: string | null;
   paymentMethod?: string | null;
+  source?: string; // Sales source: manual, cash, pos, invoice, etc.
   // DVA specific
   needsVerification?: boolean;
   verifiedAt?: string | null;
@@ -86,6 +87,7 @@ export default function TransactionDetailPanel({
 
   const isDva = transaction.type === 'dva_inflow';
   const isTax = transaction.type === 'tax_payment';
+  const isSale = transaction.type === 'sales_transaction';
 
   const copyReference = () => {
     const ref = transaction.referenceId || transaction.id;
@@ -98,9 +100,18 @@ export default function TransactionDetailPanel({
   const handleDownloadReceipt = async () => {
     try {
       setDownloading(true);
-      const endpoint = isTax
-        ? `/businesses/${transaction.businessId}/receipts/tax-payments/${transaction.id}`
-        : `/businesses/${transaction.businessId}/receipts/dva-transfers/${transaction.id}`;
+      
+      // Determine the correct endpoint based on transaction type
+      let endpoint: string;
+      if (isTax) {
+        endpoint = `/businesses/${transaction.businessId}/receipts/tax-payments/${transaction.id}`;
+      } else if (isDva || isSale) {
+        // Use universal sales receipt endpoint for DVA transfers and all other sales
+        endpoint = `/businesses/${transaction.businessId}/receipts/sales/${transaction.id}`;
+      } else {
+        // Fallback for any other type
+        endpoint = `/businesses/${transaction.businessId}/receipts/sales/${transaction.id}`;
+      }
 
       const res = await api.get(endpoint, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
@@ -108,7 +119,7 @@ export default function TransactionDetailPanel({
       link.href = url;
       link.setAttribute(
         'download',
-        `Receipt-${transaction.referenceId || transaction.id}.pdf`
+        `Receipt-${transaction.referenceId || transaction.id.slice(-8)}.pdf`
       );
       document.body.appendChild(link);
       link.click();
@@ -182,7 +193,7 @@ export default function TransactionDetailPanel({
             </div>
             <div>
               <h3 className="text-sm font-bold text-gray-900">
-                {isTax ? 'Tax Payment Details' : 'Bank Transfer Details'}
+                {isTax ? 'Tax Payment Details' : isSale ? 'Sales Transaction Details' : 'Bank Transfer Details'}
               </h3>
               <p className="text-[11px] text-gray-500 font-mono">
                 {transaction.referenceId || transaction.id}
@@ -204,14 +215,14 @@ export default function TransactionDetailPanel({
           <div className="rounded-2xl border border-gray-100 bg-gradient-to-b from-gray-50/80 to-white p-5 text-center shadow-xs">
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-2 ${
-                transaction.status === 'completed'
+                transaction.status === 'completed' || transaction.status === 'confirmed' || transaction.status === 'settled'
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                   : transaction.status === 'failed'
                   ? 'bg-red-50 text-red-700 border border-red-200/60'
                   : 'bg-amber-50 text-amber-700 border border-amber-200/60'
               }`}
             >
-              {transaction.status === 'completed' ? (
+              {transaction.status === 'completed' || transaction.status === 'confirmed' || transaction.status === 'settled' ? (
                 <CheckCheck className="h-3 w-3" />
               ) : (
                 <Clock className="h-3 w-3" />
@@ -229,7 +240,10 @@ export default function TransactionDetailPanel({
             </div>
 
             <p className="text-xs text-gray-500 mt-1">
-              {transaction.description || (isTax ? 'FIRS SME Tax Remittance' : 'Inbound Virtual Account Transfer')}
+              {transaction.description || 
+                (isTax ? 'FIRS SME Tax Remittance' : 
+                 isSale ? 'Sales Transaction' : 
+                 'Inbound Virtual Account Transfer')}
             </p>
           </div>
 
@@ -364,6 +378,35 @@ export default function TransactionDetailPanel({
                 </div>
               </>
             )}
+
+            {isSale && (
+              <>
+                {transaction.customerName && (
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-gray-500">Customer Name</span>
+                    <span className="text-gray-800 font-semibold">
+                      {transaction.customerName}
+                    </span>
+                  </div>
+                )}
+                {transaction.source && (
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-gray-500">Payment Method</span>
+                    <span className="text-gray-800 font-medium capitalize">
+                      {transaction.source.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                )}
+                {transaction.paymentMethod && (
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-gray-500">Payment Channel</span>
+                    <span className="text-gray-800 font-medium">
+                      {transaction.paymentMethod}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -371,8 +414,12 @@ export default function TransactionDetailPanel({
         <div className="p-4 border-t border-gray-100 bg-gray-50/80 flex items-center gap-3">
           <button
             onClick={handleDownloadReceipt}
-            disabled={downloading || transaction.status !== 'completed'}
-            className="flex-1 py-2.5 px-4 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-50"
+            disabled={downloading || (
+              transaction.status !== 'completed' && 
+              transaction.status !== 'confirmed' && 
+              transaction.status !== 'settled'
+            )}
+            className="flex-1 py-2.5 px-4 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {downloading ? (
               <>

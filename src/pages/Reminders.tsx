@@ -18,10 +18,19 @@ function typeBadge(t: string) {
     unfiled_tax: 'bg-yellow-100 text-yellow-700',
     unfinalized_report: 'bg-blue-100 text-blue-700',
     unpaid_tax: 'bg-orange-100 text-orange-700',
-    margin_warning: 'bg-amber-100 text-amber-700',
-    invoice_overdue: 'bg-orange-100 text-orange-700',
-    payment_successful: 'bg-green-100 text-green-700',
-    dva_received: 'bg-emerald-100 text-emerald-700',
+    margin_warning: 'bg-purple-100 text-purple-700',
+    invoice_overdue: 'bg-rose-100 text-rose-700',
+    payment_successful: 'bg-emerald-100 text-emerald-700',
+    payment_refunded: 'bg-amber-100 text-amber-700',
+    dva_received: 'bg-cyan-100 text-cyan-700',
+    dva_validation_failed: 'bg-red-100 text-red-700',
+    transaction_needs_verification: 'bg-yellow-100 text-yellow-700',
+    payout_change_permitted: 'bg-indigo-100 text-indigo-700',
+    payout_requested: 'bg-amber-100 text-amber-700',
+    payout_approved: 'bg-blue-100 text-blue-700',
+    payout_rejected: 'bg-rose-100 text-rose-700',
+    payout_completed: 'bg-emerald-100 text-emerald-700',
+    payout_failed: 'bg-red-100 text-red-700',
   };
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${m[t] || 'bg-gray-100 text-gray-600'}`}>{t.replace(/_/g, ' ')}</span>;
 }

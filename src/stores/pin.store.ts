@@ -7,6 +7,7 @@ export interface PinStatus {
   isLocked: boolean;
   lockedUntil?: string;
   remainingAttempts: number;
+  attemptsResetAt?: string;
   pinSetAt?: string;
 }
 
@@ -25,30 +26,29 @@ interface PinState {
   isLocked: boolean;
   lockedUntil?: string;
   remainingAttempts: number;
+  attemptsResetAt?: string;
   pinSetAt?: string;
   loading: boolean;
-  stepUpToken: string | null;
   sessions: UserSession[];
   loadingSessions: boolean;
 
   fetchStatus: () => Promise<void>;
   setupPin: (pin: string, password: string) => Promise<boolean>;
-  verifyPin: (pin: string) => Promise<{ valid: boolean; stepUpToken?: string }>;
+  verifyPin: (pin: string) => Promise<{ valid: boolean }>;
   changePin: (newPin: string, currentPin?: string, password?: string) => Promise<boolean>;
   fetchSessions: () => Promise<void>;
   revokeSession: (sessionId: string) => Promise<boolean>;
   revokeOtherSessions: () => Promise<boolean>;
-  clearStepUpToken: () => void;
 }
 
 export const usePinStore = create<PinState>((set, get) => ({
   hasPin: false,
   isLocked: false,
   lockedUntil: undefined,
-  remainingAttempts: 3,
+  remainingAttempts: 5, // keep in sync with PIN_MAX_ATTEMPTS
+  attemptsResetAt: undefined,
   pinSetAt: undefined,
   loading: false,
-  stepUpToken: null,
   sessions: [],
   loadingSessions: false,
 
@@ -62,6 +62,7 @@ export const usePinStore = create<PinState>((set, get) => ({
           isLocked: res.data.data.isLocked,
           lockedUntil: res.data.data.lockedUntil,
           remainingAttempts: res.data.data.remainingAttempts,
+          attemptsResetAt: res.data.data.attemptsResetAt,
           pinSetAt: res.data.data.pinSetAt,
         });
       }
@@ -77,7 +78,7 @@ export const usePinStore = create<PinState>((set, get) => ({
       set({ loading: true });
       const res = await api.post('/auth/pin/setup', { pin, password });
       toast.success(res.data.message || 'Transaction PIN configured successfully');
-      set({ hasPin: true, remainingAttempts: 3, isLocked: false, lockedUntil: undefined });
+      set({ hasPin: true, remainingAttempts: 5, isLocked: false, lockedUntil: undefined, attemptsResetAt: undefined });
       return true;
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed to setup PIN');
@@ -89,18 +90,18 @@ export const usePinStore = create<PinState>((set, get) => ({
 
   verifyPin: async (pin: string) => {
     try {
-      const res = await api.post<{ success: boolean; data: { valid: boolean; stepUpToken: string } }>(
+      const res = await api.post<{ success: boolean; data: { valid: boolean } }>(
         '/auth/pin/verify',
         { pin }
       );
       if (res.data.success && res.data.data?.valid) {
         set({
-          stepUpToken: res.data.data.stepUpToken,
-          remainingAttempts: 3,
+          remainingAttempts: 5,
           isLocked: false,
           lockedUntil: undefined,
+          attemptsResetAt: undefined,
         });
-        return { valid: true, stepUpToken: res.data.data.stepUpToken };
+        return { valid: true };
       }
       return { valid: false };
     } catch (err: any) {
@@ -124,7 +125,7 @@ export const usePinStore = create<PinState>((set, get) => ({
       set({ loading: true });
       const res = await api.put('/auth/pin/change', { newPin, currentPin, password });
       toast.success(res.data.message || 'Transaction PIN changed successfully');
-      set({ remainingAttempts: 3, isLocked: false, lockedUntil: undefined });
+      set({ remainingAttempts: 5, isLocked: false, lockedUntil: undefined, attemptsResetAt: undefined });
       return true;
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed to change PIN');

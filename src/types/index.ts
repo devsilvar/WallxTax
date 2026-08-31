@@ -405,10 +405,23 @@ export type ReminderType =
   | 'margin_warning'
   | 'invoice_overdue'
   | 'payment_successful'
+  | 'payment_refunded'
   | 'dva_received'
-  | 'dva_validation_failed';
+  | 'dva_validation_failed'
+  | 'transaction_needs_verification'
+  | 'payout_change_permitted'
+  | 'payout_requested'
+  | 'payout_approved'
+  | 'payout_rejected'
+  | 'payout_completed'
+  | 'payout_failed';
 
-export type ReminderReferenceType = 'invoice' | 'payment' | 'sales_transaction' | 'business';
+export type ReminderReferenceType =
+  | 'invoice'
+  | 'payment'
+  | 'sales_transaction'
+  | 'business'
+  | 'settlement_payout';
 
 export interface Reminder {
   id: string;

@@ -12,10 +12,12 @@ import {
   Filter,
   XCircle,
   Upload,
+  Download,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
 import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
 import Card from '@/components/ui/Card.tsx';
+import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel.tsx';
 
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -120,6 +122,7 @@ export default function Sales() {
   const [editId, setEditId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showOverview, setShowOverview] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetailData | null>(null);
 
   // Summary state
 
@@ -287,6 +290,21 @@ export default function Sales() {
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed');
     }
+  };
+
+  const openTransactionDetail = (sale: SalesTransaction) => {
+    setSelectedTransaction({
+      id: sale.id,
+      type: 'sales_transaction',
+      amount: sale.amount,
+      status: sale.status,
+      date: sale.transactionDate,
+      referenceId: sale.referenceId,
+      description: sale.description,
+      customerName: sale.customerName,
+      source: sale.source,
+      businessId: biz!.id,
+    });
   };
 
   // Month navigation
@@ -687,7 +705,8 @@ export default function Sales() {
                 {sales.map((s) => (
                   <tr
                     key={s.id}
-                    className='border-b border-gray-50 hover:bg-gray-50'
+                    onClick={() => openTransactionDetail(s)}
+                    className='border-b border-gray-50 hover:bg-gray-50 cursor-pointer'
                   >
                     <td className='px-4 py-3 text-gray-600'>
                       {formatDate(s.transactionDate)}
@@ -702,17 +721,19 @@ export default function Sales() {
                       {formatNaira(Number(s.amount))}
                     </td>
                     <td className='px-4 py-3'>{statusBadge(s.status)}</td>
-                    <td className='px-4 py-3 text-right'>
+                    <td className='px-4 py-3 text-right' onClick={(e) => e.stopPropagation()}>
                       <div className='flex items-center justify-end gap-1'>
                         <button
                           onClick={() => openEdit(s)}
                           className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                          title='Edit Sale'
                         >
                           <Pencil className='h-4 w-4' />
                         </button>
                         <button
                           onClick={() => handleDelete(s.id)}
                           className='rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                          title='Delete Sale'
                         >
                           <Trash2 className='h-4 w-4' />
                         </button>
@@ -727,7 +748,11 @@ export default function Sales() {
           {/* Mobile card list */}
           <div className='md:hidden space-y-3'>
             {sales.map((s) => (
-              <Card key={s.id} className='p-4'>
+              <Card 
+                key={s.id} 
+                className='p-4 cursor-pointer hover:shadow-md transition-shadow'
+                onClick={() => openTransactionDetail(s)}
+              >
                 <div className='flex items-start justify-between gap-3'>
                   <div className='min-w-0 flex-1'>
                     <div className='flex items-center gap-2 flex-wrap'>
@@ -746,16 +771,18 @@ export default function Sales() {
                       </span>
                     </p>
                   </div>
-                  <div className='flex items-center gap-1 shrink-0'>
+                  <div className='flex items-center gap-1 shrink-0' onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => openEdit(s)}
                       className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                      title='Edit Sale'
                     >
                       <Pencil className='h-4 w-4' />
                     </button>
                     <button
                       onClick={() => handleDelete(s.id)}
                       className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                      title='Delete Sale'
                     >
                       <Trash2 className='h-4 w-4' />
                     </button>
@@ -789,6 +816,17 @@ export default function Sales() {
           }}
         />
       )}
+
+      {/* Transaction Detail Panel */}
+      <TransactionDetailPanel
+        isOpen={Boolean(selectedTransaction)}
+        onClose={() => setSelectedTransaction(null)}
+        transaction={selectedTransaction}
+        onVerifySuccess={() => {
+          fetchSales();
+          fetchSummary();
+        }}
+      />
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (

@@ -26,8 +26,16 @@ const TYPE_COLOR: Record<ReminderType, string> = {
   margin_warning: 'bg-purple-100 text-purple-700',
   invoice_overdue: 'bg-rose-100 text-rose-700',
   payment_successful: 'bg-emerald-100 text-emerald-700',
+  payment_refunded: 'bg-amber-100 text-amber-700',
   dva_received: 'bg-cyan-100 text-cyan-700',
   dva_validation_failed: 'bg-red-100 text-red-700',
+  transaction_needs_verification: 'bg-yellow-100 text-yellow-700',
+  payout_change_permitted: 'bg-indigo-100 text-indigo-700',
+  payout_requested: 'bg-amber-100 text-amber-700',
+  payout_approved: 'bg-blue-100 text-blue-700',
+  payout_rejected: 'bg-rose-100 text-rose-700',
+  payout_completed: 'bg-emerald-100 text-emerald-700',
+  payout_failed: 'bg-red-100 text-red-700',
 };
 
 /** Where each reminder type deep-links to. Kept as a map (not a hard-coded
@@ -40,8 +48,16 @@ const ROUTE_FOR_REMINDER: Record<ReminderType, string> = {
   margin_warning: '/tax',
   invoice_overdue: '/invoices',
   payment_successful: '/payments',
+  payment_refunded: '/payments',
   dva_received: '/sales',
   dva_validation_failed: '/account',
+  transaction_needs_verification: '/sales',
+  payout_change_permitted: '/account',
+  payout_requested: '/account',
+  payout_approved: '/account',
+  payout_rejected: '/account',
+  payout_completed: '/account',
+  payout_failed: '/account',
 };
 
 function typeLabel(t: ReminderType) {

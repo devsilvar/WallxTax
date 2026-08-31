@@ -84,11 +84,11 @@ interface SettlementStore {
   ) => Promise<SettlementPayoutItem | null>;
   toggleAutoSplit: (
     businessId: string,
-    input: { enabled: boolean; taxSplitPercentage?: number }
+    input: { enabled: boolean; taxSplitPercentage?: number; pin: string }
   ) => Promise<boolean>;
   connectBank: (
     businessId: string,
-    input: { bankCode: string; bankName: string; accountNumber: string; commissionPct?: number }
+    input: { bankCode: string; bankName: string; accountNumber: string; pin?: string }
   ) => Promise<boolean>;
   resolveAccount: (input: {
     bankCode: string;
@@ -188,8 +188,10 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       toast.success(res.data.message || 'Auto-split settings updated', { id: toastId });
       get().fetchPreview(businessId);
       return true;
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update auto-split settings'), { id: toastId });
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error?.message;
+      toast.error(errorMessage || getErrorMessage(err, 'Failed to update auto-split settings'), { id: toastId });
+      get().fetchPreview(businessId);
       return false;
     } finally {
       set({ updatingAutoSplit: false });
@@ -204,8 +206,9 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       toast.success(res.data.message || 'Settlement bank connected successfully', { id: toastId });
       get().fetchPreview(businessId);
       return true;
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to connect settlement bank'), { id: toastId });
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error?.message;
+      toast.error(errorMessage || getErrorMessage(err, 'Failed to connect settlement bank'), { id: toastId });
       return false;
     } finally {
       set({ connectingBank: false });

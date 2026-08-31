@@ -56,6 +56,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       items: [
         { to: '/tax', label: t('tax_reports'), icon: Calculator },
         { to: '/payments', label: t('payments'), icon: CreditCard },
+        { to: '/transactions', label: t('transaction_history'), icon: FileText },
         { to: '/account', label: t('bank_account'), icon: Landmark },
       ],
     },
