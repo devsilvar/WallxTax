@@ -58,7 +58,7 @@ export default function AddExpenseModal({
 
   // Form state (moved from Expenses.tsx)
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<string>('other');
+  const [category, setCategory] = useState<string>('rent');
   const [categoryDetail, setCategoryDetail] = useState('');
   const [description, setDescription] = useState('');
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
@@ -79,7 +79,7 @@ export default function AddExpenseModal({
       setIsDeductible(editExpense.isDeductible ?? true);
     } else {
       setAmount('');
-      setCategory('other');
+      setCategory('rent');
       setCategoryDetail('');
       setDescription('');
       setExpenseDate(new Date().toISOString().slice(0, 10));
