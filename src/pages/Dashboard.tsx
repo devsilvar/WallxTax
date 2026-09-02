@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
+import PinModal from '@/components/PinModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
 import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
@@ -45,7 +46,7 @@ import type { TaxReport, SalesTransaction, Expense } from '@/types/index.ts';
 // Stored form (DB): `PMTW` + 7 digits, e.g. `PMTW0000001`.
 // User-facing form: `PMT-0000001` — shorter and delimited per product ask.
 // We format on display only; the stored value stays the source of truth.
-function formatMerchantId(id: string | undefined): string {
+function formatMerchantId(id: string | null | undefined): string {
   if (!id) return 'PMT-0000000';
   const digits = id.replace(/^PMTW/i, '').replace(/^PMT-?/i, '');
   return `PMT-${digits}`;
@@ -53,10 +54,10 @@ function formatMerchantId(id: string | undefined): string {
 
 // ─── BVN masking helper ─────────────────────────────────────
 // Shows: ••••••• 1234 when masked, full 11 digits when revealed
-function maskBvn(bvn: string, revealed: boolean): string {
-  if (!bvn) return '—';
-  if (revealed) return bvn;
-  return `•••••••${bvn.slice(-4)}`;
+function maskBvn(bvn: string | null, revealed: boolean): string {
+  if (revealed && bvn) return bvn;
+  if (bvn) return `•••••••${bvn.slice(-4)}`;
+  return '•••••••••••';
 }
 
 // ─── Types ──────────────────────────────────────────────────
@@ -375,7 +376,40 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(!seed);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
+
+  // BVN reveal state (PIN-authenticated, in-memory session only)
+  const [showPinModal, setShowPinModal] = useState(false);
   const [bvnRevealed, setBvnRevealed] = useState(false);
+  const [fullBvn, setFullBvn] = useState<string | null>(null);
+  const [revealingBvn, setRevealingBvn] = useState(false);
+
+  const handleRevealBvn = async (stepUpToken: string) => {
+    setRevealingBvn(true);
+    try {
+      const res = await api.post<{ success: boolean; data: { bvn: string } }>('/auth/reveal-bvn', {
+        stepUpToken,
+      });
+      if (res.data.success && res.data.data?.bvn) {
+        setFullBvn(res.data.data.bvn);
+        setBvnRevealed(true);
+        toast.success('BVN revealed');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to reveal BVN');
+    } finally {
+      setRevealingBvn(false);
+    }
+  };
+
+  const handleToggleBvn = () => {
+    if (bvnRevealed) {
+      setBvnRevealed(false);
+    } else if (fullBvn) {
+      setBvnRevealed(true);
+    } else {
+      setShowPinModal(true);
+    }
+  };
 
   // Subscribe to dashboard invalidation events
 
@@ -621,22 +655,23 @@ export default function Dashboard() {
                 </button>
 
                 {/* BVN display chip */}
-                {user?.bvn ? (
+                {user?.bvnVerifiedAt ? (
                   <button
                     type='button'
-                    onClick={() => setBvnRevealed(!bvnRevealed)}
-                    title={bvnRevealed ? 'Hide BVN' : 'Show BVN'}
-                    className='group flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white hover:bg-white/20 transition-all'
+                    onClick={handleToggleBvn}
+                    disabled={revealingBvn}
+                    title={bvnRevealed ? 'Click to hide BVN' : 'Click to reveal BVN (PIN required)'}
+                    className='group flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white hover:bg-white/20 transition-all cursor-pointer'
                   >
                     <Shield className='h-3.5 w-3.5 text-emerald-300' />
                     <span className='text-purple-200 text-[11px] font-medium'>BVN:</span>
                     <span className='font-mono font-medium tabular-nums text-white'>
-                      {maskBvn(user.bvn, bvnRevealed)}
+                      {maskBvn(fullBvn, bvnRevealed)}
                     </span>
                     {bvnRevealed ? (
-                      <EyeOff className='h-3 w-3 text-purple-200/70' />
+                      <EyeOff className='h-3 w-3 text-purple-200/70 group-hover:text-white transition-colors' />
                     ) : (
-                      <Eye className='h-3 w-3 text-purple-200/70' />
+                      <Eye className='h-3 w-3 text-purple-200/70 group-hover:text-white transition-colors' />
                     )}
                   </button>
                 ) : (
@@ -1180,6 +1215,15 @@ export default function Dashboard() {
           <div className='h-px flex-1 bg-gray-100' />
         </div>
       )}
+
+      {/* ── BVN Reveal PIN Modal ───────────────────────── */}
+      <PinModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        onSuccess={handleRevealBvn}
+        title="Reveal BVN"
+        subtitle="Enter your 4-digit transaction PIN to view your full BVN."
+      />
     </div>
   );
 }

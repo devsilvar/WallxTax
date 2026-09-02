@@ -80,15 +80,15 @@ interface SettlementStore {
   fetchHistory: (businessId: string, page?: number) => Promise<void>;
   withdrawBalance: (
     businessId: string,
-    input: { amount: number; pin: string; narration?: string }
+    input: { amount: number; pin?: string; stepUpToken?: string; narration?: string }
   ) => Promise<SettlementPayoutItem | null>;
   toggleAutoSplit: (
     businessId: string,
-    input: { enabled: boolean; taxSplitPercentage?: number; pin: string }
+    input: { enabled: boolean; taxSplitPercentage?: number; pin?: string; stepUpToken?: string }
   ) => Promise<boolean>;
   connectBank: (
     businessId: string,
-    input: { bankCode: string; bankName: string; accountNumber: string; pin?: string }
+    input: { bankCode: string; bankName: string; accountNumber: string; pin?: string; stepUpToken?: string }
   ) => Promise<boolean>;
   resolveAccount: (input: {
     bankCode: string;

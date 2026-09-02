@@ -16,19 +16,73 @@ export interface ApiError {
   name?: string;
 }
 
+/**
+ * Maps server error codes that should never be shown to end users
+ * to friendly, actionable messages.
+ */
+const FRIENDLY_MESSAGES: Record<string, string> = {
+  DATABASE_ERROR:
+    "We're having trouble reaching our servers. Please check your internet connection and try again.",
+  SERVICE_UNAVAILABLE:
+    "Our service is temporarily unavailable. Please check your internet connection and try again shortly.",
+  INTERNAL_ERROR:
+    "Something went wrong on our end. Please try again in a moment.",
+  INTERNAL_SERVER_ERROR:
+    "Something went wrong on our end. Please try again in a moment.",
+};
+
+/** Patterns in raw error messages that indicate connectivity issues. */
+const NETWORK_PATTERNS = [
+  "can't reach database",
+  'database server',
+  'econnrefused',
+  'econnreset',
+  'enotfound',
+  'etimedout',
+  'network error',
+  'fetch failed',
+  'failed to fetch',
+  'socket hang up',
+  'err_network',
+];
+
+function isNetworkishMessage(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return NETWORK_PATTERNS.some((p) => lower.includes(p));
+}
+
 export function getErrorMessage(error: unknown, fallback?: string): string {
-  if (axios.isAxiosError<{ error?: { message?: string } }>(error)) {
-    return (
-      error.response?.data?.error?.message ||
-      error.message ||
-      fallback ||
-      'An error occurred'
-    );
+  if (axios.isAxiosError<{ error?: { message?: string; code?: string } }>(error)) {
+    const code = error.response?.data?.error?.code;
+    const serverMsg = error.response?.data?.error?.message;
+
+    // 1. Map known technical error codes to friendly text
+    if (code && FRIENDLY_MESSAGES[code]) {
+      return FRIENDLY_MESSAGES[code];
+    }
+
+    // 2. Catch raw messages that leak infrastructure details
+    if (serverMsg && isNetworkishMessage(serverMsg)) {
+      return "We're having trouble connecting. Please check your internet and try again.";
+    }
+
+    // 3. Pure network failure (no response at all — device offline, DNS fail, etc.)
+    if (!error.response) {
+      return "Unable to connect. Please check your internet connection and try again.";
+    }
+
+    // 4. Server returned a message that's safe to show
+    return serverMsg || error.message || fallback || "An error occurred";
   }
+
   if (error instanceof Error) {
-    return error.message || fallback || 'An unexpected error occurred';
+    if (isNetworkishMessage(error.message)) {
+      return "Unable to connect. Please check your internet connection and try again.";
+    }
+    return error.message || fallback || "An unexpected error occurred";
   }
-  return fallback || 'An unexpected error occurred';
+
+  return fallback || "An unexpected error occurred";
 }
 
 // API base URL.

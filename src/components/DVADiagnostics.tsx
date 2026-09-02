@@ -96,7 +96,7 @@ export default function DVADiagnostics() {
         name: 'User Data',
         status: 'success',
         message: `Logged in as ${user.email}`,
-        details: `BVN: ${user.bvn ? '✅ Verified' : '❌ Not verified'}`
+        details: `BVN: ${user.bvnVerifiedAt ? '✅ Verified' : '❌ Not verified'}`
       });
     }
 

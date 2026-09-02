@@ -28,6 +28,7 @@ export type InvalidationReason =
   | 'tax_calculated'
   | 'tax_finalized'
   | 'tax_paid'
+  | 'transaction_verified'
   | 'manual'; // User clicked refresh button
 
 interface DashboardEventState {

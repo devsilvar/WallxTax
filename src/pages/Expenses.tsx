@@ -1,10 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus,
   Wallet,
   Trash2,
   Pencil,
-  X,
   ChevronLeft,
   ChevronRight,
   PieChart,
@@ -14,7 +13,7 @@ import {
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
-import Input from '@/components/ui/Input.tsx';
+import AddExpenseModal from '@/components/AddExpenseModal.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
@@ -34,13 +33,13 @@ function formatDate(d: string) {
 
 // ─── Types ──────────────────────────────────────────────────
 
-interface CategoryBreakdown {
+type CategoryBreakdown = {
   category: string;
   total: number;
   count: number;
-}
+};
 
-interface ExpenseSummary {
+type ExpenseSummary = {
   month: number;
   year: number;
   totalExpenses: number;
@@ -48,7 +47,7 @@ interface ExpenseSummary {
   transactionCount: number;
   categoryBreakdown: CategoryBreakdown[];
   alerts: { type: string; message: string }[];
-}
+};
 
 // ─── Category color map ─────────────────────────────────────
 
@@ -76,8 +75,8 @@ export default function Expenses() {
   const [filterEndDate, setFilterEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
 
   // Summary state
   const now = new Date();
@@ -85,13 +84,6 @@ export default function Expenses() {
   const [summaryYear, setSummaryYear] = useState(now.getFullYear());
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState<string>('other');
-  const [description, setDescription] = useState('');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
-  const [isDeductible, setIsDeductible] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/expenses` : '';
 
@@ -105,7 +97,7 @@ export default function Expenses() {
   const fetchExpenses = () => {
     if (!biz) return;
     setIsLoading(true);
-    const params: Record<string, any> = { page, limit: 15 };
+    const params: Record<string, string | number> = { page, limit: 15 };
     if (filterCat) params.category = filterCat;
     if (filterStartDate) params.startDate = filterStartDate;
     if (filterEndDate) params.endDate = filterEndDate;
@@ -126,41 +118,16 @@ export default function Expenses() {
   useEffect(() => { fetchExpenses(); }, [biz, page, filterCat, filterStartDate, filterEndDate]);
   useEffect(() => { fetchSummary(); }, [biz, summaryMonth, summaryYear]);
 
-  const resetForm = () => {
-    setAmount(''); setCategory('other'); setDescription('');
-    setExpenseDate(new Date().toISOString().slice(0, 10));
-    setIsDeductible(true);
-    setEditId(null); setShowForm(false);
-  };
-
   const openEdit = (exp: Expense) => {
-    setEditId(exp.id); setAmount(String(Number(exp.amount))); setCategory(exp.category);
-    setDescription(exp.description || '');
-    setExpenseDate(new Date(exp.expenseDate).toISOString().slice(0, 10));
-    setIsDeductible(exp.isDeductible ?? true);
-    setShowForm(true);
+    setEditExpense(exp);
+    setShowAddModal(true);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const body = { amount: Number(amount), category, description, expenseDate, isDeductible };
-    try {
-      if (editId) {
-        await api.put(`${basePath}/${editId}`, body);
-        toast.success('Expense updated');
-        invalidateDashboard('expense_updated');
-      } else {
-        await api.post(basePath, body);
-        toast.success('Expense created');
-        invalidateDashboard('expense_created');
-      }
-      resetForm();
-      fetchExpenses();
-      fetchSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Failed');
-    } finally { setSaving(false); }
+  const handleSaveComplete = (outcome: 'created' | 'updated') => {
+    // A new expense must be visible on page 1; an edit stays on the current page.
+    if (outcome === 'created') setPage(1);
+    fetchExpenses();
+    fetchSummary();
   };
 
   const handleDelete = async (id: string) => {
@@ -171,7 +138,10 @@ export default function Expenses() {
       invalidateDashboard('expense_deleted');
       fetchExpenses();
       fetchSummary();
-    } catch (err: any) { toast.error(err.response?.data?.error?.message || 'Failed'); }
+    } catch (err: unknown) {
+      const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
+      toast.error(apiErr?.message || 'Failed');
+    }
   };
 
   // Month navigation
@@ -194,7 +164,7 @@ export default function Expenses() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Expenses</h1>
           <p className="mt-1 font-body text-sm text-gray-500">Track your business expenses.</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }} className="self-start sm:self-auto"><Plus className="h-4 w-4" /> Add Expense</Button>
+        <Button onClick={() => { setEditExpense(null); setShowAddModal(true); }} className="self-start sm:self-auto"><Plus className="h-4 w-4" /> Add Expense</Button>
       </div>
 
       {/* Monthly Summary */}
@@ -287,48 +257,6 @@ export default function Expenses() {
           </div>
         )}
       </Card>
-
-      {/* Form */}
-      {showForm && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">{editId ? 'Edit Expense' : 'New Expense'}</h2>
-            <button onClick={resetForm} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
-          </div>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Amount (₦)" type="number" step="0.01" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-              </select>
-            </div>
-            <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} required />
-            <Input label="Expense Date" type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} required />
-            <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50 sm:col-span-2">
-              <input
-                id="isDeductible"
-                type="checkbox"
-                checked={isDeductible}
-                onChange={(e) => setIsDeductible(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <div className="flex-1">
-                <label htmlFor="isDeductible" className="block text-sm font-medium text-gray-900 cursor-pointer">
-                  Tax deductible
-                </label>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Uncheck if this is a personal expense or not allowable for tax purposes
-                </p>
-              </div>
-            </div>
-            <div className="flex items-end gap-2 sm:col-span-2">
-              <Button type="submit" isLoading={saving}>{editId ? 'Update' : 'Create'}</Button>
-              <Button type="button" variant="secondary" onClick={resetForm}>Cancel</Button>
-            </div>
-          </form>
-        </Card>
-      )}
 
       {/* Filters */}
       <div className="space-y-3">
@@ -465,6 +393,17 @@ export default function Expenses() {
             <Button variant="secondary" size="sm" disabled={!pagination.hasNext} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
+      )}
+
+      {/* Add/Edit Expense modal — mounted once per page, state resets on open */}
+      {biz && (
+        <AddExpenseModal
+          isOpen={showAddModal}
+          businessId={biz.id}
+          editExpense={editExpense}
+          onClose={() => setShowAddModal(false)}
+          onSaved={handleSaveComplete}
+        />
       )}
     </div>
   );

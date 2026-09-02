@@ -76,11 +76,11 @@ export default function PayoutWithdrawalModal({
     setShowPinModal(true);
   };
 
-  const handlePinSubmit = async (pin: string) => {
+  const handlePinSubmit = async (stepUpToken: string) => {
     setShowPinModal(false);
     const result = await withdrawBalance(businessId, {
       amount: numAmount,
-      pin,
+      stepUpToken,
       narration: narration.trim() || undefined,
     });
 

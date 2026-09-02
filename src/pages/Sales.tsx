@@ -1,10 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus,
   Receipt,
   Trash2,
   Pencil,
-  X,
   ChevronLeft,
   ChevronRight,
   BarChart3,
@@ -14,12 +13,12 @@ import {
   Upload,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
+import AddSaleModal from '@/components/AddSaleModal.tsx';
 import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
 import Card from '@/components/ui/Card.tsx';
 import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel.tsx';
 
 import Button from '@/components/ui/Button.tsx';
-import Input from '@/components/ui/Input.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
@@ -38,13 +37,6 @@ const SOURCES = [
   'invoice',
 ] as const;
 const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
-
-interface TransactionClassification {
-  id: string;
-  name: string;
-  category: string;
-  description: string | null;
-}
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -77,19 +69,19 @@ function sourceLabel(s: string) {
 
 // ─── Types ──────────────────────────────────────────────────
 
-interface SourceBreakdown {
+type SourceBreakdown = {
   source: string;
   total: number;
   count: number;
-}
+};
 
-interface SalesSummary {
+type SalesSummary = {
   month: number;
   year: number;
   totalSales: number;
   transactionCount: number;
   sourceBreakdown: SourceBreakdown[];
-}
+};
 
 // ─── Source color map for the breakdown bar ─────────────────
 
@@ -117,9 +109,9 @@ export default function Sales() {
   const [filterEndDate, setFilterEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editSale, setEditSale] = useState<SalesTransaction | null>(null);
   const [showOverview, setShowOverview] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetailData | null>(null);
 
@@ -130,21 +122,6 @@ export default function Sales() {
   const [summaryYear, setSummaryYear] = useState(now.getFullYear());
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-
-  // Form state
-  const [amount, setAmount] = useState('');
-  const [source, setSource] = useState<string>('manual');
-  const [description, setDescription] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [transactionDate, setTransactionDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
-  const [classification, setClassification] = useState('');
-  const [originalClassification, setOriginalClassification] = useState('');
-  const [saving, setSaving] = useState(false);
-  
-  const [classifications, setClassifications] = useState<TransactionClassification[]>([]);
-  const [loadingClassifications, setLoadingClassifications] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/sales` : '';
 
@@ -166,7 +143,7 @@ export default function Sales() {
   const fetchSales = () => {
     if (!biz) return;
     setIsLoading(true);
-    const params: Record<string, any> = { page, limit: 15 };
+    const params: Record<string, string | number> = { page, limit: 15 };
     if (filterSource) params.source = filterSource;
     if (filterStatus) params.status = filterStatus;
     if (filterStartDate) params.startDate = filterStartDate;
@@ -192,90 +169,23 @@ export default function Sales() {
       .finally(() => setSummaryLoading(false));
   };
 
-  const fetchClassifications = () => {
-    setLoadingClassifications(true);
-    api
-      .get('/transaction-classifications')
-      .then((r) => {
-        if (r.data.data && Array.isArray(r.data.data)) {
-          setClassifications(r.data.data);
-        }
-      })
-      .catch(() => toast.error('Failed to load classifications'))
-      .finally(() => setLoadingClassifications(false));
-  };
-
   useEffect(() => {
     fetchSales();
   }, [biz, page, filterSource, filterStatus, filterStartDate, filterEndDate]);
   useEffect(() => {
     fetchSummary();
   }, [biz, summaryMonth, summaryYear]);
-  useEffect(() => {
-    if (biz) fetchClassifications();
-  }, [biz]);
-
-  const resetForm = () => {
-    setAmount('');
-    setSource('manual');
-    setDescription('');
-    setCustomerName('');
-    setTransactionDate(new Date().toISOString().slice(0, 10));
-    setClassification('');
-    setOriginalClassification('');
-    setEditId(null);
-    setShowForm(false);
-  };
 
   const openEdit = (s: SalesTransaction) => {
-    setEditId(s.id);
-    setAmount(String(Number(s.amount)));
-    setSource(s.source);
-    setDescription(s.description || '');
-    setCustomerName(s.customerName || '');
-    setTransactionDate(new Date(s.transactionDate).toISOString().slice(0, 10));
-    const currentClass = s.finalClassification || '';
-    setClassification(currentClass);
-    setOriginalClassification(currentClass);
-    setShowForm(true);
+    setEditSale(s);
+    setShowAddModal(true);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const body = {
-      amount: Number(amount),
-      source,
-      description: description || undefined,
-      customerName: customerName || undefined,
-      transactionDate,
-    };
-    try {
-      if (editId) {
-        await api.put(`${basePath}/${editId}`, body);
-        
-        // Only verify if classification changed
-        if (classification && classification !== originalClassification) {
-          await api.post(`${basePath}/${editId}/verify`, { 
-            classification 
-          });
-        }
-        
-        toast.success('Sale updated');
-        invalidateDashboard('sale_updated');
-      } else {
-        await api.post(basePath, body);
-        toast.success('Sale created');
-        invalidateDashboard('sale_created');
-      }
-      resetForm();
-      fetchSales();
-      fetchSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Failed');
-    } finally {
-      setSaving(false);
-    }
+  const handleSaveComplete = (outcome: 'created' | 'updated') => {
+    // A new sale must be visible on page 1; an edit stays on the current page.
+    if (outcome === 'created') setPage(1);
+    fetchSales();
+    fetchSummary();
   };
 
   const handleDelete = async (id: string) => {
@@ -286,8 +196,9 @@ export default function Sales() {
       invalidateDashboard('sale_deleted');
       fetchSales();
       fetchSummary();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Failed');
+    } catch (err: unknown) {
+      const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
+      toast.error(apiErr?.message || 'Failed');
     }
   };
 
@@ -347,8 +258,8 @@ export default function Sales() {
           </Button>
           <Button
             onClick={() => {
-              resetForm();
-              setShowForm(true);
+              setEditSale(null);
+              setShowAddModal(true);
             }}
           >
             <Plus className='h-4 w-4' /> Add Sale
@@ -465,96 +376,6 @@ export default function Sales() {
           </div>
         )}
       </Card>
-
-      {/* Form */}
-      {showForm && (
-        <Card>
-          <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-lg font-semibold text-gray-900'>
-              {editId ? 'Edit Sale' : 'New Sale'}
-            </h2>
-            <button
-              onClick={resetForm}
-              className='text-gray-400 hover:text-gray-600'
-            >
-              <X className='h-5 w-5' />
-            </button>
-          </div>
-          <form
-            onSubmit={handleSubmit}
-            className='grid grid-cols-1 gap-4 sm:grid-cols-2'
-          >
-            <Input
-              label='Amount (₦)'
-              type='number'
-              step='0.01'
-              min='1'
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-            <div className='space-y-1'>
-              <label className='block text-sm font-medium text-gray-700'>
-                Source
-              </label>
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
-              >
-                {SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.replace('_', ' ')}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Input
-              label='Description'
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-            <Input
-              label='Customer Name'
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
-            <Input
-              label='Transaction Date'
-              type='date'
-              value={transactionDate}
-              onChange={(e) => setTransactionDate(e.target.value)}
-              required
-            />
-            <div className='space-y-1'>
-              <label className='block text-sm font-medium text-gray-700'>
-                Classification (Optional)
-              </label>
-              <select
-                value={classification}
-                onChange={(e) => setClassification(e.target.value)}
-                className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
-                disabled={loadingClassifications}
-              >
-                <option value=''>Not classified</option>
-                {classifications.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className='flex items-end gap-2 sm:col-span-2'>
-              <Button type='submit' isLoading={saving}>
-                {editId ? 'Update' : 'Create'}
-              </Button>
-              <Button type='button' variant='secondary' onClick={resetForm}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
 
       {/* Filters */}
       <div className='space-y-3'>
@@ -813,6 +634,17 @@ export default function Sales() {
             fetchSales();
             fetchSummary();
           }}
+        />
+      )}
+
+      {/* Add/Edit Sale modal — mounted once per page, state resets on open */}
+      {biz && (
+        <AddSaleModal
+          isOpen={showAddModal}
+          businessId={biz.id}
+          editSale={editSale}
+          onClose={() => setShowAddModal(false)}
+          onSaved={handleSaveComplete}
         />
       )}
 

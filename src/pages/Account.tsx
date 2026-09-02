@@ -4,7 +4,8 @@ import {
   Landmark, Copy, Loader2, RefreshCw, AlertTriangle, CheckCircle2,
   Building2, Share2, ArrowDownLeft, Download,
   Clock, CheckCheck, Phone, ShieldCheck, Lock,
-  Search, ChevronRight, Eye, EyeOff, Wallet, ArrowUpRight, ArrowRight
+  Search, ChevronRight, Eye, EyeOff, Wallet, ArrowUpRight, ArrowRight,
+  Zap, FileCheck
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -38,7 +39,6 @@ interface DVAData {
   failedAt?: string;
 }
 
-
 interface Transaction {
   id: string;
   amount: number;
@@ -62,14 +62,19 @@ export default function Account() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const user = useAuthStore((s) => s.user);
 
-  const [dva, setDva] = useState<DVAData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [settingUp, setSettingUp] = useState(false);
+  const [dva, setDva] = useState<DVAData | null>(() => {
+    if (biz?.virtualAccountNumber) {
+      return {
+        status: 'active',
+        accountNumber: biz.virtualAccountNumber,
+        bankName: biz.virtualAccountBank || 'Wema Bank',
+      };
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(() => !biz?.virtualAccountNumber);
   const [validating, setValidating] = useState(false);
-  const [error, setError] = useState('');
-  const [showBvnForm, setShowBvnForm] = useState(false);
   const [bvn, setBvn] = useState('');
-  const [nin, setNin] = useState('');
   const [bvnError, setBvnError] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [bankCode, setBankCode] = useState('');
@@ -118,18 +123,21 @@ export default function Account() {
       const dvaData = res.data.data;
       setDva(dvaData);
 
-      if (awaitingValidation && dvaData.status === 'active') {
-        setAwaitingValidation(false);
-        toast.success('🎉 Virtual account activated! Ready to receive transfers.');
-        fetchBusinesses();
+      if (dvaData.status === 'active') {
+        if (awaitingValidation) {
+          setAwaitingValidation(false);
+          toast.success('🎉 Dedicated virtual account activated! Ready to receive transfers.');
+          fetchBusinesses();
+        }
       } else if (dvaData.status === 'failed') {
         setAwaitingValidation(false);
-        setShowBvnForm(true);
         setBvnError(dvaData.message || 'Identity verification failed. Please check your details and try again.');
         toast.error('Identity verification failed — see details below.');
+      } else if (dvaData.status === 'pending') {
+        setAwaitingValidation(true);
       }
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to load account'));
+      console.error('Failed to load DVA:', err);
     } finally {
       setLoading(false);
     }
@@ -183,7 +191,6 @@ export default function Account() {
       setMoneyIn({ totalBalance, receivedThisMonth, pendingVerification });
     } catch (err) {
       console.error('DVA transaction fetch error:', err);
-      toast.error('Failed to load wallet transactions');
     } finally {
       setLoadingTransactions(false);
     }
@@ -191,24 +198,34 @@ export default function Account() {
 
   useEffect(() => {
     if (biz?.id) {
+      if (biz.virtualAccountNumber) {
+        setDva({
+          status: 'active',
+          accountNumber: biz.virtualAccountNumber,
+          bankName: biz.virtualAccountBank || 'Wema Bank',
+        });
+      }
       fetchDVA();
       fetchTransactions();
       fetchSettlementPreview(biz.id);
     }
-  }, [biz?.id, fetchDVA, fetchTransactions, fetchSettlementPreview]);
+  }, [biz?.id, biz?.virtualAccountNumber, biz?.virtualAccountBank, fetchDVA, fetchTransactions, fetchSettlementPreview]);
 
+  // Always pre-load banks for onboarding or settlement
   useEffect(() => {
-    if ((showBvnForm || showSettlementForm) && !banks) {
+    if (!banks) {
       setBanksLoading(true);
       api.get('/banks')
         .then((res) => setBanks(res.data.data as Bank[]))
         .catch((err) => setBanksError(getErrorMessage(err, 'Failed to load banks')))
         .finally(() => setBanksLoading(false));
     }
-  }, [showBvnForm, showSettlementForm, banks]);
+  }, [banks]);
 
+  // Polling when verification is in flight
   useEffect(() => {
-    if (!awaitingValidation || !biz?.id) return;
+    const isPending = awaitingValidation || dva?.status === 'pending';
+    if (!isPending || !biz?.id) return;
 
     const pollInterval = setInterval(() => {
       fetchDVA();
@@ -217,54 +234,14 @@ export default function Account() {
     const timeout = setTimeout(() => {
       clearInterval(pollInterval);
       setAwaitingValidation(false);
-      toast('Validation is taking longer than expected. Try refreshing the page in a few minutes.', { icon: 'ℹ️' });
+      toast('Verification is taking longer than usual. Try refreshing in a few moments.', { icon: 'ℹ️' });
     }, 300000);
 
     return () => {
       clearInterval(pollInterval);
       clearTimeout(timeout);
     };
-  }, [awaitingValidation, biz?.id, fetchDVA]);
-
-  const handleSetup = async () => {
-    if (!biz) return;
-    setSettingUp(true);
-    setError('');
-    try {
-      const res = await api.post(`/businesses/${biz.id}/dva/setup-virtual-account`);
-      setDva(res.data.data);
-      if (res.data.data.status === 'active') {
-        setAwaitingValidation(false);
-        toast.success('Virtual account activated!');
-        fetchBusinesses();
-      }
-    } catch (rawErr) {
-      const err = rawErr as BackendErrorLike;
-      const code = err.response?.data?.error?.code;
-      const paystackCode = err.response?.data?.error?.details?.paystackCode;
-      
-      if (code === 'USER_PHONE_REQUIRED') {
-        setShowPhoneForm(true);
-        toast('Add your phone number to continue.', { icon: 'ℹ️' });
-        return;
-      }
-      if (paystackCode === 'validation_required') {
-        if (awaitingValidation) {
-          toast('Still verifying your BVN with your bank. Try again shortly.', { icon: '⏳' });
-        } else {
-          setShowBvnForm(true);
-          setError('');
-          toast('Verify identity with BVN to proceed', { icon: 'ℹ️' });
-        }
-        return;
-      }
-      const mapped = mapPaystackError(err);
-      if (mapped.intent === 'inline') setError(`${mapped.title}. ${mapped.body}`);
-      else toast.error(mapped.body);
-    } finally {
-      setSettingUp(false);
-    }
-  };
+  }, [awaitingValidation, dva?.status, biz?.id, fetchDVA]);
 
   const handleSavePhone = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,7 +255,6 @@ export default function Account() {
       await fetchMe();
       toast.success('Phone number saved');
       setShowPhoneForm(false);
-      await handleSetup();
     } catch (err) {
       setPhoneError(getErrorMessage(err, 'Failed to save phone'));
     } finally {
@@ -286,44 +262,69 @@ export default function Account() {
     }
   };
 
-  const handleValidateBvn = async (e: React.FormEvent) => {
+  const handleSubmitOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{11,12}$/.test(bvn)) {
       setBvnError('BVN must be 11 or 12 digits');
       return;
     }
-    if (nin && !/^\d{11}$/.test(nin)) {
-      setBvnError('NIN must be 11 digits');
-      return;
-    }
     if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
-      setBvnError('Select bank and enter account number');
+      setBvnError('Select your bank and enter your 10-digit account number');
       return;
     }
+
     setValidating(true);
     setBvnError('');
+
     try {
-      await api.post(`/businesses/${biz!.id}/dva/validate-customer`, { 
-        bvn, 
-        nin: nin || undefined,
-        bankCode, 
-        accountNumber 
+      // Step 1: Ensure Paystack customer exists (creates code or handles missing phone)
+      try {
+        const setupRes = await api.post(`/businesses/${biz!.id}/dva/setup-virtual-account`);
+        if (setupRes.data.data.status === 'active') {
+          setDva(setupRes.data.data);
+          setAwaitingValidation(false);
+          toast.success('🎉 Dedicated virtual account activated!');
+          fetchBusinesses();
+          return;
+        }
+      } catch (setupErr) {
+        const sErr = setupErr as BackendErrorLike;
+        const code = sErr.response?.data?.error?.code;
+        const paystackCode = sErr.response?.data?.error?.details?.paystackCode;
+
+        if (code === 'USER_PHONE_REQUIRED') {
+          setShowPhoneForm(true);
+          toast('Add your phone number to continue.', { icon: 'ℹ️' });
+          return;
+        }
+
+        // validation_required / not identified is expected — proceed to validateCustomer
+        const isExpectedValidation =
+          paystackCode === 'validation_required' ||
+          /not been identified|customer.*not.*identified/i.test(sErr.response?.data?.error?.message || '');
+
+        if (!isExpectedValidation) {
+          const mapped = mapPaystackError(sErr);
+          if (mapped.intent === 'inline') setBvnError(`${mapped.title}. ${mapped.body}`);
+          else toast.error(mapped.body);
+          return;
+        }
+      }
+
+      // Step 2: Submit BVN & bank account for NIBSS identity verification
+      await api.post(`/businesses/${biz!.id}/dva/validate-customer`, {
+        bvn,
+        bankCode,
+        accountNumber,
       });
-      toast.success('Verification submitted! Processing with bank.');
-      setShowBvnForm(false);
+
+      toast.success('Verification submitted! Checking with NIBSS.');
       setAwaitingValidation(true);
       await fetchMe();
+      await fetchDVA();
     } catch (rawErr) {
       const err = rawErr as BackendErrorLike;
-      const errorCode = err.response?.data?.error?.code;
-      const errorMessage = err.response?.data?.error?.message || 'Validation failed';
-      
-      if (errorCode === 'NO_CUSTOMER') {
-        setBvnError('Account setup required. Close this form and click "Activate" first.');
-        toast.error('Click Activate first');
-        return;
-      }
-      
+      const errorMessage = err.response?.data?.error?.message || 'Verification failed';
       const mapped = mapPaystackError(err);
       if (mapped.intent === 'inline') {
         setBvnError(`${mapped.title}: ${mapped.body}`);
@@ -430,8 +431,6 @@ export default function Account() {
     );
   }
 
-  const settlementConnected = !!biz.settlementAccountNumber;
-
   const renderSettlementForm = () => (
     <div className="space-y-3">
       {settlementError && (
@@ -492,14 +491,8 @@ export default function Account() {
     </div>
   );
 
-  const stepBankDone = settlementConnected;
-  const stepIdentityDone = !!user?.bvnVerifiedAt;
-  const stepAccountDone = dva?.status === 'active';
-  const steps = [
-    { key: 'bank', label: 'Connect payout bank', icon: Building2, done: stepBankDone },
-    { key: 'identity', label: 'Verify identity', icon: ShieldCheck, done: stepIdentityDone },
-    { key: 'account', label: 'Activate account', icon: Landmark, done: stepAccountDone },
-  ] as const;
+  const isActive = dva?.status === 'active';
+  const isVerifying = !isActive && (awaitingValidation || dva?.status === 'pending');
 
   const filteredTransactions = transactions.filter((t) => {
     if (txnFilter === 'verified' && t.status !== 'completed') return false;
@@ -514,516 +507,535 @@ export default function Account() {
     return true;
   });
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-6 animate-fade-in pb-16">
-      {/* ── Minimalist Page Header ────────────────────────────── */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900">Wallet &amp; Inflows</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Dedicated account for <span className="font-semibold text-gray-800">{biz.businessName}</span>
+  // ─── Render Section 1: In-Flight Verification Progress ─────
+  const renderVerificationScreen = () => (
+    <div className="mx-auto max-w-2xl animate-fade-in py-6 sm:py-10">
+      <div className="rounded-2xl border border-gray-200/90 bg-white p-8 sm:p-10 shadow-lg text-center">
+        {/* Animated Radar/Shield Icon */}
+        <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center">
+          <span className="absolute inset-0 rounded-full bg-primary-100 animate-ping opacity-60" />
+          <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary-50 border border-primary-200/80 shadow-xs">
+            <ShieldCheck className="h-10 w-10 text-primary-600" />
+          </span>
+        </div>
+
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Verifying Your Identity</h2>
+        <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+          Your BVN and bank account details are being cross-verified with NIBSS and Paystack.
+        </p>
+
+        {/* 3-Stage Progress Timeline */}
+        <div className="my-8 max-w-sm mx-auto rounded-xl bg-gray-50/80 border border-gray-200/70 p-5 text-left space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-900">Identity Details Submitted</p>
+              <p className="text-[11px] text-gray-500">BVN and bank account details received</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-primary-700">NIBSS &amp; Bank Verification</p>
+              <p className="text-[11px] text-gray-500">Matching account name with BVN records in progress</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-400">
+              <Landmark className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400">Dedicated Account Creation</p>
+              <p className="text-[11px] text-gray-400">Wema Bank dedicated NUBAN assignment</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-blue-50/70 border border-blue-100 p-3.5 text-xs text-blue-800 max-w-md mx-auto mb-6">
+          <p className="leading-relaxed">
+            ⏱️ <strong>This typically takes 1–3 minutes.</strong> We are automatically checking the status every 10 seconds. You may safely navigate to other pages — we'll notify you once active!
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => { fetchDVA(); fetchTransactions(); }}
-            isLoading={loading || loadingTransactions}
-            className="text-xs"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+
+        <div className="flex items-center justify-center gap-3">
+          <Button onClick={fetchDVA} isLoading={loading} size="sm">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh Status
           </Button>
-          <Link to="/transactions">
-            <Button size="sm" variant="secondary" className="text-xs">
-              Transaction History <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setAwaitingValidation(false);
+            }}
+          >
+            Edit Details
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Render Section 2: Onboarding Wizard (Un-Onboarded / Failed) ──
+  const renderOnboardingWizard = () => (
+    <div className="mx-auto max-w-3xl space-y-6 animate-fade-in py-4">
+      {/* Hero Explainer Header */}
+      <div className="rounded-2xl border border-gray-200/80 bg-gradient-to-br from-purple-50/60 via-white to-indigo-50/40 p-6 sm:p-8 shadow-xs text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-900 text-white shadow-md">
+            <Landmark className="h-7 w-7" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-gray-900">Activate Your Dedicated Business Account</h1>
+            <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+              Get an instant Nigerian NUBAN account number for <span className="font-semibold text-gray-900">{biz.businessName}</span>. Customer transfers will be auto-captured and recorded for seamless FIRS tax compliance.
+            </p>
+
+            {/* 3 Key Benefits */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-purple-100/80 text-xs">
+              <div className="flex items-center gap-2 text-gray-700">
+                <Zap className="h-4 w-4 text-purple-600 shrink-0" />
+                <span>Instant Auto-Capture</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700">
+                <FileCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Zero Reconciliation</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700">
+                <ShieldCheck className="h-4 w-4 text-primary-600 shrink-0" />
+                <span>FIRS &amp; CBN Compliant</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Wallet Content ─────────────────────────────────── */}
-      {/* ── Onboarding Stepper (if not active yet) ───────────────── */}
-          {dva?.status !== 'active' && (
-        <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs p-5 sm:p-6">
-          <div className="flex items-center">
-            {steps.map((step, i) => {
-              const isCurrent = !step.done && steps.slice(0, i).every((s) => s.done);
-              const Icon = step.icon;
-              return (
-                <div key={step.key} className="flex flex-1 items-center last:flex-none">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
-                        step.done
-                          ? 'border-emerald-500 bg-emerald-500 text-white'
-                          : isCurrent
-                          ? 'border-primary-600 bg-primary-50 text-primary-600'
-                          : 'border-gray-200 bg-gray-50 text-gray-300'
-                      }`}
-                    >
-                      {step.done ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
-                    </div>
-                    <span className={`text-[11px] font-medium text-center leading-tight max-w-[90px] ${step.done ? 'text-emerald-600' : isCurrent ? 'text-primary-600 font-semibold' : 'text-gray-400'}`}>
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < steps.length - 1 && (
-                    <div className={`mx-2 sm:mx-3 mb-5 h-0.5 flex-1 rounded-full ${step.done ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-                  )}
-                </div>
-              );
-            })}
+      {/* Main Setup Card */}
+      <div className="rounded-2xl border border-gray-200/90 bg-white p-6 sm:p-8 shadow-sm">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-14 gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <p className="text-xs text-gray-500">Loading account status…</p>
           </div>
-        </div>
-      )}
-
-      {/* ── Active Fintech Banking Hero Card (Balance + Virtual NUBAN) ── */}
-      {dva?.status === 'active' && (
-        <div className="animate-slide-up relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-950 p-6 sm:p-7 text-white shadow-xl shadow-purple-950/25 border border-purple-800/40">
-          {/* Ambient Glows */}
-          <div className="absolute -right-12 -top-12 h-52 w-52 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
-          <div className="absolute left-1/3 -bottom-10 h-40 w-40 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none" />
-
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            {/* Left: Wallet Balance Display */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-xs font-medium text-purple-200/80">
-                <Wallet className="h-4 w-4 text-purple-300" />
-                <span>Wallet Inflow Balance</span>
-                <button
-                  type="button"
-                  onClick={() => setHideBalance(!hideBalance)}
-                  className="p-1 hover:text-white transition-colors cursor-pointer"
-                  title={hideBalance ? 'Show balance' : 'Hide balance'}
-                >
-                  {hideBalance ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </button>
+        ) : showPhoneForm ? (
+          /* Phone Number Capture (if missing on User) */
+          <form onSubmit={handleSavePhone} className="space-y-4 max-w-md mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600">
+                <Phone className="h-4.5 w-4.5" />
               </div>
-
-              {/* Big Bold Balance */}
-              <div className="mt-2 flex items-baseline gap-3">
-                <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white tabular-nums">
-                  {hideBalance ? '₦ ••••••••' : formatNaira(moneyIn.totalBalance)}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 border border-emerald-400/30 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active
-                </span>
+              <div>
+                <h3 className="font-semibold text-gray-900">Add Phone Number</h3>
+                <p className="text-xs text-gray-500">Required by Paystack for identity verification</p>
               </div>
-
-              <p className="text-xs text-purple-200/60 mt-2">
-                All direct customer bank transfers auto-captured and recorded for tax compliance.
+            </div>
+            <PhoneInput
+              label="Phone number"
+              required
+              value={phone}
+              onChange={(fullE164) => { setPhone(fullE164); setPhoneError(''); }}
+              error={phoneError}
+            />
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" isLoading={savingPhone}>Save &amp; Continue</Button>
+              <Button variant="ghost" onClick={() => setShowPhoneForm(false)}>Cancel</Button>
+            </div>
+          </form>
+        ) : (
+          /* Single Clear BVN + Bank Account Form */
+          <form onSubmit={handleSubmitOnboarding} className="space-y-5">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Verify Your Identity</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Per CBN regulations, enter your 11-digit BVN and a bank account in your name to activate your dedicated virtual account.
               </p>
             </div>
 
-            {/* Right: Embedded Virtual NUBAN Card & Single Clean Share Action */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              {/* NUBAN Box */}
-              <div className="flex items-center justify-between gap-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-4 py-3 shadow-inner">
+            {/* Error Message if Failed */}
+            {(bvnError || dva?.status === 'failed') && (
+              <div className="rounded-xl bg-red-50 border border-red-200/80 p-3.5 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
                 <div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-purple-200/80">
-                    <Landmark className="h-3.5 w-3.5" />
-                    <span>{dva.bankName || 'Wema Bank'}</span>
-                  </div>
-                  <p className="font-mono text-xl sm:text-2xl font-bold text-white tracking-widest tabular-nums mt-0.5">
-                    {dva.accountNumber}
-                  </p>
-                  <div className="mt-0.5 text-[11px] text-purple-300/70 truncate max-w-[200px]">
-                    {displayAccountName}
-                  </div>
+                  <p className="text-xs font-semibold text-red-800">Verification Alert</p>
+                  <p className="text-xs text-red-700 mt-0.5">{bvnError || dva?.message || 'Please check your details and try again.'}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(dva.accountNumber!)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 transition-colors shrink-0 cursor-pointer"
-                  title="Copy Account Number"
-                >
-                  <Copy className="h-4 w-4 text-purple-200" />
-                </button>
               </div>
+            )}
 
-              {/* Actions: Download Statement & Share Details */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowExportModal(true)}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-xs"
-                >
-                  <Download className="h-3.5 w-3.5 text-purple-200" /> Statement
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-purple-950 hover:bg-purple-50 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                >
-                  <Share2 className="h-3.5 w-3.5 text-purple-700" /> Share Details
-                </button>
+            {/* BVN Input */}
+            <div>
+              <Input
+                label="Bank Verification Number (BVN)"
+                type="text"
+                maxLength={12}
+                value={bvn}
+                onChange={(e) => { setBvn(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
+                placeholder="Enter 11-digit BVN"
+                required
+              />
+              <p className="text-[11px] text-gray-500 mt-1">Dial *565*0# on your registered SIM to check your BVN</p>
+            </div>
+
+            {/* Bank Selector */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Your Bank</label>
+              <BankSelect
+                banks={banks}
+                loading={banksLoading}
+                error={banksError}
+                value={bankCode}
+                onChange={(code) => { setBankCode(code); setBvnError(''); }}
+              />
+            </div>
+
+            {/* Account Number Input */}
+            <div>
+              <Input
+                label="Bank Account Number (10 digits)"
+                type="text"
+                maxLength={10}
+                value={accountNumber}
+                onChange={(e) => { setAccountNumber(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
+                placeholder="0123456789"
+                required
+              />
+              <p className="text-[11px] text-gray-500 mt-1">The account name on this bank must match your BVN name</p>
+            </div>
+
+            {/* Privacy & Security Note */}
+            <div className="rounded-lg bg-gray-50 border border-gray-200/60 p-3 text-[11px] text-gray-500 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>Your details are securely encrypted and verified directly via NIBSS.</span>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <Button type="submit" size="lg" className="w-full sm:w-auto" isLoading={validating}>
+                <ShieldCheck className="h-4 w-4" /> Verify &amp; Activate Account
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+
+  // ─── Render Section 3: Active Fintech Banking Hub ──────────
+  const renderActiveWalletHub = () => (
+    <div className="space-y-6">
+      {/* ── Active Fintech Banking Hero Card (Balance + Virtual NUBAN) ── */}
+      <div className="animate-slide-up relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-950 p-6 sm:p-7 text-white shadow-xl shadow-purple-950/25 border border-purple-800/40">
+        {/* Ambient Glows */}
+        <div className="absolute -right-12 -top-12 h-52 w-52 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 -bottom-10 h-40 w-40 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          {/* Left: Wallet Balance Display */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs font-medium text-purple-200/80">
+              <Wallet className="h-4 w-4 text-purple-300" />
+              <span>Wallet Inflow Balance</span>
+              <button
+                type="button"
+                onClick={() => setHideBalance(!hideBalance)}
+                className="p-1 hover:text-white transition-colors cursor-pointer"
+                title={hideBalance ? 'Show balance' : 'Hide balance'}
+              >
+                {hideBalance ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+
+            {/* Big Bold Balance */}
+            <div className="mt-2 flex items-baseline gap-3">
+              <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white tabular-nums">
+                {hideBalance ? '₦ ••••••••' : formatNaira(moneyIn.totalBalance)}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 border border-emerald-400/30 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active
+              </span>
+            </div>
+
+            <p className="text-xs text-purple-200/60 mt-2">
+              All direct customer bank transfers auto-captured and recorded for tax compliance.
+            </p>
+          </div>
+
+          {/* Right: Embedded Virtual NUBAN Card & Actions */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            {/* NUBAN Box */}
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-4 py-3 shadow-inner">
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] text-purple-200/80">
+                  <Landmark className="h-3.5 w-3.5" />
+                  <span>{dva?.bankName || 'Wema Bank'}</span>
+                </div>
+                <p className="font-mono text-xl sm:text-2xl font-bold text-white tracking-widest tabular-nums mt-0.5">
+                  {dva?.accountNumber}
+                </p>
+                <div className="mt-0.5 text-[11px] text-purple-300/70 truncate max-w-[200px]">
+                  {displayAccountName}
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => handleCopy(dva?.accountNumber!)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 transition-colors shrink-0 cursor-pointer"
+                title="Copy Account Number"
+              >
+                <Copy className="h-4 w-4 text-purple-200" />
+              </button>
+            </div>
+
+            {/* Actions: Download Statement & Share Details */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-xs"
+              >
+                <Download className="h-3.5 w-3.5 text-purple-200" /> Statement
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-purple-950 hover:bg-purple-50 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                <Share2 className="h-3.5 w-3.5 text-purple-700" /> Share Details
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── 4-Card Wallet Metric Strip (Refined & Minimalist) ──── */}
-      {dva?.status === 'active' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Total Recorded Inflows */}
-          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-              <span className="font-medium">Total Inflows</span>
-              <ArrowDownLeft className="h-4 w-4 text-emerald-600 stroke-[2]" />
-            </div>
-            <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
-              {hideBalance ? '••••••••' : formatNaira(moneyIn.totalBalance)}
-            </p>
-            <div className="mt-2 text-xs text-emerald-700 font-medium flex items-center gap-1">
-              <CheckCheck className="h-3.5 w-3.5" />
-              <span>{transactions.filter(t => t.status === 'completed').length} completed transfers</span>
-            </div>
+      {/* ── 4-Card Wallet Metric Strip ──── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Recorded Inflows */}
+        <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span className="font-medium">Total Inflows</span>
+            <ArrowDownLeft className="h-4 w-4 text-emerald-600 stroke-[2]" />
           </div>
-
-          {/* Card 2: This Month's Inflows */}
-          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-              <span className="font-medium">This Month</span>
-              <ArrowUpRight className="h-4 w-4 text-primary-600 stroke-[2]" />
-            </div>
-            <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
-              {hideBalance ? '••••••••' : formatNaira(moneyIn.receivedThisMonth)}
-            </p>
-            <div className="mt-2 text-xs text-gray-500">
-              Current calendar month
-            </div>
-          </div>
-
-          {/* Card 3: Pending Inflow Review */}
-          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-              <span className="font-medium">Pending Review</span>
-              <Clock className="h-4 w-4 text-amber-500 stroke-[2]" />
-            </div>
-            <p className="text-xl font-bold text-amber-600 tracking-tight tabular-nums font-mono">
-              {hideBalance ? '••••••••' : formatNaira(moneyIn.pendingVerification)}
-            </p>
-            <div className="mt-2 text-xs text-gray-500">
-              {transactions.filter(t => t.status === 'pending').length} transfer(s) awaiting check
-            </div>
-          </div>
-
-          {/* Card 4: Payout Destination */}
-          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-              <span className="font-medium">Payout Bank</span>
-              <Building2 className="h-4 w-4 text-gray-500 stroke-[2]" />
-            </div>
-            <p className="text-base font-bold text-gray-900 truncate">
-              {biz.settlementBankName || 'Not Connected'}
-            </p>
-            <div className="mt-2 text-xs text-gray-500 font-mono">
-              {biz.settlementAccountNumber ? `•••• ${biz.settlementAccountNumber.slice(-4)}` : 'Connect bank for payouts'}
-            </div>
+          <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
+            {hideBalance ? '••••••••' : formatNaira(moneyIn.totalBalance)}
+          </p>
+          <div className="mt-2 text-xs text-emerald-700 font-medium flex items-center gap-1">
+            <CheckCheck className="h-3.5 w-3.5" />
+            <span>{transactions.filter((t) => t.status === 'completed').length} completed transfers</span>
           </div>
         </div>
-      )}
 
-      {/* ── Main Content Grid (2 Columns) ────────────────────── */}
+        {/* Card 2: This Month's Inflows */}
+        <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span className="font-medium">This Month</span>
+            <ArrowUpRight className="h-4 w-4 text-primary-600 stroke-[2]" />
+          </div>
+          <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
+            {hideBalance ? '••••••••' : formatNaira(moneyIn.receivedThisMonth)}
+          </p>
+          <div className="mt-2 text-xs text-gray-500">Current calendar month</div>
+        </div>
+
+        {/* Card 3: Pending Inflow Review */}
+        <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span className="font-medium">Pending Review</span>
+            <Clock className="h-4 w-4 text-amber-500 stroke-[2]" />
+          </div>
+          <p className="text-xl font-bold text-amber-600 tracking-tight tabular-nums font-mono">
+            {hideBalance ? '••••••••' : formatNaira(moneyIn.pendingVerification)}
+          </p>
+          <div className="mt-2 text-xs text-gray-500">
+            {transactions.filter((t) => t.status === 'pending').length} transfer(s) awaiting check
+          </div>
+        </div>
+
+        {/* Card 4: Payout Destination */}
+        <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span className="font-medium">Payout Bank</span>
+            <Building2 className="h-4 w-4 text-gray-500 stroke-[2]" />
+          </div>
+          <p className="text-base font-bold text-gray-900 truncate">
+            {biz.settlementBankName || 'Not Connected'}
+          </p>
+          <div className="mt-2 text-xs text-gray-500 font-mono">
+            {biz.settlementAccountNumber ? `•••• ${biz.settlementAccountNumber.slice(-4)}` : 'Connect bank for payouts'}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Content Grid (2 Columns: Inflows + Settlement Rail) ──── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2/3): Inflows Feed OR Setup */}
+        {/* Left Column (2/3): Inflows Transfer History Feed */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Setup / Identity Verification Card (when DVA not active) */}
-          {dva?.status !== 'active' && (
-            <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs p-6">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-14 gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <p className="text-xs text-gray-500">Loading virtual account status…</p>
-                </div>
-              ) : error ? (
-                <div className="rounded-xl bg-red-50 border border-red-100 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-red-800">{error}</p>
-                      <button onClick={() => { setError(''); fetchDVA(); }} className="mt-2 text-xs font-semibold text-red-700 hover:underline">Try again</button>
-                    </div>
-                  </div>
-                </div>
-              ) : showPhoneForm ? (
-                <form onSubmit={handleSavePhone} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-                      <Phone className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Add phone number</h3>
-                      <p className="text-xs text-gray-500">Required before Paystack can verify your identity</p>
-                    </div>
-                  </div>
-                  <PhoneInput
-                    label="Phone number"
-                    required
-                    value={phone}
-                    onChange={(fullE164) => { setPhone(fullE164); setPhoneError(''); }}
-                    error={phoneError}
-                  />
-                  <div className="flex gap-2">
-                    <Button type="submit" isLoading={savingPhone}>Save &amp; continue</Button>
-                    <Button variant="ghost" onClick={() => setShowPhoneForm(false)}>Cancel</Button>
-                  </div>
-                </form>
-              ) : awaitingValidation ? (
-                <div className="text-center py-10">
-                  <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center">
-                    <span className="absolute inset-0 rounded-full bg-primary-100 animate-ping opacity-60" />
-                    <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary-50">
-                      <ShieldCheck className="h-7 w-7 text-primary-600" />
-                    </span>
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1">Verifying Identity with Bank</h3>
-                  <p className="text-xs text-gray-500 mb-1 max-w-sm mx-auto">
-                    Your BVN is being verified with Paystack &amp; NIBSS. This usually takes 1-2 minutes.
-                  </p>
-                  <p className="text-[11px] text-gray-400 mb-5">We are auto-checking every 10 seconds — you may safely leave this page.</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Button onClick={fetchDVA} isLoading={loading} size="sm"><RefreshCw className="h-3.5 w-3.5" /> Refresh Status</Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setAwaitingValidation(false); setShowBvnForm(true); }}>Re-enter details</Button>
-                  </div>
-                </div>
-              ) : showBvnForm ? (
-                <form onSubmit={handleValidateBvn} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-                      <ShieldCheck className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 leading-tight">Verify Identity (BVN)</h3>
-                      <p className="text-xs text-gray-500">Required once to activate your dedicated virtual account</p>
-                    </div>
-                  </div>
-
-                  {bvnError && (
-                    <div className="rounded-lg bg-red-50 border border-red-100 p-3">
-                      <p className="text-xs text-red-700">{bvnError}</p>
-                    </div>
-                  )}
-
-                  <Input
-                    label="BVN (11 or 12 digits)"
-                    type="text"
-                    maxLength={12}
-                    value={bvn}
-                    onChange={(e) => { setBvn(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
-                    required
-                  />
-                  <Input
-                    label="NIN (11 digits) — optional"
-                    type="text"
-                    maxLength={11}
-                    value={nin}
-                    onChange={(e) => { setNin(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
-                    placeholder="Optional for faster verification"
-                  />
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Bank</label>
-                    <BankSelect banks={banks} loading={banksLoading} error={banksError} value={bankCode} onChange={(code) => { setBankCode(code); setBvnError(''); }} />
-                  </div>
-                  <Input
-                    label="Account number"
-                    type="text"
-                    maxLength={10}
-                    value={accountNumber}
-                    onChange={(e) => { setAccountNumber(e.target.value.replace(/\D/g, '')); setBvnError(''); }}
-                    placeholder="0123456789"
-                  />
-                  <div className="flex gap-2 pt-1">
-                    <Button type="submit" isLoading={validating}>Verify Identity</Button>
-                    <Button variant="ghost" onClick={() => { setShowBvnForm(false); setBvnError(''); }}>Cancel</Button>
-                  </div>
-                </form>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-50">
-                    <Landmark className="h-6 w-6 text-primary-600" />
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1">Activate Dedicated Virtual Account</h3>
-                  <p className="text-xs text-gray-500 mb-5 max-w-sm mx-auto">
-                    Get an instant NUBAN account number that auto-records incoming bank transfers as sales.
-                  </p>
-                  <Button onClick={handleSetup} isLoading={settingUp}>
-                    <Landmark className="h-4 w-4" /> Activate Virtual Account
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Inflow Transfers Feed ─────────────────────────── */}
-          {dva?.status === 'active' && (
-            <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
-              {/* Feed Header */}
-              <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-gray-900">Transfer History</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Direct deposits to your virtual account
-                  </p>
-                </div>
-
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1.5 self-start sm:self-auto bg-gray-100/80 p-1 rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setTxnFilter('all')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      txnFilter === 'all'
-                        ? 'bg-white text-gray-900 shadow-xs font-semibold'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    All ({transactions.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTxnFilter('verified')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      txnFilter === 'verified'
-                        ? 'bg-white text-gray-900 shadow-xs font-semibold'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Settled ({transactions.filter(t => t.status === 'completed').length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTxnFilter('pending')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                      txnFilter === 'pending'
-                        ? 'bg-white text-amber-700 shadow-xs font-semibold'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    Pending ({transactions.filter(t => t.status === 'pending').length})
-                  </button>
-                </div>
+          <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
+            {/* Feed Header */}
+            <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Transfer History</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Direct deposits to your dedicated account</p>
               </div>
 
-              {/* Search Bar */}
-              {transactions.length > 0 && (
-                <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2">
-                  <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search transfers…"
-                    className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 focus:outline-none"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="text-xs text-gray-400 hover:text-gray-600"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 self-start sm:self-auto bg-gray-100/80 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setTxnFilter('all')}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                    txnFilter === 'all'
+                      ? 'bg-white text-gray-900 shadow-xs font-semibold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  All ({transactions.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTxnFilter('verified')}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                    txnFilter === 'verified'
+                      ? 'bg-white text-gray-900 shadow-xs font-semibold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Settled ({transactions.filter((t) => t.status === 'completed').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTxnFilter('pending')}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                    txnFilter === 'pending'
+                      ? 'bg-white text-amber-700 shadow-xs font-semibold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Pending ({transactions.filter((t) => t.status === 'pending').length})
+                </button>
+              </div>
+            </div>
 
-              {/* List Rows */}
-              <div className="divide-y divide-gray-100">
-                {loadingTransactions ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    <p className="text-xs text-gray-500">Loading transfers…</p>
-                  </div>
-                ) : filteredTransactions.length === 0 ? (
-                  <div className="flex flex-col items-center py-14 text-center px-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
-                      <ArrowDownLeft className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {searchQuery ? 'No matching transfers' : 'No transfers yet'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                      {searchQuery
-                        ? 'Try different keywords.'
-                        : 'Deposits to your dedicated virtual account will appear here instantly.'}
-                    </p>
-                  </div>
-                ) : (
-                  filteredTransactions.map((txn) => (
-                    <div
-                      key={txn.id}
-                      onClick={() =>
-                        setSelectedTxn({
-                          id: txn.id,
-                          type: 'dva_inflow',
-                          amount: txn.amount,
-                          status: txn.status,
-                          date: txn.date,
-                          referenceId: txn.referenceId,
-                          description: txn.description,
-                          customerHint: txn.customerHint,
-                          needsVerification: txn.needsVerification,
-                          businessId: biz?.id || '',
-                          virtualAccountNumber: dva?.accountNumber,
-                          virtualAccountBank: dva?.bankName,
-                        })
-                      }
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
-                        <ArrowDownLeft className="h-4 w-4 stroke-[2]" />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-semibold text-gray-900 truncate group-hover:text-emerald-700 transition-colors">
-                            {txn.description}
-                          </p>
-                          {txn.needsVerification && (
-                            <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.2 text-[10px] font-medium text-amber-700">
-                              Review
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                          <span>{formatDate(txn.date)}</span>
-                          {txn.referenceId && (
-                            <>
-                              <span>·</span>
-                              <span className="font-mono text-[10px] text-gray-400 truncate max-w-[130px]">
-                                {txn.referenceId}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold tabular-nums font-mono text-emerald-600">
-                          +{formatNaira(txn.amount)}
-                        </p>
-                        <div className="mt-0.5 flex items-center justify-end gap-1">
-                          {txn.status === 'completed' ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
-                              <CheckCheck className="h-3 w-3" /> Settled
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-medium">
-                              <Clock className="h-3 w-3" /> Pending
-                            </span>
-                          )}
-                          <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-colors ml-1" />
-                        </div>
-                      </div>
-                    </div>
-                  ))
+            {/* Search Bar */}
+            {transactions.length > 0 && (
+              <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2">
+                <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search transfers…"
+                  className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 focus:outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    Clear
+                  </button>
                 )}
               </div>
+            )}
+
+            {/* List Rows */}
+            <div className="divide-y divide-gray-100">
+              {loadingTransactions ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  <p className="text-xs text-gray-500">Loading transfers…</p>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="flex flex-col items-center py-14 text-center px-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-3">
+                    <ArrowDownLeft className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {searchQuery ? 'No matching transfers' : 'No transfers yet'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                    {searchQuery
+                      ? 'Try different keywords.'
+                      : 'Deposits to your dedicated virtual account will appear here instantly.'}
+                  </p>
+                </div>
+              ) : (
+                filteredTransactions.map((txn) => (
+                  <div
+                    key={txn.id}
+                    onClick={() =>
+                      setSelectedTxn({
+                        id: txn.id,
+                        type: 'dva_inflow',
+                        amount: txn.amount,
+                        status: txn.status,
+                        date: txn.date,
+                        referenceId: txn.referenceId,
+                        description: txn.description,
+                        customerHint: txn.customerHint,
+                        needsVerification: txn.needsVerification,
+                        businessId: biz?.id || '',
+                        virtualAccountNumber: dva?.accountNumber,
+                        virtualAccountBank: dva?.bankName,
+                      })
+                    }
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/80 transition-colors cursor-pointer group"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+                      <ArrowDownLeft className="h-4 w-4 stroke-[2]" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-semibold text-gray-900 truncate group-hover:text-emerald-700 transition-colors">
+                          {txn.description}
+                        </p>
+                        {txn.needsVerification && (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200/60 px-1.5 py-0.2 text-[10px] font-medium text-amber-700">
+                            Review
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
+                        <span>{formatDate(txn.date)}</span>
+                        {txn.referenceId && (
+                          <>
+                            <span>·</span>
+                            <span className="font-mono text-[10px] text-gray-400 truncate max-w-[130px]">
+                              {txn.referenceId}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold tabular-nums font-mono text-emerald-600">
+                        +{formatNaira(txn.amount)}
+                      </p>
+                      <div className="mt-0.5 flex items-center justify-end gap-1">
+                        {txn.status === 'completed' ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+                            <CheckCheck className="h-3 w-3" /> Settled
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-medium">
+                            <Clock className="h-3 w-3" /> Pending
+                          </span>
+                        )}
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-colors ml-1" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Right Column (1/3): Settlement & Identity Rail */}
@@ -1037,14 +1049,14 @@ export default function Account() {
                 </div>
                 <h3 className="text-sm font-bold text-gray-900">Payout Bank</h3>
               </div>
-              {settlementConnected && !showSettlementForm && (
+              {biz.settlementAccountNumber && !showSettlementForm && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                   <CheckCircle2 className="h-3 w-3" /> Linked
                 </span>
               )}
             </div>
 
-            {settlementConnected && !showSettlementForm ? (
+            {biz.settlementAccountNumber && !showSettlementForm ? (
               <div className="space-y-4">
                 {/* Bank Details Pill */}
                 <div className="rounded-xl bg-gray-50 border border-gray-200/70 p-3.5">
@@ -1113,7 +1125,7 @@ export default function Account() {
                   </div>
                 </div>
               </div>
-            ) : !settlementConnected && !showSettlementForm ? (
+            ) : !biz.settlementAccountNumber && !showSettlementForm ? (
               <div className="text-center py-4">
                 <p className="text-xs text-gray-500 mb-3">
                   Connect your Nigerian bank account to receive automatic transfers.
@@ -1127,7 +1139,7 @@ export default function Account() {
             )}
           </div>
 
-          {/* Business & Identity Verification Status */}
+          {/* Compliance & Verification Status */}
           <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs p-5 sm:p-6">
             <h3 className="text-sm font-bold text-gray-900 mb-3">Compliance &amp; Tier</h3>
             <div className="space-y-2.5 text-xs">
@@ -1150,6 +1162,53 @@ export default function Account() {
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 animate-fade-in pb-16">
+      {/* ── Page Header ────────────────────────────────────────── */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-gray-900">Wallet &amp; Inflows</h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Dedicated account for <span className="font-semibold text-gray-800">{biz.businessName}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => { fetchDVA(); fetchTransactions(); }}
+            isLoading={loading || loadingTransactions}
+            className="text-xs"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+          {isActive && (
+            <Link to="/transactions">
+              <Button size="sm" variant="secondary" className="text-xs">
+                Transaction History <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* ── Mutually Exclusive State Rendering ────────────────── */}
+      {loading && !dva ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3 rounded-2xl border border-gray-200/80 bg-white p-12 shadow-xs">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-xs text-gray-500">Loading your account details…</p>
+        </div>
+      ) : isActive ? (
+        renderActiveWalletHub()
+      ) : isVerifying ? (
+        renderVerificationScreen()
+      ) : (
+        renderOnboardingWizard()
+      )}
+
       {/* ── Modals ────────────────────────────────────────────── */}
 
       {/* ── Scan to Pay QR Modal ─────────────────────────────── */}
@@ -1235,12 +1294,12 @@ export default function Account() {
         <PinModal
           isOpen={showAutoSplitPinModal}
           onClose={() => setShowAutoSplitPinModal(false)}
-          onSuccess={async (pin: string) => {
+          onSuccess={async (stepUpToken: string) => {
             setShowAutoSplitPinModal(false);
             if (biz?.id) {
               await toggleAutoSplit(biz.id, {
                 enabled: !settlementPreview?.autoSplit.enabled,
-                pin,
+                stepUpToken,
               });
             }
           }}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Search, Download, Landmark, Receipt, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useLedgerStore } from '@/stores/ledger.store.ts';
@@ -28,13 +28,19 @@ export default function Transactions() {
     loading,
     setScope,
     fetchLedger,
+    pagination,
   } = useLedgerStore();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // Read search query from store
+  const storeSearchQuery = useLedgerStore((s) => s.searchQuery);
+  
+  // Local input state for immediate updates
+  const [inputValue, setInputValue] = useState(storeSearchQuery);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  
+  // Debounce timer for search
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (biz?.id) {
@@ -42,19 +48,19 @@ export default function Transactions() {
     }
   }, [biz?.id, fetchLedger]);
 
-  // Filter and paginate
-  const filtered = items.filter((item) =>
-    searchQuery.trim()
-      ? item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.reference?.toLowerCase().includes(searchQuery.toLowerCase())
-      : true
-  );
+  // Sync local input with store search query
+  useEffect(() => {
+    setInputValue(storeSearchQuery);
+  }, [storeSearchQuery]);
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginatedItems = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   // The ledger's `sourceType` enum differs from the detail panel's
   // `TransactionDetailType` enum — map ledger rows onto the panel type so the
@@ -164,15 +170,9 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* 4-Card Summary Strip */}
+      {/* 3-Card Summary Strip */}
       {scope === 'dva_bank' ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-gray-200/70 bg-gradient-to-b from-gray-50/50 to-white p-4 shadow-xs">
-            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Opening Balance</p>
-            <p className="text-lg font-bold text-gray-800 font-mono mt-1">{formatNaira(summary.openingBalance)}</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">Balance brought forward</p>
-          </div>
-
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
             <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Money Received (+)</p>
             <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
@@ -196,36 +196,48 @@ export default function Transactions() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className={`grid gap-3 ${summary.breakdown ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1'}`}>
+          {/* Total Revenue — Primary Card (Always Shown) */}
           <div className="rounded-xl border border-purple-100 bg-gradient-to-b from-purple-50/40 to-white p-4 shadow-xs">
             <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Total Business Revenue</p>
             <p className="text-lg font-bold text-purple-900 font-mono mt-1">{formatNaira(summary.totalCredits)}</p>
             <p className="text-[10px] text-purple-600/70 mt-0.5">All sales channels combined</p>
           </div>
 
-          <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
-            <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Digital Transfers</p>
-            <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
-              {formatNaira(paginatedItems.filter((it) => it.sourceType === 'dva_transfer').reduce((s, it) => s + it.amount, 0))}
-            </p>
-            <p className="text-[10px] text-emerald-600/70 mt-0.5">Auto-captured bank transfers</p>
-          </div>
+          {/* Breakdown Cards — Only when backend provides data */}
+          {summary.breakdown && (
+            <>
+              {/* DVA Auto-Capture */}
+              <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
+                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Digital Transfers</p>
+                <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
+                  {formatNaira(summary.breakdown.creditsBySource.dva_transfer)}
+                </p>
+                <p className="text-[10px] text-emerald-600/70 mt-0.5">Auto-captured bank transfers</p>
+              </div>
 
-          <div className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50/40 to-white p-4 shadow-xs">
-            <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Cash &amp; POS</p>
-            <p className="text-lg font-bold text-blue-600 font-mono mt-1">
-              {formatNaira(paginatedItems.filter((it) => it.sourceType === 'manual_sale' || it.sourceType === 'pos').reduce((s, it) => s + it.amount, 0))}
-            </p>
-            <p className="text-[10px] text-blue-600/70 mt-0.5">Physical payments</p>
-          </div>
+              {/* Direct Sales (Cash, POS, Paycode, Online, Manual) */}
+              <div className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50/40 to-white p-4 shadow-xs">
+                <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Direct Sales</p>
+                <p className="text-lg font-bold text-blue-600 font-mono mt-1">
+                  {formatNaira(
+                    summary.breakdown.creditsBySource.manual_sale + 
+                    summary.breakdown.creditsBySource.pos
+                  )}
+                </p>
+                <p className="text-[10px] text-blue-600/70 mt-0.5">POS, cash, paycode & online</p>
+              </div>
 
-          <div className="rounded-xl border border-orange-100 bg-gradient-to-b from-orange-50/40 to-white p-4 shadow-xs">
-            <p className="text-[11px] font-semibold text-orange-700 uppercase tracking-wider">Invoices</p>
-            <p className="text-lg font-bold text-orange-600 font-mono mt-1">
-              {formatNaira(paginatedItems.filter((it) => it.sourceType === 'invoice_payment').reduce((s, it) => s + it.amount, 0))}
-            </p>
-            <p className="text-[10px] text-orange-600/70 mt-0.5">Invoice collections</p>
-          </div>
+              {/* Invoice Collections */}
+              <div className="rounded-xl border border-orange-100 bg-gradient-to-b from-orange-50/40 to-white p-4 shadow-xs">
+                <p className="text-[11px] font-semibold text-orange-700 uppercase tracking-wider">Invoices</p>
+                <p className="text-lg font-bold text-orange-600 font-mono mt-1">
+                  {formatNaira(summary.breakdown.creditsBySource.invoice_payment)}
+                </p>
+                <p className="text-[10px] text-orange-600/70 mt-0.5">Invoice collections</p>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -235,10 +247,18 @@ export default function Transactions() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            value={searchQuery}
+            value={inputValue}
             onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
+              const query = e.target.value;
+              setInputValue(query); // Update input immediately
+              
+              // Debounce API call
+              if (debounceTimer.current) clearTimeout(debounceTimer.current);
+              debounceTimer.current = setTimeout(() => {
+                if (biz?.id) {
+                  useLedgerStore.getState().setSearchQuery(biz.id, query);
+                }
+              }, 300);
             }}
             placeholder="Search by description or reference..."
             className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
@@ -265,14 +285,14 @@ export default function Transactions() {
                     Loading transactions...
                   </td>
                 </tr>
-              ) : paginatedItems.length === 0 ? (
+              ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-12 text-center text-sm text-gray-500">
-                    {searchQuery ? 'No transactions match your search' : 'No transactions yet'}
+                    {storeSearchQuery ? 'No transactions match your search' : 'No transactions yet'}
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((item) => (
+                items.map((item) => (
                   <tr
                     key={item.id}
                     onClick={() => handleTxnClick(item)}
@@ -294,22 +314,22 @@ export default function Transactions() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length}
+              Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
             </p>
             <div className="flex gap-1">
               <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
+                onClick={() => biz?.id && useLedgerStore.getState().setPage(biz.id, pagination.page - 1)}
+                disabled={!pagination.hasPrev || loading}
                 className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                onClick={() => biz?.id && useLedgerStore.getState().setPage(biz.id, pagination.page + 1)}
+                disabled={!pagination.hasNext || loading}
                 className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="h-4 w-4" />

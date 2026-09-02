@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Users, Building2, FileText, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, Building2, FileText, TrendingUp, Wallet } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import type { AdminDashboardStats } from '@/types/index.ts';
 import api from '@/lib/axios.ts';
@@ -61,6 +62,36 @@ export default function AdminDashboard() {
           </Card>
         ))}
       </div>
+
+      {stats.withdrawalSla && stats.withdrawalSla.pendingCount > 0 && (
+        <Link
+          to="/admin/settlement/withdrawals?status=pending"
+          className="block transition-transform hover:-translate-y-0.5"
+        >
+          <Card className={`p-5 border-l-4 ${stats.withdrawalSla.breachedCount > 0 ? 'border-l-amber-500 bg-amber-50/40' : 'border-l-primary-500'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${stats.withdrawalSla.breachedCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-primary-100 text-primary-800'}`}>
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Withdrawals Awaiting Approval: {stats.withdrawalSla.pendingCount}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {stats.withdrawalSla.breachedCount > 0
+                      ? `${stats.withdrawalSla.breachedCount} request(s) pending > 24 hours (oldest: ${stats.withdrawalSla.oldestPendingHours}h)`
+                      : 'All requests within 24h SLA target'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-semibold text-primary-600 hover:underline">
+                Review queue →
+              </span>
+            </div>
+          </Card>
+        </Link>
+      )}
 
       <Card className="p-0">
         <div className="border-b border-gray-100 px-6 py-5">

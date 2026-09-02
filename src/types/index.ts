@@ -310,6 +310,11 @@ export interface AdminDashboardStats {
   totalTaxReports: number;
   totalRevenueProcessed: number;
   recentSignups: { id: string; email: string; createdAt: string }[];
+  withdrawalSla?: {
+    pendingCount: number;
+    breachedCount: number;
+    oldestPendingHours: number;
+  };
 }
 
 export interface AdminUser {
@@ -543,6 +548,19 @@ export interface UnifiedLedgerSummary {
   totalCredits: number;
   totalDebits: number;
   closingBalance: number;
+  breakdown?: {
+    creditsBySource: {
+      dva_transfer: number;
+      manual_sale: number;
+      pos: number;
+      invoice_payment: number;
+      other: number;
+    };
+    debitsByType?: {
+      tax_payment: number;
+      refund: number;
+    };
+  };
 }
 
 export interface UnifiedLedgerResponse {

@@ -25,6 +25,7 @@ interface WithdrawalRequest {
   fee: number;
   netAmount: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  isStale?: boolean;
   destinationBankName: string;
   destinationAccountNum: string;
   destinationAccountName: string;
@@ -51,6 +52,11 @@ export default function AdminWithdrawals() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'failed'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
+  const [slaStats, setSlaStats] = useState<{
+    pendingCount: number;
+    breachedCount: number;
+    oldestPendingHours: number;
+  } | null>(null);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 20,
@@ -83,9 +89,15 @@ export default function AdminWithdrawals() {
         params.append('search', searchQuery.trim());
       }
 
-      const res = await api.get(`/admin/settlement/withdrawals?${params.toString()}`);
+      const [res, dashRes] = await Promise.all([
+        api.get(`/admin/settlement/withdrawals?${params.toString()}`),
+        api.get('/admin/dashboard').catch(() => null),
+      ]);
       setWithdrawals(res.data.data || []);
       setPagination(res.data.pagination);
+      if (dashRes?.data?.data?.withdrawalSla) {
+        setSlaStats(dashRes.data.data.withdrawalSla);
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.error?.message || 'Failed to load withdrawal requests');
       setWithdrawals([]); // Ensure withdrawals is always an array even on error
@@ -97,6 +109,19 @@ export default function AdminWithdrawals() {
   useEffect(() => {
     fetchWithdrawals();
   }, [fetchWithdrawals]);
+
+  const handleRequery = async (withdrawal: WithdrawalRequest) => {
+    setProcessing(true);
+    try {
+      const res = await api.post(`/admin/settlement/withdrawals/${withdrawal.id}/requery`);
+      toast.success(res.data?.message || 'Status updated from Paystack');
+      fetchWithdrawals();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to re-query Paystack');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handleApprove = async () => {
     if (!selectedWithdrawal) return;
@@ -180,8 +205,17 @@ export default function AdminWithdrawals() {
     return configs[status as keyof typeof configs] || configs.pending;
   };
 
-  const StatusBadge = ({ status }: { status: string }) => {
-    const config = getStatusConfig(status);
+  const StatusBadge = ({ withdrawal }: { withdrawal: WithdrawalRequest }) => {
+    if (withdrawal.status === 'processing' && withdrawal.isStale) {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-100 text-amber-800 border-amber-200">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+          Stale — re-query pending
+        </span>
+      );
+    }
+
+    const config = getStatusConfig(withdrawal.status);
     const Icon = config.icon;
     
     const colorClasses = {
@@ -213,6 +247,16 @@ export default function AdminWithdrawals() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-16">
+      {/* SLA Banner */}
+      {slaStats && slaStats.breachedCount > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-900 font-medium">
+            <span className="font-bold">{slaStats.breachedCount}</span> withdrawal request(s) have been pending for more than 24 hours (oldest: {slaStats.oldestPendingHours}h).
+          </p>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -367,7 +411,7 @@ export default function AdminWithdrawals() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={withdrawal.status} />
+                        <StatusBadge withdrawal={withdrawal} />
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-xs text-gray-600">
@@ -396,6 +440,18 @@ export default function AdminWithdrawals() {
                               Reject
                             </Button>
                           </div>
+                        )}
+                        {withdrawal.status === 'processing' && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={processing}
+                            onClick={() => handleRequery(withdrawal)}
+                            className="text-primary-600 hover:bg-primary-50"
+                          >
+                            <Loader2 className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />
+                            Re-query Paystack
+                          </Button>
                         )}
                         {withdrawal.status === 'failed' && withdrawal.failureReason && (
                           <button

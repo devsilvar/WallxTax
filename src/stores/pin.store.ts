@@ -34,7 +34,7 @@ interface PinState {
 
   fetchStatus: () => Promise<void>;
   setupPin: (pin: string, password: string) => Promise<boolean>;
-  verifyPin: (pin: string) => Promise<{ valid: boolean }>;
+  verifyPin: (pin: string) => Promise<{ valid: boolean; stepUpToken?: string }>;
   changePin: (newPin: string, currentPin?: string, password?: string) => Promise<boolean>;
   fetchSessions: () => Promise<void>;
   revokeSession: (sessionId: string) => Promise<boolean>;
@@ -54,9 +54,8 @@ export const usePinStore = create<PinState>((set, get) => ({
 
   fetchStatus: async () => {
     try {
-      set({ loading: true });
-      const res = await api.get<{ success: boolean; data: PinStatus }>('/auth/pin/status');
-      if (res.data.success && res.data.data) {
+      const res = await api.get<{ success: boolean; data: any }>('/auth/pin/status');
+      if (res.data.success) {
         set({
           hasPin: res.data.data.hasPin,
           isLocked: res.data.data.isLocked,
@@ -66,17 +65,18 @@ export const usePinStore = create<PinState>((set, get) => ({
           pinSetAt: res.data.data.pinSetAt,
         });
       }
-    } catch {
-      // Non-blocking
-    } finally {
-      set({ loading: false });
+    } catch (err) {
+      console.error('Failed to fetch PIN status:', err);
     }
   },
 
   setupPin: async (pin: string, password: string) => {
+    set({ loading: true });
     try {
-      set({ loading: true });
-      const res = await api.post('/auth/pin/setup', { pin, password });
+      const res = await api.post<{ success: boolean; message: string }>('/auth/pin/setup', {
+        pin,
+        password,
+      });
       toast.success(res.data.message || 'Transaction PIN configured successfully');
       set({ hasPin: true, remainingAttempts: 5, isLocked: false, lockedUntil: undefined, attemptsResetAt: undefined });
       return true;
@@ -90,7 +90,7 @@ export const usePinStore = create<PinState>((set, get) => ({
 
   verifyPin: async (pin: string) => {
     try {
-      const res = await api.post<{ success: boolean; data: { valid: boolean } }>(
+      const res = await api.post<{ success: boolean; data: { valid: boolean; stepUpToken?: string } }>(
         '/auth/pin/verify',
         { pin }
       );
@@ -101,7 +101,7 @@ export const usePinStore = create<PinState>((set, get) => ({
           lockedUntil: undefined,
           attemptsResetAt: undefined,
         });
-        return { valid: true };
+        return { valid: true, stepUpToken: res.data.data.stepUpToken };
       }
       return { valid: false };
     } catch (err: any) {

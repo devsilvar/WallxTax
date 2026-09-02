@@ -6,7 +6,7 @@ import { usePinStore } from '@/stores/pin.store';
 interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (pin: string) => void;
+  onSuccess: (stepUpToken: string) => void;
   title?: string;
   subtitle?: string;
   description?: string;
@@ -16,8 +16,8 @@ export default function PinModal({
   isOpen,
   onClose,
   onSuccess,
-  title = 'Authorize Financial Transaction',
-  subtitle = 'Enter your 4-digit Transaction PIN to confirm this action.',
+  title = 'Authorize Action',
+  subtitle = 'Enter your 4-digit transaction PIN to continue.',
   description,
 }: PinModalProps) {
   const [digits, setDigits] = useState(['', '', '', '']);
@@ -39,28 +39,32 @@ export default function PinModal({
   useEffect(() => {
     if (isOpen) {
       setDigits(['', '', '', '']);
+      setShowPin(false);
       fetchStatus();
       setTimeout(() => {
         inputRefs[0].current?.focus();
-      }, 100);
+      }, 150);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleDigitChange = (index: number, val: string) => {
-    const numeric = val.replace(/\D/g, '').slice(-1);
+    const digit = val.replace(/\D/g, '').slice(-1);
     const newDigits = [...digits];
-    newDigits[index] = numeric;
+    newDigits[index] = digit;
     setDigits(newDigits);
 
-    if (numeric && index < 3) {
+    if (digit && index < 3) {
       inputRefs[index + 1].current?.focus();
     }
 
-    // If 4 digits entered, auto-verify
-    if (numeric && index === 3 && newDigits.every((d) => d.length === 1)) {
-      submitPin(newDigits.join(''));
+    // Auto submit on 4th digit
+    if (digit && index === 3) {
+      const fullPin = newDigits.join('');
+      if (fullPin.length === 4) {
+        submitPin(fullPin);
+      }
     }
   };
 
@@ -88,8 +92,8 @@ export default function PinModal({
     setVerifying(true);
     try {
       const res = await verifyPin(pin);
-      if (res.valid) {
-        onSuccess(pin);
+      if (res.valid && res.stepUpToken) {
+        onSuccess(res.stepUpToken);
         onClose();
       } else {
         setDigits(['', '', '', '']);
@@ -102,119 +106,112 @@ export default function PinModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-gray-100 overflow-hidden animate-scale-in"
+        className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 p-6 sm:p-7 overflow-hidden animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white">
-          <div>
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-indigo-400" />
-              <h2 className="text-sm font-bold">{title}</h2>
-            </div>
-            <p className="text-[11px] text-gray-300 mt-1">{description ?? subtitle}</p>
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={verifying}
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+          title="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {/* Modal Header */}
+        <div className="text-center">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600 mb-3 shadow-xs">
+            <Lock className="h-5 w-5" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <h3 className="text-base font-bold text-gray-900 tracking-tight">{title}</h3>
+          <p className="text-xs text-gray-500 mt-1 max-w-[260px] mx-auto leading-relaxed">
+            {description ?? subtitle}
+          </p>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-5 text-center">
+        <div className="mt-6">
           {isLocked ? (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-4 space-y-2">
-              <AlertTriangle className="h-6 w-6 text-red-600 mx-auto" />
-              <h3 className="text-xs font-bold text-red-900">PIN Temporarily Locked</h3>
-              <p className="text-[11px] text-red-700">
-                Too many failed attempts. For your security, this action is locked for 15 minutes.
+            <div className="rounded-xl bg-red-50 border border-red-100 p-4 text-center space-y-1.5">
+              <AlertTriangle className="h-6 w-6 text-red-500 mx-auto" />
+              <h4 className="text-xs font-bold text-red-900">PIN Temporarily Locked</h4>
+              <p className="text-[11px] text-red-600 leading-relaxed">
+                Too many incorrect attempts. For your security, this action is locked for 15 minutes.
               </p>
             </div>
           ) : (
             <>
               {/* Digit Keypad Boxes */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">
-                  Enter 4-Digit PIN
-                </label>
-                <div className="flex justify-center items-center gap-3">
-                  {digits.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={inputRefs[i]}
-                      type={showPin ? 'text' : 'password'}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleDigitChange(i, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(i, e)}
-                      onPaste={handlePaste}
-                      disabled={verifying || isLocked}
-                      className="w-12 h-14 text-center text-xl font-bold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden transition-all text-gray-900 shadow-xs"
-                    />
-                  ))}
-                </div>
+              <div className="flex justify-center items-center gap-2.5 sm:gap-3">
+                {digits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={inputRefs[i]}
+                    type={showPin ? 'text' : 'password'}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleDigitChange(i, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(i, e)}
+                    onPaste={handlePaste}
+                    disabled={verifying || isLocked}
+                    className={`w-12 h-14 sm:w-13 sm:h-15 text-center text-2xl font-bold font-mono rounded-xl border-2 transition-all outline-none text-gray-900 ${
+                      digit
+                        ? 'border-primary-500 bg-primary-50/20 shadow-xs'
+                        : 'border-gray-200 bg-gray-50/70 hover:border-gray-300'
+                    } focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10`}
+                  />
+                ))}
               </div>
 
-              {/* Show/Hide PIN toggle */}
-              <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+              {/* Show/Hide PIN toggle & Remaining attempts */}
+              <div className="flex items-center justify-between text-xs text-gray-500 mt-3 px-1">
                 <button
                   type="button"
                   onClick={() => setShowPin(!showPin)}
-                  className="flex items-center gap-1.5 hover:text-gray-900 cursor-pointer"
+                  className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer select-none text-xs font-medium"
                 >
                   {showPin ? (
                     <>
-                      <EyeOff className="h-3.5 w-3.5" /> <span>Hide PIN</span>
+                      <EyeOff className="h-3.5 w-3.5" /> <span>Hide</span>
                     </>
                   ) : (
                     <>
-                      <Eye className="h-3.5 w-3.5" /> <span>Show PIN</span>
+                      <Eye className="h-3.5 w-3.5" /> <span>Show</span>
                     </>
                   )}
                 </button>
 
                 {remainingAttempts < 5 && remainingAttempts > 0 && (
-                  <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" /> {remainingAttempts} attempt(s) left
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/70">
+                    <AlertTriangle className="h-3 w-3" /> {remainingAttempts} left
                   </span>
                 )}
               </div>
 
-              {/* Trust Badge */}
-              <div className="rounded-lg bg-slate-50 border border-slate-100 p-2.5 flex items-center justify-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-indigo-600 shrink-0" />
-                <p className="text-[11px] text-slate-600">
-                  Protected with CBN-grade step-up verification.
-                </p>
+              {/* Submit Button */}
+              <Button
+                onClick={() => submitPin()}
+                isLoading={verifying}
+                disabled={digits.some((d) => !d) || verifying}
+                className="w-full mt-5 rounded-xl py-2.5 text-sm font-semibold shadow-xs"
+              >
+                Confirm PIN
+              </Button>
+
+              {/* Security Assurance */}
+              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>Protected by end-to-end security</span>
               </div>
             </>
-          )}
-        </div>
-
-        {/* Action Footer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">
-            Cancel
-          </Button>
-          {!isLocked && (
-            <Button
-              size="sm"
-              onClick={() => submitPin()}
-              isLoading={verifying}
-              disabled={digits.some((d) => !d)}
-              className="text-xs"
-            >
-              Verify PIN
-            </Button>
           )}
         </div>
       </div>
