@@ -24,6 +24,8 @@ const CATEGORIES = [
   'fuel',
   'logistics',
   'marketing',
+  'gift',
+  'subscription',
   'other',
 ] as const;
 
@@ -57,6 +59,7 @@ export default function AddExpenseModal({
   // Form state (moved from Expenses.tsx)
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<string>('other');
+  const [categoryDetail, setCategoryDetail] = useState('');
   const [description, setDescription] = useState('');
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
   const [isDeductible, setIsDeductible] = useState(true);
@@ -70,12 +73,14 @@ export default function AddExpenseModal({
     if (editExpense) {
       setAmount(String(Number(editExpense.amount)));
       setCategory(editExpense.category);
+      setCategoryDetail(editExpense.categoryDetail || '');
       setDescription(editExpense.description || '');
       setExpenseDate(new Date(editExpense.expenseDate).toISOString().slice(0, 10));
       setIsDeductible(editExpense.isDeductible ?? true);
     } else {
       setAmount('');
       setCategory('other');
+      setCategoryDetail('');
       setDescription('');
       setExpenseDate(new Date().toISOString().slice(0, 10));
       setIsDeductible(true);
@@ -86,7 +91,15 @@ export default function AddExpenseModal({
     e.preventDefault();
     setSaving(true);
     const basePath = `/businesses/${businessId}/expenses`;
-    const body = { amount: Number(amount), category, description, expenseDate, isDeductible };
+    const body = {
+      amount: Number(amount),
+      category,
+      // Only carry the detail for 'other'; switching away clears the stale value.
+      categoryDetail: category === 'other' ? categoryDetail.trim() : null,
+      description,
+      expenseDate,
+      isDeductible,
+    };
     try {
       if (editExpense) {
         await api.put(`${basePath}/${editExpense.id}`, body);
@@ -156,7 +169,27 @@ export default function AddExpenseModal({
               </option>
             ))}
           </select>
+          {category === 'gift' && (
+            <p className='text-xs text-amber-600'>
+              Gifts are usually not tax-deductible — consider unchecking &quot;Tax deductible&quot; below if this is a personal or goodwill gift.
+            </p>
+          )}
         </div>
+        {category === 'other' && (
+          <div className='sm:col-span-2'>
+            <Input
+              label='What is this expense? (required for "Other")'
+              placeholder='e.g. Bank charges, office repairs, cleaning supplies'
+              value={categoryDetail}
+              onChange={(e) => setCategoryDetail(e.target.value)}
+              maxLength={200}
+              required
+            />
+            <p className='mt-0.5 text-xs text-gray-500'>
+              Help us understand what &quot;Other&quot; means so your records stay accurate for tax filing.
+            </p>
+          </div>
+        )}
         <Input
           label='Description'
           value={description}

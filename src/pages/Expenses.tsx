@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import type { Expense, Pagination } from '@/types/index.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
-const CATEGORIES = ['rent', 'inventory', 'salary', 'utility', 'fuel', 'logistics', 'marketing', 'other'] as const;
+const CATEGORIES = ['rent', 'inventory', 'salary', 'utility', 'fuel', 'logistics', 'marketing', 'gift', 'subscription', 'other'] as const;
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -59,6 +59,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   fuel: 'bg-orange-500',
   logistics: 'bg-cyan-500',
   marketing: 'bg-pink-500',
+  gift: 'bg-rose-500',
+  subscription: 'bg-indigo-500',
   other: 'bg-gray-400',
 };
 
@@ -337,7 +339,12 @@ export default function Expenses() {
                 <tr key={exp.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-600">{formatDate(exp.expenseDate)}</td>
                   <td className="px-4 py-3 text-gray-700">{exp.description || '—'}</td>
-                  <td className="px-4 py-3 capitalize text-gray-600">{exp.category}</td>
+                  <td className="px-4 py-3 capitalize text-gray-600">
+                    {exp.category}
+                    {exp.categoryDetail && (
+                      <div className="text-xs font-normal normal-case text-gray-400">{exp.categoryDetail}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">
                     <div className="flex items-center justify-end gap-2">
                       <span>{formatNaira(Number(exp.amount))}</span>
@@ -371,6 +378,9 @@ export default function Expenses() {
                     <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium capitalize text-gray-600">{exp.category}</span>
                   </div>
                   <p className="mt-1 text-sm text-gray-600 truncate">{exp.description || '—'}</p>
+                  {exp.categoryDetail && (
+                    <p className="mt-0.5 text-xs text-gray-400 truncate">{exp.categoryDetail}</p>
+                  )}
                   <p className="mt-1 text-xs text-gray-400">{formatDate(exp.expenseDate)}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

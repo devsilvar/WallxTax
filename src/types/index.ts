@@ -66,6 +66,8 @@ export interface Expense {
   businessId: string;
   category: string;
   description?: string;
+  /** Free-text detail captured when category = 'other' */
+  categoryDetail?: string | null;
   amount: number;
   expenseDate: string;
   receiptUrl?: string;
