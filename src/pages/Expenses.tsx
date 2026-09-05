@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Wallet,
@@ -10,6 +11,7 @@ import {
   AlertTriangle,
   Filter,
   XCircle,
+  CalendarDays,
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -22,7 +24,12 @@ import toast from 'react-hot-toast';
 import type { Expense, Pagination } from '@/types/index.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
-const CATEGORIES = ['rent', 'inventory', 'salary', 'utility', 'fuel', 'logistics', 'marketing', 'gift', 'subscription', 'other'] as const;
+// Backend enum has 8 values — 'gift'/'subscription' were never valid categories
+const CATEGORIES = ['rent', 'inventory', 'salary', 'utility', 'fuel', 'logistics', 'marketing', 'other'] as const;
+
+// Fixed box order for the daily strip — every category always has a home,
+// even at ₦0 (dimmed), so the layout doesn't reshuffle through the day.
+const DAILY_CATEGORIES = CATEGORIES;
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -49,6 +56,26 @@ type ExpenseSummary = {
   alerts: { type: string; message: string }[];
 };
 
+// Shape returned by GET /expenses/daily (expense.service.getDailySummary)
+type DailyExpense = {
+  id: string;
+  amount: string;
+  category: string;
+  description: string | null;
+  expenseDate: string;
+  isDeductible: boolean;
+};
+
+type DailyExpenseSummary = {
+  date: string;
+  totalExpenses: number;
+  totalSales: number;
+  transactionCount: number;
+  categoryBreakdown: CategoryBreakdown[];
+  alerts: { type: string; message: string }[];
+  transactions: DailyExpense[];
+};
+
 // ─── Category color map ─────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -59,8 +86,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   fuel: 'bg-orange-500',
   logistics: 'bg-cyan-500',
   marketing: 'bg-pink-500',
-  gift: 'bg-rose-500',
-  subscription: 'bg-indigo-500',
   other: 'bg-gray-400',
 };
 
@@ -86,6 +111,12 @@ export default function Expenses() {
   const [summaryYear, setSummaryYear] = useState(now.getFullYear());
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // ─── Daily view state (default tab) ─────────────────────────
+  const todayStr = now.toISOString().slice(0, 10);
+  const [dailyDate, setDailyDate] = useState(todayStr);
+  const [daily, setDaily] = useState<DailyExpenseSummary | null>(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/expenses` : '';
 
@@ -120,6 +151,38 @@ export default function Expenses() {
   useEffect(() => { fetchExpenses(); }, [biz, page, filterCat, filterStartDate, filterEndDate]);
   useEffect(() => { fetchSummary(); }, [biz, summaryMonth, summaryYear]);
 
+  // ─── Daily tab (default) — URL-backed like TaxReports ?tab=analytics ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: 'daily' | 'monthly' =
+    searchParams.get('tab') === 'monthly' ? 'monthly' : 'daily';
+  const setTab = (t: 'daily' | 'monthly') =>
+    setSearchParams(t === 'monthly' ? { tab: 'monthly' } : {}, { replace: true });
+
+  const fetchDaily = () => {
+    if (!biz) return;
+    setDailyLoading(true);
+    api
+      .get(`${basePath}/daily`, { params: { date: dailyDate } })
+      .then((r) => setDaily(r.data.data))
+      .catch(() => setDaily(null))
+      .finally(() => setDailyLoading(false));
+  };
+
+  useEffect(() => { fetchDaily(); }, [biz, dailyDate]);
+
+  // Keep "today's" boxes live while the daily tab is open (60s cadence).
+  useEffect(() => {
+    if (tab !== 'daily' || dailyDate !== todayStr || !biz) return;
+    const t = setInterval(fetchDaily, 60_000);
+    return () => clearInterval(t);
+  }, [tab, dailyDate, biz]);
+
+  const shiftDay = (delta: number) => {
+    const d = new Date(`${dailyDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + delta);
+    setDailyDate(d.toISOString().slice(0, 10));
+  };
+
   const openEdit = (exp: Expense) => {
     setEditExpense(exp);
     setShowAddModal(true);
@@ -130,6 +193,7 @@ export default function Expenses() {
     if (outcome === 'created') setPage(1);
     fetchExpenses();
     fetchSummary();
+    fetchDaily();
   };
 
   const handleDelete = async (id: string) => {
@@ -140,6 +204,7 @@ export default function Expenses() {
       invalidateDashboard('expense_deleted');
       fetchExpenses();
       fetchSummary();
+      fetchDaily();
     } catch (err: unknown) {
       const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
       toast.error(apiErr?.message || 'Failed');
@@ -169,6 +234,25 @@ export default function Expenses() {
         <Button onClick={() => { setEditExpense(null); setShowAddModal(true); }} className="self-start sm:self-auto"><Plus className="h-4 w-4" /> Add Expense</Button>
       </div>
 
+      {/* Daily / Monthly tabs — default is Daily (no URL param) */}
+      <div className="flex w-fit gap-1 rounded-lg bg-gray-100 p-1">
+        {(['daily', 'monthly'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+              tab === t
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'monthly' && (
+        <>
       {/* Monthly Summary */}
       <Card>
         <div className="flex items-center justify-between mb-4">
@@ -403,6 +487,169 @@ export default function Expenses() {
             <Button variant="secondary" size="sm" disabled={!pagination.hasNext} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
           </div>
         </div>
+      )}
+      </>
+      )}
+
+      {tab === 'daily' && (
+        <Card>
+          {/* Date navigation */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <CalendarDays className="h-5 w-5 text-warning-500" />
+              Daily Summary
+            </h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => shiftDay(-1)}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Previous day"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <input
+                type="date"
+                value={dailyDate}
+                max={todayStr}
+                onChange={(e) => setDailyDate(e.target.value)}
+                className="rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              <button
+                onClick={() => shiftDay(1)}
+                disabled={dailyDate >= todayStr}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Next day"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              {dailyDate !== todayStr && (
+                <button
+                  onClick={() => setDailyDate(todayStr)}
+                  className="ml-1 rounded-lg px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50"
+                >
+                  Today
+                </button>
+              )}
+            </div>
+          </div>
+
+          {dailyLoading && !daily ? (
+            <div className="py-6 text-center text-sm text-gray-400">Loading daily summary...</div>
+          ) : !daily ? (
+            <div className="py-6 text-center text-sm text-gray-400">Could not load daily summary.</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Boxes strip — Total Today + one box per category.
+                  ₦0 categories stay visible (dimmed) so the layout is stable. */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="col-span-2 rounded-lg bg-red-50 px-4 py-3 sm:col-span-3 lg:col-span-1">
+                  <p className="font-body text-xs uppercase tracking-wider text-red-600">
+                    Total {daily.date === todayStr ? 'Today' : ''}
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-red-700 sm:text-xl">
+                    {formatNaira(Number(daily.totalExpenses))}
+                  </p>
+                </div>
+                {DAILY_CATEGORIES.map((cat) => {
+                  const entry = daily.categoryBreakdown.find((cb) => cb.category === cat);
+                  const total = Number(entry?.total ?? 0);
+                  const count = entry?.count ?? 0;
+                  const dim = total === 0;
+                  return (
+                    <div
+                      key={cat}
+                      className={`rounded-lg bg-gray-50 px-4 py-3 ${dim ? 'opacity-60' : ''}`}
+                      title={`${cat.charAt(0).toUpperCase() + cat.slice(1)} — ${count} entr${count === 1 ? 'y' : 'ies'}`}
+                    >
+                      <p className="truncate font-body text-xs uppercase tracking-wider text-gray-500">
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </p>
+                      <p className={`mt-1 text-base font-bold sm:text-lg ${dim ? 'text-gray-400' : 'text-gray-800'}`}>
+                        {formatNaira(total)}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {count} entr{count === 1 ? 'y' : 'ies'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Daily intelligence alerts — same rule as monthly */}
+              {daily.alerts.length > 0 && (
+                <div className="space-y-2">
+                  {daily.alerts.map((alert, i) => (
+                    <div key={i} className="flex items-start gap-3 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-600" />
+                      <p className="font-body text-sm text-warning-700">{alert.message}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Register — the day's entries, any deductibility */}
+              {daily.transactions.length === 0 ? (
+                <div className="py-6 text-center">
+                  <Wallet className="mx-auto h-8 w-8 text-gray-300" />
+                  <p className="mt-2 font-body text-sm text-gray-400">No expenses recorded for this day.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-gray-200">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3">Tax</th>
+                        <th className="px-4 py-3 text-right">Amount</th>
+                        <th className="px-4 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {daily.transactions.map((t) => (
+                        <tr key={t.id} className="text-sm text-gray-700 hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-4 py-3">{formatDate(t.expenseDate)}</td>
+                          <td className="max-w-[200px] truncate px-4 py-3">{t.description || '—'}</td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <span className={`inline-flex h-2.5 w-2.5 rounded-full ${CATEGORY_COLORS[t.category] || 'bg-gray-400'}`} />
+                            <span className="ml-2 capitalize">{t.category}</span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {t.isDeductible ? (
+                              <span className="text-xs font-medium text-green-600">Deductible</span>
+                            ) : (
+                              <span className="text-xs text-gray-400">Exempt</span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{formatNaira(Number(t.amount))}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openEdit(t as unknown as Expense)}
+                                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                title="Edit Expense"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(t.id)}
+                                className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                title="Delete Expense"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
       )}
 
       {/* Add/Edit Expense modal — mounted once per page, state resets on open */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Wallet,
   Clock,
@@ -48,9 +49,13 @@ interface Pagination {
 }
 
 export default function AdminWithdrawals() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialStatus = (searchParams.get('status') as any) || 'pending';
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'failed'>('pending');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'failed'>(
+    ['all', 'pending', 'processing', 'completed', 'failed'].includes(initialStatus) ? initialStatus : 'pending'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [slaStats, setSlaStats] = useState<{
     pendingCount: number;
@@ -93,8 +98,11 @@ export default function AdminWithdrawals() {
         api.get(`/admin/settlement/withdrawals?${params.toString()}`),
         api.get('/admin/dashboard').catch(() => null),
       ]);
-      setWithdrawals(res.data.data || []);
-      setPagination(res.data.pagination);
+      const list = res.data?.data || res.data?.items || [];
+      setWithdrawals(Array.isArray(list) ? list : []);
+      if (res.data?.pagination) {
+        setPagination(res.data.pagination);
+      }
       if (dashRes?.data?.data?.withdrawalSla) {
         setSlaStats(dashRes.data.data.withdrawalSla);
       }
@@ -109,6 +117,13 @@ export default function AdminWithdrawals() {
   useEffect(() => {
     fetchWithdrawals();
   }, [fetchWithdrawals]);
+
+  useEffect(() => {
+    const urlStatus = searchParams.get('status') as any;
+    if (urlStatus && ['all', 'pending', 'processing', 'completed', 'failed'].includes(urlStatus)) {
+      setStatusFilter(urlStatus);
+    }
+  }, [searchParams]);
 
   const handleRequery = async (withdrawal: WithdrawalRequest) => {
     setProcessing(true);
@@ -269,7 +284,14 @@ export default function AdminWithdrawals() {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setStatusFilter('pending')}
+            onClick={() => {
+              setStatusFilter('pending');
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set('status', 'pending');
+                return next;
+              });
+            }}
             className="bg-amber-600 hover:bg-amber-700"
           >
             <Clock className="h-4 w-4" />
@@ -289,6 +311,12 @@ export default function AdminWithdrawals() {
                 type="button"
                 onClick={() => {
                   setStatusFilter(status);
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    if (status === 'all') next.delete('status');
+                    else next.set('status', status);
+                    return next;
+                  });
                   setPagination(prev => ({ ...prev, page: 1 }));
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
@@ -524,8 +552,20 @@ export default function AdminWithdrawals() {
                   <span className="text-sm font-semibold text-gray-900">{selectedWithdrawal.businessName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-gray-500">Amount</span>
+                  <span className="text-xs font-medium text-gray-500">Requested (Gross)</span>
                   <span className="text-base font-bold text-gray-900 font-mono">{formatNaira(selectedWithdrawal.amount)}</span>
+                </div>
+                {selectedWithdrawal.fee > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Paystack Transfer Fee</span>
+                    <span className="font-mono text-gray-700">−{formatNaira(selectedWithdrawal.fee)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-gray-200/80 pt-2">
+                  <span className="text-xs font-bold text-emerald-900">Transfer to Bank (Net)</span>
+                  <span className="text-base font-bold text-emerald-700 font-mono">
+                    {formatNaira(selectedWithdrawal.netAmount || selectedWithdrawal.amount)}
+                  </span>
                 </div>
                 <div className="border-t border-gray-200 pt-2">
                   <p className="text-xs font-medium text-gray-500">Destination</p>
@@ -539,7 +579,7 @@ export default function AdminWithdrawals() {
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-800">
-                  This will initiate a Paystack transfer. The funds will be sent immediately.
+                  This will initiate a Paystack transfer of <strong>{formatNaira(selectedWithdrawal.netAmount || selectedWithdrawal.amount)}</strong> to the destination bank. Paystack will debit <strong>{formatNaira(selectedWithdrawal.amount)}</strong> total from platform balance.
                 </p>
               </div>
 

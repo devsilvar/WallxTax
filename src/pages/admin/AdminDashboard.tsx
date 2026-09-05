@@ -65,7 +65,7 @@ export default function AdminDashboard() {
 
       {stats.withdrawalSla && stats.withdrawalSla.pendingCount > 0 && (
         <Link
-          to="/admin/settlement/withdrawals?status=pending"
+          to="/admin/withdrawals?status=pending"
           className="block transition-transform hover:-translate-y-0.5"
         >
           <Card className={`p-5 border-l-4 ${stats.withdrawalSla.breachedCount > 0 ? 'border-l-amber-500 bg-amber-50/40' : 'border-l-primary-500'}`}>

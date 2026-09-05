@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import type { PaystackFeeSchedule } from '@/lib/fees';
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -36,10 +37,25 @@ export interface SecurityInfo {
 export interface PayoutPreviewData {
   businessId: string;
   businessName: string;
+  walletBalance?: number;
   totalInflows: number;
+  totalSplitSettled: number;
   totalWithdrawn: number;
+  pendingWithdrawn?: number;
+  completedWithdrawn?: number;
   taxReserve: number;
   availableForWithdrawal: number;
+  /**
+   * What Paystack has already deducted from these inflows (1% per DVA
+   * transfer, capped at ₦300). Already subtracted from
+   * availableForWithdrawal — shown in the UI as "where the money went".
+   */
+  estimatedProcessingFees?: number;
+  /**
+   * Published Paystack fee schedule straight from the backend, so the UI can
+   * preview withdrawal fees without hardcoding a naira figure.
+   */
+  fees?: PaystackFeeSchedule;
   settlementAccount: SettlementAccountInfo;
   autoSplit: AutoSplitInfo;
   security: SecurityInfo;
@@ -77,7 +93,7 @@ interface SettlementStore {
   };
 
   fetchPreview: (businessId: string) => Promise<void>;
-  fetchHistory: (businessId: string, page?: number) => Promise<void>;
+  fetchHistory: (businessId: string, page?: number, status?: string, search?: string) => Promise<void>;
   withdrawBalance: (
     businessId: string,
     input: { amount: number; pin?: string; stepUpToken?: string; narration?: string }
@@ -123,11 +139,16 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     }
   },
 
-  fetchHistory: async (businessId: string, page = 1) => {
+  fetchHistory: async (businessId: string, page = 1, status?: string, search?: string) => {
     set({ loadingHistory: true });
     try {
       const res = await api.get(`/businesses/${businessId}/settlement/history`, {
-        params: { page, limit: 10 },
+        params: {
+          page,
+          limit: 10,
+          ...(status && status !== 'all' ? { status } : {}),
+          ...(search && search.trim() ? { search: search.trim() } : {}),
+        },
       });
       set({
         history: res.data.data,

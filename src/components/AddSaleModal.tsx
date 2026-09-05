@@ -14,6 +14,7 @@ import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
+import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { SalesTransaction } from '@/types/index.ts';
@@ -23,10 +24,13 @@ const SOURCES = [
   'paycode',
   'pos',
   'online_store',
-  'manual',
   'cash',
   'invoice',
 ] as const;
+
+// 'manual' is retired from the UI (migration 20260904120000_retire_manual_source
+// mapped old rows to 'cash') but the backend still accepts it — sourceOptions
+// below keeps any retired value selectable when editing a legacy row.
 
 type TransactionClassification = {
   id: string;
@@ -64,7 +68,7 @@ export default function AddSaleModal({
 
   // Form state (moved from Sales.tsx)
   const [amount, setAmount] = useState('');
-  const [source, setSource] = useState<string>('manual');
+  const [source, setSource] = useState<string>('cash');
   const [description, setDescription] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [transactionDate, setTransactionDate] = useState(
@@ -78,6 +82,13 @@ export default function AddSaleModal({
   const [loadingClassifications, setLoadingClassifications] = useState(false);
 
   const isEdit = editSale !== null;
+
+  // Editing a legacy 'manual' (or any retired) row: keep that value selectable
+  // so a save doesn't silently rewrite history — the backend still accepts it.
+  const sourceOptions: string[] =
+    isEdit && editSale && !(SOURCES as readonly string[]).includes(editSale.source)
+      ? [...SOURCES, editSale.source]
+      : [...SOURCES];
 
   // Reset-on-open + edit pre-fill (same pattern as SalesImportModal)
   useEffect(() => {
@@ -93,7 +104,7 @@ export default function AddSaleModal({
       setOriginalClassification(currentClass);
     } else {
       setAmount('');
-      setSource('manual');
+      setSource('cash');
       setDescription('');
       setCustomerName('');
       setTransactionDate(new Date().toISOString().slice(0, 10));
@@ -198,16 +209,16 @@ export default function AddSaleModal({
           required
         />
         <div className='space-y-1'>
-          <label htmlFor='sale-source' className='block text-sm font-medium text-gray-700'>Source</label>
+          <label htmlFor='sale-source' className='block text-sm font-medium text-gray-700'>Payment Type</label>
           <select
             id='sale-source'
             value={source}
             onChange={(e) => setSource(e.target.value)}
             className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
           >
-            {SOURCES.map((s) => (
+            {sourceOptions.map((s) => (
               <option key={s} value={s}>
-                {s.replace('_', ' ')}
+                {paymentTypeLabel(s)}
               </option>
             ))}
           </select>

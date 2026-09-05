@@ -30,6 +30,8 @@ import {
 
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import PinModal from '@/components/PinModal.tsx';
+import UpdateBvnModal from '@/components/UpdateBvnModal.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { usePinStore } from '@/stores/pin.store.ts';
@@ -90,6 +92,29 @@ export default function Settings() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
+
+  // BVN update state
+  const [showBvnPinModal, setShowBvnPinModal] = useState(false);
+  const [showUpdateBvnModal, setShowUpdateBvnModal] = useState(false);
+  const [bvnStepUpToken, setBvnStepUpToken] = useState('');
+  const hasPin = usePinStore((s) => s.hasPin);
+
+  const handleStartBvnUpdate = () => {
+    if (!hasPin) {
+      toast('Please configure your 4-digit transaction PIN in the Security tab first.', {
+        icon: '🔒',
+        duration: 5000,
+      });
+      setActiveTab('security');
+      return;
+    }
+    setShowBvnPinModal(true);
+  };
+
+  const handleBvnPinSuccess = (token: string) => {
+    setBvnStepUpToken(token);
+    setShowUpdateBvnModal(true);
+  };
 
   // Snapshot of last loaded biz — drives the "unsaved changes" detection.
   const initial = useMemo(
@@ -331,7 +356,14 @@ export default function Settings() {
 
         {/* Content panel */}
         <section className="min-w-0">
-          {activeTab === 'profile' && <ProfilePanel user={user} biz={biz} onEditBusiness={() => setActiveTab('business')} />}
+          {activeTab === 'profile' && (
+            <ProfilePanel
+              user={user}
+              biz={biz}
+              onEditBusiness={() => setActiveTab('business')}
+              onUpdateBvn={handleStartBvnUpdate}
+            />
+          )}
 
           {activeTab === 'business' && biz && (
             <BusinessPanel
@@ -398,6 +430,26 @@ export default function Settings() {
           )}
         </section>
       </div>
+
+      {/* BVN Update PIN Step-Up Modal */}
+      <PinModal
+        isOpen={showBvnPinModal}
+        onClose={() => setShowBvnPinModal(false)}
+        onSuccess={handleBvnPinSuccess}
+        title="Authorize BVN Update"
+        subtitle="Enter your 4-digit transaction PIN to link or change your BVN."
+      />
+
+      {/* BVN Entry Form Modal */}
+      <UpdateBvnModal
+        isOpen={showUpdateBvnModal}
+        onClose={() => {
+          setShowUpdateBvnModal(false);
+          setBvnStepUpToken('');
+        }}
+        stepUpToken={bvnStepUpToken}
+        currentBvnLast4={user?.bvnLast4}
+      />
     </div>
   );
 }
@@ -408,10 +460,12 @@ function ProfilePanel({
   user,
   biz,
   onEditBusiness,
+  onUpdateBvn,
 }: {
   user: any;
   biz: any;
   onEditBusiness: () => void;
+  onUpdateBvn: () => void;
 }) {
   const initial = user?.email?.charAt(0).toUpperCase() || 'U';
   const displayName = user?.email?.split('@')[0] ?? 'Account';
@@ -449,6 +503,35 @@ function ProfilePanel({
         <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
           <DetailRow icon={Mail} label="Email address" value={user?.email || '—'} />
           <DetailRow icon={Shield} label="Role" value={user?.role || 'user'} capitalize />
+        </dl>
+      </Card>
+
+      {/* Identity & Verification (BVN) Card */}
+      <Card
+        title="Identity & Verification (BVN)"
+        subtitle="Your Bank Verification Number is used for FIRS tax compliance and virtual account provisioning."
+        action={
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onUpdateBvn}
+            className="text-xs font-semibold"
+          >
+            {user?.bvnLast4 ? 'Update BVN' : 'Link BVN'}
+          </Button>
+        }
+      >
+        <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <DetailRow
+            icon={ShieldCheck}
+            label="Compliance Status"
+            value={user?.bvnVerifiedAt ? 'Verified Tier 2' : 'Pending Verification'}
+          />
+          <DetailRow
+            icon={Shield}
+            label="Linked BVN"
+            value={user?.bvnLast4 ? `•••••••${user.bvnLast4.slice(-4)}` : 'No BVN linked'}
+          />
         </dl>
       </Card>
 

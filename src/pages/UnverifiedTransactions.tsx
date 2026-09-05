@@ -100,8 +100,13 @@ export default function UnverifiedTransactions() {
 
     setActioningId(verifyModal.transaction.id);
     try {
-      // Check if it's a revenue classification
-      const isRevenue = selectedClassification === 'sales_revenue' || selectedClassification === 'service_revenue';
+      // Determine revenue from the API-loaded classification (never hardcoded
+      // slugs). Legacy slug fallback kept for robustness if classifications
+      // haven't loaded yet — the backend also resolves those aliases.
+      const selected = classifications.find((c) => c.name === selectedClassification);
+      const isRevenue = selected
+        ? selected.isRevenue
+        : ['sales_revenue', 'service_revenue'].includes(selectedClassification);
       
       if (isRevenue) {
         await api.post(`/businesses/${biz.id}/sales/${verifyModal.transaction.id}/verify`, { 
@@ -148,7 +153,10 @@ export default function UnverifiedTransactions() {
     setPrimaryChoice(choice);
     if (choice === 'business_sale') {
       setWizardStep('revenue');
-      setSelectedClassification('sales_revenue'); // Default
+      // Default to the first revenue classification from the API — radio
+      // values are real DB names ("Product Sale"), never hardcoded slugs.
+      const firstRevenue = classifications.find((c) => c.isRevenue);
+      setSelectedClassification(firstRevenue?.name ?? '');
     } else if (choice === 'not_sale') {
       setWizardStep('non_revenue');
     } else {
@@ -474,35 +482,33 @@ export default function UnverifiedTransactions() {
                   <h4 className="font-semibold text-gray-900 mb-3">What type of business income?</h4>
                   
                   <div className="space-y-2">
-                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 cursor-pointer transition-all bg-white">
-                      <input
-                        type="radio"
-                        name="revenue-type"
-                        value="sales_revenue"
-                        checked={selectedClassification === 'sales_revenue'}
-                        onChange={(e) => setSelectedClassification(e.target.value)}
-                        className="mt-0.5 h-4 w-4 text-green-600 focus:ring-green-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 text-sm">Product Sale</div>
-                        <div className="text-xs text-gray-600 mt-0.5">Customer bought goods or products</div>
-                      </div>
-                    </label>
-
-                    <label className="flex items-start gap-3 p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 cursor-pointer transition-all bg-white">
-                      <input
-                        type="radio"
-                        name="revenue-type"
-                        value="service_revenue"
-                        checked={selectedClassification === 'service_revenue'}
-                        onChange={(e) => setSelectedClassification(e.target.value)}
-                        className="mt-0.5 h-4 w-4 text-green-600 focus:ring-green-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 text-sm">Service Fee</div>
-                        <div className="text-xs text-gray-600 mt-0.5">Payment for services rendered</div>
-                      </div>
-                    </label>
+                    {loadingClassifications ? (
+                      <div className="text-center py-6 text-gray-500 text-sm">Loading transaction types...</div>
+                    ) : (
+                      classifications
+                        .filter((c) => c.isRevenue)
+                        .map((classification) => (
+                          <label
+                            key={classification.id}
+                            className="flex items-start gap-3 p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 cursor-pointer transition-all bg-white"
+                          >
+                            <input
+                              type="radio"
+                              name="revenue-type"
+                              value={classification.name}
+                              checked={selectedClassification === classification.name}
+                              onChange={(e) => setSelectedClassification(e.target.value)}
+                              className="mt-0.5 h-4 w-4 text-green-600 focus:ring-green-500"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900 text-sm">{classification.name}</div>
+                              {classification.description && (
+                                <div className="text-xs text-gray-600 mt-0.5">{classification.description}</div>
+                              )}
+                            </div>
+                          </label>
+                        ))
+                    )}
                   </div>
 
                   <div className="mt-6 space-y-3">

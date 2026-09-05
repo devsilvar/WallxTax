@@ -24,10 +24,10 @@ const CATEGORIES = [
   'fuel',
   'logistics',
   'marketing',
-  'gift',
-  'subscription',
   'other',
 ] as const;
+// 'gift' and 'subscription' removed — they were never in the backend enum
+// (schema.prisma ExpenseCategory) and submitting them got a guaranteed 400.
 
 type AddExpenseModalProps = {
   isOpen: boolean;
@@ -169,11 +169,6 @@ export default function AddExpenseModal({
               </option>
             ))}
           </select>
-          {category === 'gift' && (
-            <p className='text-xs text-amber-600'>
-              Gifts are usually not tax-deductible — consider unchecking &quot;Tax deductible&quot; below if this is a personal or goodwill gift.
-            </p>
-          )}
         </div>
         {category === 'other' && (
           <div className='sm:col-span-2'>

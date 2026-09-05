@@ -53,11 +53,11 @@ const ROUTE_FOR_REMINDER: Record<ReminderType, string> = {
   dva_validation_failed: '/account',
   transaction_needs_verification: '/sales',
   payout_change_permitted: '/account',
-  payout_requested: '/account',
-  payout_approved: '/account',
-  payout_rejected: '/account',
-  payout_completed: '/account',
-  payout_failed: '/account',
+  payout_requested: '/account?tab=withdrawals',
+  payout_approved: '/account?tab=withdrawals',
+  payout_rejected: '/account?tab=withdrawals',
+  payout_completed: '/account?tab=withdrawals',
+  payout_failed: '/account?tab=withdrawals',
 };
 
 function typeLabel(t: ReminderType) {

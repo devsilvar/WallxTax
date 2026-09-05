@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Receipt,
@@ -11,6 +12,7 @@ import {
   Filter,
   XCircle,
   Upload,
+  CalendarDays,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
 import AddSaleModal from '@/components/AddSaleModal.tsx';
@@ -25,15 +27,29 @@ import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination } from '@/types/index.ts';
+import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
+// 'manual' is retired from the UI (migration 20260904120000_retire_manual_source
+// mapped legacy no-reference rows to 'cash'); rows that kept 'manual' still
+// render via paymentTypeLabel's 'Cash (legacy)' mapping.
 const SOURCES = [
   'bank_transfer',
   'paycode',
   'pos',
   'online_store',
-  'manual',
   'cash',
+  'invoice',
+] as const;
+
+// Fixed box order for the daily strip — every payment type always has a home,
+// even at ₦0 (dimmed), so the layout doesn't reshuffle through the day.
+const DAILY_SOURCES = [
+  'cash',
+  'pos',
+  'bank_transfer',
+  'paycode',
+  'online_store',
   'invoice',
 ] as const;
 const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
@@ -64,7 +80,7 @@ function statusBadge(s: string) {
   );
 }
 function sourceLabel(s: string) {
-  return s.replace(/_/g, ' ');
+  return paymentTypeLabel(s);
 }
 
 // ─── Types ──────────────────────────────────────────────────
@@ -81,6 +97,26 @@ type SalesSummary = {
   totalSales: number;
   transactionCount: number;
   sourceBreakdown: SourceBreakdown[];
+};
+
+// Shape returned by GET /sales/daily (sales.service.getDailySummary)
+type DailySale = {
+  id: string;
+  amount: string;
+  source: string;
+  status: string;
+  description: string | null;
+  customerName: string | null;
+  transactionDate: string;
+  referenceId: string | null;
+};
+
+type DailySalesSummary = {
+  date: string;
+  totalSales: number;
+  transactionCount: number;
+  sourceBreakdown: SourceBreakdown[];
+  transactions: DailySale[];
 };
 
 // ─── Source color map for the breakdown bar ─────────────────
@@ -122,6 +158,12 @@ export default function Sales() {
   const [summaryYear, setSummaryYear] = useState(now.getFullYear());
   const [summary, setSummary] = useState<SalesSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // ─── Daily view state (default tab) ─────────────────────────
+  const todayStr = now.toISOString().slice(0, 10);
+  const [dailyDate, setDailyDate] = useState(todayStr);
+  const [daily, setDaily] = useState<DailySalesSummary | null>(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/sales` : '';
 
@@ -176,16 +218,50 @@ export default function Sales() {
     fetchSummary();
   }, [biz, summaryMonth, summaryYear]);
 
+  // ─── Daily tab (default) — URL-backed like TaxReports ?tab=analytics ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: 'daily' | 'monthly' =
+    searchParams.get('tab') === 'monthly' ? 'monthly' : 'daily';
+  const setTab = (t: 'daily' | 'monthly') =>
+    setSearchParams(t === 'monthly' ? { tab: 'monthly' } : {}, { replace: true });
+
+  const fetchDaily = () => {
+    if (!biz) return;
+    setDailyLoading(true);
+    api
+      .get(`${basePath}/daily`, { params: { date: dailyDate } })
+      .then((r) => setDaily(r.data.data))
+      .catch(() => setDaily(null))
+      .finally(() => setDailyLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDaily();
+  }, [biz, dailyDate]);
+
+  // Keep "today's" boxes live while the daily tab is open (60s cadence).
+  useEffect(() => {
+    if (tab !== 'daily' || dailyDate !== todayStr || !biz) return;
+    const t = setInterval(fetchDaily, 60_000);
+    return () => clearInterval(t);
+  }, [tab, dailyDate, biz]);
+
+  const shiftDay = (delta: number) => {
+    const d = new Date(`${dailyDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + delta);
+    setDailyDate(d.toISOString().slice(0, 10));
+  };
+
   const openEdit = (s: SalesTransaction) => {
     setEditSale(s);
     setShowAddModal(true);
   };
 
   const handleSaveComplete = (outcome: 'created' | 'updated') => {
-    // A new sale must be visible on page 1; an edit stays on the current page.
     if (outcome === 'created') setPage(1);
     fetchSales();
     fetchSummary();
+    fetchDaily();
   };
 
   const handleDelete = async (id: string) => {
@@ -196,6 +272,7 @@ export default function Sales() {
       invalidateDashboard('sale_deleted');
       fetchSales();
       fetchSummary();
+      fetchDaily();
     } catch (err: unknown) {
       const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
       toast.error(apiErr?.message || 'Failed');
@@ -272,6 +349,25 @@ export default function Sales() {
         <SalesExpenseChart className='animate-scale-in' />
       )}
 
+      {/* Daily / Monthly tabs — default is Daily (no URL param) */}
+      <div className='flex w-fit gap-1 rounded-lg bg-gray-100 p-1'>
+        {(['daily', 'monthly'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+              tab === t
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'monthly' && (
+        <>
       {/* Monthly Summary */}
       <Card>
 
@@ -336,7 +432,7 @@ export default function Sales() {
             {summary.sourceBreakdown.length > 0 && (
               <div>
                 <p className='mb-2 text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  By Source
+                  By Payment Type
                 </p>
                 {/* Stacked bar */}
                 <div className='flex h-3 overflow-hidden rounded-full bg-gray-100'>
@@ -423,7 +519,7 @@ export default function Sales() {
             <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
               <div className='space-y-1'>
                 <label className='block text-xs font-medium text-gray-500'>
-                  Source
+                  Payment Type
                 </label>
                 <select
                   value={filterSource}
@@ -433,7 +529,7 @@ export default function Sales() {
                   }}
                   className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
                 >
-                  <option value=''>All Sources</option>
+                  <option value=''>All Payment Types</option>
                   {SOURCES.map((s) => (
                     <option key={s} value={s}>
                       {sourceLabel(s)}
@@ -515,7 +611,7 @@ export default function Sales() {
                 <tr className='border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-400'>
                   <th className='px-4 py-3'>Date</th>
                   <th className='px-4 py-3'>Description</th>
-                  <th className='px-4 py-3'>Payment Method</th>
+                  <th className='px-4 py-3'>Payment Type</th>
                   <th className='px-4 py-3 text-right'>Amount</th>
                   <th className='px-4 py-3'>Status</th>
                   <th className='px-4 py-3 text-right'>Actions</th>
@@ -613,6 +709,182 @@ export default function Sales() {
           </div>
         </>
       )}
+      </>
+      )}
+
+      {tab === 'daily' && (
+        <Card>
+          {/* Date navigation */}
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-2'>
+            <h2 className='flex items-center gap-2 text-lg font-semibold text-gray-900'>
+              <CalendarDays className='h-5 w-5 text-primary-500' />
+              Daily Summary
+            </h2>
+            <div className='flex items-center gap-1'>
+              <button
+                onClick={() => shiftDay(-1)}
+                className='rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                aria-label='Previous day'
+              >
+                <ChevronLeft className='h-4 w-4' />
+              </button>
+              <input
+                type='date'
+                value={dailyDate}
+                max={todayStr}
+                onChange={(e) => setDailyDate(e.target.value)}
+                className='rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+              />
+              <button
+                onClick={() => shiftDay(1)}
+                disabled={dailyDate >= todayStr}
+                className='rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40'
+                aria-label='Next day'
+              >
+                <ChevronRight className='h-4 w-4' />
+              </button>
+              {dailyDate !== todayStr && (
+                <button
+                  onClick={() => setDailyDate(todayStr)}
+                  className='ml-1 rounded-lg px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50'
+                >
+                  Today
+                </button>
+              )}
+            </div>
+          </div>
+
+          {dailyLoading && !daily ? (
+            <div className='py-6 text-center text-sm text-gray-400'>
+              Loading daily summary...
+            </div>
+          ) : !daily ? (
+            <div className='py-6 text-center text-sm text-gray-400'>
+              Could not load daily summary.
+            </div>
+          ) : (
+            <div className='space-y-4'>
+              {/* Boxes strip — Total Today + one box per payment type.
+                  ₦0 types stay visible (dimmed) so the layout is stable. */}
+              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7'>
+                <div className='col-span-2 rounded-lg bg-primary-50 px-4 py-3 sm:col-span-4 lg:col-span-1'>
+                  <p className='font-body text-xs uppercase tracking-wider text-primary-600'>
+                    Total {daily.date === todayStr ? 'Today' : ''}
+                  </p>
+                  <p className='mt-1 text-lg font-bold text-primary-700 sm:text-xl'>
+                    {formatNaira(Number(daily.totalSales))}
+                  </p>
+                </div>
+                {DAILY_SOURCES.map((src) => {
+                  const entry = daily.sourceBreakdown.find(
+                    (sb) => sb.source === src,
+                  );
+                  const total = Number(entry?.total ?? 0);
+                  const count = entry?.count ?? 0;
+                  const dim = total === 0;
+                  return (
+                    <div
+                      key={src}
+                      className={`rounded-lg bg-gray-50 px-4 py-3 ${dim ? 'opacity-60' : ''}`}
+                      title={`${paymentTypeLabel(src)} — ${count} transaction${count === 1 ? '' : 's'}`}
+                    >
+                      <p className='truncate font-body text-xs uppercase tracking-wider text-gray-500'>
+                        {paymentTypeLabel(src)}
+                      </p>
+                      <p
+                        className={`mt-1 text-base font-bold sm:text-lg ${dim ? 'text-gray-400' : 'text-gray-800'}`}
+                      >
+                        {formatNaira(total)}
+                      </p>
+                      <p className='text-xs text-gray-400'>
+                        {count} txn{count === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Register — every row is dated the selected day, any status
+                  (pending sales show with their status badge, not hidden). */}
+              {daily.transactions.length === 0 ? (
+                <div className='py-6 text-center'>
+                  <Receipt className='mx-auto h-8 w-8 text-gray-300' />
+                  <p className='mt-2 font-body text-sm text-gray-400'>
+                    No sales recorded for this day.
+                  </p>
+                </div>
+              ) : (
+                <div className='overflow-x-auto rounded-md border border-gray-200'>
+                  <table className='w-full'>
+                    <thead>
+                      <tr className='border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-400'>
+                        <th className='px-4 py-3'>Date</th>
+                        <th className='px-4 py-3'>Description</th>
+                        <th className='px-4 py-3'>Customer</th>
+                        <th className='px-4 py-3'>Payment Type</th>
+                        <th className='px-4 py-3'>Status</th>
+                        <th className='px-4 py-3 text-right'>Amount</th>
+                        <th className='px-4 py-3'></th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-gray-50'>
+                      {daily.transactions.map((t) => (
+                        <tr
+                          key={t.id}
+                          className='cursor-pointer text-sm text-gray-700 hover:bg-gray-50'
+                          onClick={() =>
+                            openTransactionDetail(
+                              t as unknown as SalesTransaction,
+                            )
+                          }
+                        >
+                          <td className='whitespace-nowrap px-4 py-3'>
+                            {formatDate(t.transactionDate)}
+                          </td>
+                          <td className='max-w-[200px] truncate px-4 py-3'>
+                            {t.description || '—'}
+                          </td>
+                          <td className='px-4 py-3'>{t.customerName || '—'}</td>
+                          <td className='whitespace-nowrap px-4 py-3'>
+                            {paymentTypeLabel(t.source)}
+                          </td>
+                          <td className='px-4 py-3'>{statusBadge(t.status)}</td>
+                          <td className='whitespace-nowrap px-4 py-3 text-right font-medium'>
+                            {formatNaira(Number(t.amount))}
+                          </td>
+                          <td className='px-4 py-3'>
+                            <div
+                              className='flex items-center gap-1'
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() =>
+                                  openEdit(t as unknown as SalesTransaction)
+                                }
+                                className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                title='Edit Sale'
+                              >
+                                <Pencil className='h-4 w-4' />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(t.id)}
+                                className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                                title='Delete Sale'
+                              >
+                                <Trash2 className='h-4 w-4' />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Import modal — mounted once per page so it retains step state
           between opens until explicitly closed. */}
@@ -633,6 +905,7 @@ export default function Sales() {
             setFilterEndDate('');
             fetchSales();
             fetchSummary();
+            fetchDaily();
           }}
         />
       )}
@@ -656,6 +929,7 @@ export default function Sales() {
         onVerifySuccess={() => {
           fetchSales();
           fetchSummary();
+          fetchDaily();
         }}
       />
 

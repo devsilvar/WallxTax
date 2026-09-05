@@ -170,9 +170,9 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* 3-Card Summary Strip */}
+      {/* 4-Card Summary Strip */}
       {scope === 'dva_bank' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-xl border border-emerald-100 bg-gradient-to-b from-emerald-50/40 to-white p-4 shadow-xs">
             <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Money Received (+)</p>
             <p className="text-lg font-bold text-emerald-600 font-mono mt-1">
@@ -181,10 +181,29 @@ export default function Transactions() {
             <p className="text-[10px] text-emerald-600/70 mt-0.5">Bank transfers received</p>
           </div>
 
+          <div className="rounded-xl border border-purple-100 bg-gradient-to-b from-purple-50/40 to-white p-4 shadow-xs">
+            <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Transfers to Bank (-)</p>
+            <p className={`text-lg font-bold font-mono mt-1 ${((summary.totalPayoutDebits ?? 0) + (summary.totalSplitDebits ?? 0)) > 0 ? 'text-purple-700' : 'text-gray-800'}`}>
+              {(() => {
+                const total = (summary.totalPayoutDebits ?? 0) + (summary.totalSplitDebits ?? 0);
+                return total > 0 ? `-${formatNaira(total)}` : formatNaira(0);
+              })()}
+            </p>
+            <p className="text-[10px] text-purple-600/70 mt-0.5">
+              {(summary.totalSplitDebits ?? 0) > 0 && (summary.totalPayoutDebits ?? 0) > 0
+                ? `${formatNaira(summary.totalSplitDebits ?? 0)} auto-split · ${formatNaira(summary.totalPayoutDebits ?? 0)} withdrawn`
+                : (summary.totalSplitDebits ?? 0) > 0
+                  ? `${formatNaira(summary.totalSplitDebits ?? 0)} auto-split to bank`
+                  : (summary.totalPayoutDebits ?? 0) > 0
+                    ? 'Manual withdrawals to bank'
+                    : 'No transfers to bank yet'}
+            </p>
+          </div>
+
           <div className="rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50/40 to-white p-4 shadow-xs">
             <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Tax Remitted (-)</p>
-            <p className={`text-lg font-bold font-mono mt-1 ${summary.totalDebits > 0 ? 'text-red-600' : 'text-gray-800'}`}>
-              {summary.totalDebits > 0 ? `-${formatNaira(summary.totalDebits)}` : formatNaira(0)}
+            <p className={`text-lg font-bold font-mono mt-1 ${(summary.totalTaxDebits ?? 0) > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+              {(summary.totalTaxDebits ?? 0) > 0 ? `-${formatNaira(summary.totalTaxDebits ?? 0)}` : formatNaira(0)}
             </p>
             <p className="text-[10px] text-gray-500 mt-0.5">FIRS tax payments</p>
           </div>
@@ -192,7 +211,7 @@ export default function Transactions() {
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-xs text-white">
             <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Digital Bank Balance</p>
             <p className="text-lg font-bold text-emerald-400 font-mono mt-1">{formatNaira(summary.closingBalance)}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Current Wema DVA balance</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Platform-held DVA balance</p>
           </div>
         </div>
       ) : (

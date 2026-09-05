@@ -109,6 +109,7 @@ export default function App() {
                 <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
                 <Route path="/admin/businesses" element={<AdminBusinesses />} />
                 <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
+                <Route path="/admin/settlement/withdrawals" element={<AdminWithdrawals />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
               </Route>
             </Route>

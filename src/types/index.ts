@@ -3,6 +3,7 @@ export interface User {
   email: string;
   phone?: string;
   bvn?: string;
+  bvnLast4?: string | null;
   nin?: string;
   bvnVerifiedAt?: string;
   ninVerifiedAt?: string;
@@ -532,7 +533,7 @@ export interface UnifiedLedgerRow {
   id: string;
   scope: 'dva_bank' | 'general_sales' | 'tax_outflow';
   entryType: 'credit' | 'debit';
-  sourceType: 'dva_transfer' | 'manual_sale' | 'invoice_payment' | 'pos' | 'tax_payment' | 'refund';
+  sourceType: 'dva_transfer' | 'manual_sale' | 'invoice_payment' | 'pos' | 'tax_payment' | 'refund' | 'payout';
   amount: number;
   runningBalance: number;
   classification: string;
@@ -549,6 +550,9 @@ export interface UnifiedLedgerSummary {
   openingBalance: number;
   totalCredits: number;
   totalDebits: number;
+  totalTaxDebits?: number;
+  totalPayoutDebits?: number;
+  totalSplitDebits?: number;
   closingBalance: number;
   breakdown?: {
     creditsBySource: {
