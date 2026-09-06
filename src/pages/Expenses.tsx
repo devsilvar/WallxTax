@@ -60,11 +60,28 @@ type ExpenseSummary = {
 type DailyExpense = {
   id: string;
   amount: string;
+  quantity?: number;
+  unitPrice?: number | string | null;
   category: string;
   description: string | null;
   expenseDate: string;
   isDeductible: boolean;
 };
+
+function renderExpenseAmount(amount: number, quantity?: number, unitPrice?: number | string | null) {
+  const qty = Number(quantity ?? 1);
+  if (qty > 1 && unitPrice) {
+    return (
+      <div className="text-right inline-block">
+        <div className="font-semibold text-gray-900">{formatNaira(amount)}</div>
+        <div className="text-[11px] text-gray-500 font-normal">
+          {qty} × {formatNaira(Number(unitPrice))}
+        </div>
+      </div>
+    );
+  }
+  return <span>{formatNaira(amount)}</span>;
+}
 
 type DailyExpenseSummary = {
   date: string;
@@ -431,7 +448,7 @@ export default function Expenses() {
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900">
                     <div className="flex items-center justify-end gap-2">
-                      <span>{formatNaira(Number(exp.amount))}</span>
+                      {renderExpenseAmount(Number(exp.amount), exp.quantity, exp.unitPrice)}
                       {!exp.isDeductible && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                           Non-deductible
@@ -457,8 +474,15 @@ export default function Expenses() {
             <Card key={exp.id} className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">{formatNaira(Number(exp.amount))}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-semibold text-gray-900">
+                      {formatNaira(Number(exp.amount))}
+                      {Number(exp.quantity ?? 1) > 1 && exp.unitPrice && (
+                        <span className="ml-1 text-xs text-gray-500 font-normal">
+                          ({exp.quantity} × {formatNaira(Number(exp.unitPrice))})
+                        </span>
+                      )}
+                    </div>
                     <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium capitalize text-gray-600">{exp.category}</span>
                   </div>
                   <p className="mt-1 text-sm text-gray-600 truncate">{exp.description || '—'}</p>
@@ -622,7 +646,9 @@ export default function Expenses() {
                               <span className="text-xs text-gray-400">Exempt</span>
                             )}
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{formatNaira(Number(t.amount))}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-medium">
+                            {renderExpenseAmount(Number(t.amount), t.quantity, t.unitPrice)}
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
                               <button

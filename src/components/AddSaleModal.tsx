@@ -9,7 +9,7 @@
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { Receipt } from 'lucide-react';
+import { TrendingUp, Package, Banknote } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -17,7 +17,8 @@ import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
-import type { SalesTransaction } from '@/types/index.ts';
+import type { SalesTransaction, SaleLineItem } from '@/types/index.ts';
+import SaleItemsEditor from './SaleItemsEditor.tsx';
 
 const SOURCES = [
   'bank_transfer',
@@ -66,6 +67,12 @@ export default function AddSaleModal({
 }: AddSaleModalProps) {
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
 
+  // Mode: 'items' (Products / Goods) or 'single' (Service / Flat Amount)
+  const [mode, setMode] = useState<'single' | 'items'>('items');
+  const [items, setItems] = useState<SaleLineItem[]>([
+    { name: '', quantity: 1, unitPrice: 0 },
+  ]);
+
   // Form state (moved from Sales.tsx)
   const [amount, setAmount] = useState('');
   const [source, setSource] = useState<string>('cash');
@@ -102,7 +109,25 @@ export default function AddSaleModal({
       const currentClass = editSale.finalClassification || '';
       setClassification(currentClass);
       setOriginalClassification(currentClass);
+
+      if (editSale.items && editSale.items.length > 0) {
+        setMode('items');
+        setItems(
+          editSale.items.map((it) => ({
+            name: it.name,
+            quantity: Number(it.quantity),
+            unitPrice: Number(it.unitPrice),
+            lineTotal: Number(it.lineTotal ?? it.quantity * it.unitPrice),
+            sortOrder: it.sortOrder,
+          }))
+        );
+      } else {
+        setMode('single');
+        setItems([{ name: '', quantity: 1, unitPrice: 0 }]);
+      }
     } else {
+      setMode('items');
+      setItems([{ name: '', quantity: 1, unitPrice: 0 }]);
       setAmount('');
       setSource('cash');
       setDescription('');
@@ -140,13 +165,39 @@ export default function AddSaleModal({
     e.preventDefault();
     setSaving(true);
     const basePath = `/businesses/${businessId}/sales`;
-    const body = {
-      amount: Number(amount),
+
+    const body: Record<string, any> = {
       source,
       description: description || undefined,
       customerName: customerName || undefined,
       transactionDate,
     };
+
+    if (mode === 'items') {
+      const validItems = items.filter((i) => i.name.trim().length > 0);
+      if (validItems.length === 0) {
+        toast.error('Please enter at least one item with a name');
+        setSaving(false);
+        return;
+      }
+      body.items = validItems.map((i) => ({
+        name: i.name.trim(),
+        quantity: Number(i.quantity || 1),
+        unitPrice: Number(i.unitPrice || 0),
+      }));
+    } else {
+      const numAmount = Number(amount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        toast.error('Amount must be greater than 0');
+        setSaving(false);
+        return;
+      }
+      body.amount = numAmount;
+      if (editSale?.items && editSale.items.length > 0) {
+        body.items = []; // Clears items on the server
+      }
+    }
+
     try {
       if (editSale) {
         await api.put(`${basePath}/${editSale.id}`, body);
@@ -180,8 +231,8 @@ export default function AddSaleModal({
       dismissible={!saving}
       title={isEdit ? 'Edit Sale' : 'New Sale'}
       subtitle='Money received from selling'
-      icon={<Receipt className='h-5 w-5 text-primary-600' />}
-      size='md'
+      icon={<TrendingUp className='h-5 w-5 text-primary-600' />}
+      size={mode === 'items' ? 'lg' : 'md'}
       footer={
         <>
           <Button type='button' variant='secondary' onClick={onClose} disabled={saving}>
@@ -198,16 +249,65 @@ export default function AddSaleModal({
         onSubmit={handleSubmit}
         className='grid grid-cols-1 gap-4 sm:grid-cols-2'
       >
-        <Input
-          label='Amount (₦)'
-          type='number'
-          inputMode='decimal'
-          step='0.01'
-          min='1'
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
+        {/* Transaction Type Mode Toggle */}
+        <div className='sm:col-span-2 space-y-1.5'>
+          <label className='block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400'>
+            Transaction Type
+          </label>
+          <div className='grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg gap-1'>
+            <button
+              type='button'
+              onClick={() => setMode('items')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-md transition-all ${
+                mode === 'items'
+                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Package className='w-4 h-4' />
+              <span>Products / Goods</span>
+            </button>
+            <button
+              type='button'
+              onClick={() => setMode('single')}
+              className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-md transition-all ${
+                mode === 'single'
+                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Banknote className='w-4 h-4' />
+              <span>Service / Flat Amount</span>
+            </button>
+          </div>
+          <p className='text-[11px] text-slate-500 dark:text-slate-400 px-0.5'>
+            {mode === 'items'
+              ? 'For physical goods sold by quantity and unit price (1 product or many).'
+              : 'For services, repairs, consulting, or lump-sum daily totals without item quantities.'}
+          </p>
+        </div>
+
+        {mode === 'single' ? (
+          <Input
+            label='Amount (₦)'
+            type='number'
+            inputMode='decimal'
+            step='0.01'
+            min='0.01'
+            placeholder='0.00'
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            required
+          />
+        ) : (
+          <div className='sm:col-span-2'>
+            <SaleItemsEditor
+              items={items}
+              onChange={setItems}
+              disabled={saving}
+            />
+          </div>
+        )}
         <div className='space-y-1'>
           <label htmlFor='sale-source' className='block text-sm font-medium text-gray-700'>Payment Type</label>
           <select
@@ -224,12 +324,18 @@ export default function AddSaleModal({
           </select>
         </div>
         <Input
-          label='Description'
+          label={mode === 'items' ? 'Order Note (Optional)' : 'Service Description'}
+          placeholder={
+            mode === 'items'
+              ? 'e.g. Delivered to shop, Balance due on Friday'
+              : 'e.g. Haircut & styling, Generator repair, POS daily sales'
+          }
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
         <Input
           label='Customer Name'
+          placeholder='e.g. Alhaji Musa'
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
         />

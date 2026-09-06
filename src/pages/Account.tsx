@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Landmark, Copy, Loader2, RefreshCw, AlertTriangle, CheckCircle2,
@@ -12,6 +12,8 @@ import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PhoneInput from '@/components/ui/PhoneInput.tsx';
 import BankSelect from '@/components/BankSelect.tsx';
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton.tsx';
+import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
@@ -56,8 +58,78 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return message || fallback;
 }
 
+function AccountSkeleton() {
+  return (
+    <div className="space-y-6 animate-fade-in py-2">
+      {/* Top Bar Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-gray-200/80">
+        <div>
+          <Skeleton width={180} height={28} className="mb-2" />
+          <Skeleton width={260} height={14} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton width={90} height={32} rounded="lg" />
+          <Skeleton width={140} height={32} rounded="lg" />
+        </div>
+      </div>
+
+      {/* Hero Card Skeleton */}
+      <div className="rounded-2xl bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-950 p-6 sm:p-7 border border-purple-800/40 shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Skeleton width={16} height={16} circle className="bg-white/20" />
+              <Skeleton width={100} height={12} className="bg-white/20" />
+            </div>
+            <Skeleton width={220} height={40} className="bg-white/20 mb-3" rounded="lg" />
+            <Skeleton width={260} height={14} className="bg-white/20" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white/10 p-4 border border-white/15 w-64 space-y-2">
+              <Skeleton width={80} height={12} className="bg-white/20" />
+              <Skeleton width={160} height={24} className="bg-white/20" />
+              <Skeleton width={120} height={12} className="bg-white/20" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Metric Cards Skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-3">
+            <div className="flex justify-between items-center">
+              <Skeleton width={80} height={12} />
+              <Skeleton width={16} height={16} circle />
+            </div>
+            <Skeleton width={130} height={24} />
+            <Skeleton width={100} height={12} />
+          </div>
+        ))}
+      </div>
+
+      {/* Feed & Settlement Columns Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs">
+          <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
+            <Skeleton width={180} height={20} />
+            <Skeleton width={120} height={28} rounded="lg" />
+          </div>
+          <TableSkeleton rows={5} columns={4} showHeader={false} />
+        </div>
+        <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+          <Skeleton width={140} height={18} />
+          <Skeleton width="100%" height={80} rounded="xl" />
+          <Skeleton width="100%" height={100} rounded="xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Account() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const businessStoreLoading = useBusinessStore((s) => s.isLoading);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const user = useAuthStore((s) => s.user);
@@ -101,6 +173,7 @@ export default function Account() {
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const settlementPreview = useSettlementStore((s) => s.preview);
+  const loadingPreview = useSettlementStore((s) => s.loadingPreview);
   const fetchSettlementPreview = useSettlementStore((s) => s.fetchPreview);
   const toggleAutoSplit = useSettlementStore((s) => s.toggleAutoSplit);
   const updatingAutoSplit = useSettlementStore((s) => s.updatingAutoSplit);
@@ -109,6 +182,16 @@ export default function Account() {
   const loadingPayoutHistory = useSettlementStore((s) => s.loadingHistory);
   const payoutPagination = useSettlementStore((s) => s.pagination);
   const [showAutoSplitPinModal, setShowAutoSplitPinModal] = useState(false);
+
+  // Page-level refresh & lifecycle refs
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstMountRef = useRef(true);
+  const lastLoadedBizIdRef = useRef<string | null>(null);
+
+  // Derived loading states for robust UI feedback
+  const isBalanceLoading = (!settlementPreview && loadingPreview) || (!settlementPreview && isRefreshing);
+  const isTxnsLoading = (loadingTransactions && transactions.length === 0) || (isRefreshing && transactions.length === 0);
+  const isPayoutsLoading = (loadingPayoutHistory && payoutHistory.length === 0) || (isRefreshing && payoutHistory.length === 0);
 
   // Tab & search states for Feed
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,7 +212,7 @@ export default function Account() {
   const [settlementError, setSettlementError] = useState('');
 
   const fetchDVA = useCallback(async () => {
-    if (!biz) return;
+    if (!biz?.id) return;
     setLoading(true);
     try {
       const res = await api.get(`/businesses/${biz.id}/dva/virtual-account`);
@@ -154,7 +237,7 @@ export default function Account() {
     } finally {
       setLoading(false);
     }
-  }, [biz, awaitingValidation, fetchBusinesses]);
+  }, [biz?.id, awaitingValidation, fetchBusinesses]);
 
   // Fetch strictly DVA auto-captured inflow transactions
   const fetchTransactions = useCallback(async () => {
@@ -207,7 +290,7 @@ export default function Account() {
     } finally {
       setLoadingTransactions(false);
     }
-  }, [biz]);
+  }, [biz?.id]);
 
   useEffect(() => {
     if (urlTab === 'withdrawals') {
@@ -226,29 +309,36 @@ export default function Account() {
     }, { replace: true });
   };
 
-  useEffect(() => {
-    if (biz?.id) {
-      if (biz.virtualAccountNumber) {
-        setDva({
-          status: 'active',
-          accountNumber: biz.virtualAccountNumber,
-          bankName: biz.virtualAccountBank || 'Wema Bank',
-        });
+  const refreshAccountData = useCallback(async (isManual = false) => {
+    if (!biz?.id) return;
+    setIsRefreshing(true);
+    try {
+      const tasks: Promise<unknown>[] = [
+        fetchDVA(),
+        fetchTransactions(),
+        fetchSettlementPreview(biz.id),
+        fetchPayoutHistory(
+          biz.id,
+          1,
+          payoutStatusFilter !== 'all' ? payoutStatusFilter : undefined,
+          payoutSearch
+        ),
+      ];
+      if (isManual) {
+        tasks.push(fetchBusinesses(true));
       }
-      fetchDVA();
-      fetchTransactions();
-      fetchSettlementPreview(biz.id);
-      fetchPayoutHistory(
-        biz.id,
-        1,
-        payoutStatusFilter !== 'all' ? payoutStatusFilter : undefined,
-        payoutSearch
-      );
+      await Promise.allSettled(tasks);
+      if (isManual) {
+        toast.success('Account and balance refreshed');
+      }
+    } catch (err) {
+      console.error('Failed to refresh account data:', err);
+    } finally {
+      setIsRefreshing(false);
     }
   }, [
     biz?.id,
-    biz?.virtualAccountNumber,
-    biz?.virtualAccountBank,
+    fetchBusinesses,
     fetchDVA,
     fetchTransactions,
     fetchSettlementPreview,
@@ -257,10 +347,44 @@ export default function Account() {
     payoutSearch,
   ]);
 
-  // Live background polling when any payout is pending or processing
+  // Initial mount & active business sync
   useEffect(() => {
-    const hasPending = payoutHistory.some((p) => p.status === 'pending' || p.status === 'processing');
-    if (!hasPending || !biz?.id) return;
+    if (!biz?.id) return;
+
+    if (biz.virtualAccountNumber) {
+      setDva({
+        status: 'active',
+        accountNumber: biz.virtualAccountNumber,
+        bankName: biz.virtualAccountBank || 'Wema Bank',
+      });
+    }
+
+    if (lastLoadedBizIdRef.current !== biz.id) {
+      lastLoadedBizIdRef.current = biz.id;
+      refreshAccountData(false);
+    }
+  }, [biz?.id, biz?.virtualAccountNumber, biz?.virtualAccountBank, refreshAccountData]);
+
+  // Filter or search update on payout history
+  useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
+    if (biz?.id) {
+      fetchPayoutHistory(
+        biz.id,
+        1,
+        payoutStatusFilter !== 'all' ? payoutStatusFilter : undefined,
+        payoutSearch
+      );
+    }
+  }, [payoutStatusFilter, payoutSearch, fetchPayoutHistory]);
+
+  // Live background polling when any payout is pending or processing
+  const hasPendingPayout = payoutHistory.some((p) => p.status === 'pending' || p.status === 'processing');
+  useEffect(() => {
+    if (!hasPendingPayout || !biz?.id) return;
 
     const pollInterval = setInterval(() => {
       fetchPayoutHistory(
@@ -273,7 +397,7 @@ export default function Account() {
     }, 20000);
 
     return () => clearInterval(pollInterval);
-  }, [payoutHistory, biz?.id, payoutPagination.page, payoutStatusFilter, payoutSearch, fetchPayoutHistory, fetchSettlementPreview]);
+  }, [hasPendingPayout, biz?.id, payoutPagination.page, payoutStatusFilter, payoutSearch, fetchPayoutHistory, fetchSettlementPreview]);
 
   // Always pre-load banks for onboarding or settlement
   useEffect(() => {
@@ -486,11 +610,17 @@ export default function Account() {
     return new Date(date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  if (businessStoreLoading) {
+    return <AccountSkeleton />;
+  }
+
   if (!biz) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Building2 className="h-8 w-8 text-gray-300 mb-3" />
-        <p className="text-sm text-gray-500">Select a business first.</p>
+      <div className="mx-auto max-w-4xl py-12">
+        <NoBusinessPrompt
+          title="No business selected"
+          message="Select or create a business to access your dedicated bank account, wallet balance, and payout settings."
+        />
       </div>
     );
   }
@@ -812,13 +942,27 @@ export default function Account() {
               >
                 {hideBalance ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
+              <button
+                type="button"
+                onClick={() => refreshAccountData(true)}
+                className={`p-1 hover:text-white transition-colors cursor-pointer ${isRefreshing ? 'animate-spin text-white' : ''}`}
+                title="Refresh balance"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
             </div>
 
             {/* Big Bold Balance */}
             <div className="mt-2 flex items-baseline gap-3">
-              <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white tabular-nums">
-                {hideBalance ? '₦ ••••••••' : formatNaira(settlementPreview?.availableForWithdrawal ?? 0)}
-              </span>
+              {isBalanceLoading ? (
+                <div className="h-10 flex items-center">
+                  <Skeleton width={180} height={36} rounded="lg" className="bg-white/20" />
+                </div>
+              ) : (
+                <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white tabular-nums">
+                  {hideBalance ? '₦ ••••••••' : formatNaira(settlementPreview?.availableForWithdrawal ?? 0)}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 border border-emerald-400/30 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active
               </span>
@@ -884,9 +1028,13 @@ export default function Account() {
             <span className="font-medium">Total Inflows</span>
             <ArrowDownLeft className="h-4 w-4 text-emerald-600 stroke-[2]" />
           </div>
-          <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
-            {hideBalance ? '••••••••' : formatNaira(settlementPreview?.totalInflows ?? moneyIn.totalBalance)}
-          </p>
+          {isBalanceLoading && !settlementPreview ? (
+            <Skeleton width={120} height={28} className="my-0.5" />
+          ) : (
+            <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
+              {hideBalance ? '••••••••' : formatNaira(settlementPreview?.totalInflows ?? moneyIn.totalBalance)}
+            </p>
+          )}
           <div className="mt-2 text-xs text-emerald-700 font-medium flex items-center gap-1">
             <CheckCheck className="h-3.5 w-3.5" />
             <span>{transactions.filter((t) => t.status === 'completed').length} completed transfers</span>
@@ -899,9 +1047,13 @@ export default function Account() {
             <span className="font-medium">Total Withdrawn</span>
             <ArrowUpRight className="h-4 w-4 text-purple-600 stroke-[2]" />
           </div>
-          <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
-            {hideBalance ? '••••••••' : formatNaira(settlementPreview?.totalWithdrawn ?? 0)}
-          </p>
+          {isBalanceLoading && !settlementPreview ? (
+            <Skeleton width={120} height={28} className="my-0.5" />
+          ) : (
+            <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
+              {hideBalance ? '••••••••' : formatNaira(settlementPreview?.totalWithdrawn ?? 0)}
+            </p>
+          )}
           <div className="mt-2 text-xs">
             {(settlementPreview?.pendingWithdrawn ?? 0) > 0 ? (
               <span className="text-amber-700 font-semibold inline-flex items-center gap-1">
@@ -922,9 +1074,13 @@ export default function Account() {
             <span className="font-medium">This Month</span>
             <ArrowDownLeft className="h-4 w-4 text-primary-600 stroke-[2]" />
           </div>
-          <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
-            {hideBalance ? '••••••••' : formatNaira(moneyIn.receivedThisMonth)}
-          </p>
+          {isTxnsLoading ? (
+            <Skeleton width={120} height={28} className="my-0.5" />
+          ) : (
+            <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
+              {hideBalance ? '••••••••' : formatNaira(moneyIn.receivedThisMonth)}
+            </p>
+          )}
           <div className="mt-2 text-xs text-gray-500">Inflows this calendar month</div>
         </div>
 
@@ -1123,10 +1279,15 @@ export default function Account() {
             {/* ── List Rows (Inflows vs Withdrawals) ──── */}
             <div className="divide-y divide-gray-100">
               {activeFeedTab === 'inflows' ? (
-                loadingTransactions ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                    <p className="text-xs text-gray-500">Loading transfers…</p>
+                isTxnsLoading ? (
+                  <div className="p-6 space-y-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <Skeleton width={140} height={16} />
+                      <Skeleton width={80} height={16} />
+                    </div>
+                    <Skeleton width="100%" height={52} rounded="lg" />
+                    <Skeleton width="100%" height={52} rounded="lg" />
+                    <Skeleton width="100%" height={52} rounded="lg" />
                   </div>
                 ) : filteredTransactions.length === 0 ? (
                   <div className="flex flex-col items-center py-14 text-center px-6">
@@ -1212,10 +1373,15 @@ export default function Account() {
                     </div>
                   ))
                 )
-              ) : loadingPayoutHistory ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                  <p className="text-xs text-gray-500">Loading payout history…</p>
+              ) : isPayoutsLoading ? (
+                <div className="p-6 space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <Skeleton width={140} height={16} />
+                    <Skeleton width={80} height={16} />
+                  </div>
+                  <Skeleton width="100%" height={52} rounded="lg" />
+                  <Skeleton width="100%" height={52} rounded="lg" />
+                  <Skeleton width="100%" height={52} rounded="lg" />
                 </div>
               ) : payoutHistory.length === 0 ? (
                 <div className="flex flex-col items-center py-14 text-center px-6">
@@ -1424,36 +1590,17 @@ export default function Account() {
                 <div className="rounded-xl bg-purple-50/60 border border-purple-100 p-3.5 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-purple-900 font-semibold">Wallet Balance</span>
-                    <span className="font-mono font-bold text-purple-950 text-sm">
-                      {formatNaira(settlementPreview?.availableForWithdrawal ?? 0)}
-                    </span>
+                    {isBalanceLoading && !settlementPreview ? (
+                      <Skeleton width={80} height={18} />
+                    ) : (
+                      <span className="font-mono font-bold text-purple-950 text-sm">
+                        {formatNaira(settlementPreview?.availableForWithdrawal ?? 0)}
+                      </span>
+                    )}
                   </div>
-                  {settlementPreview && settlementPreview.totalInflows > 0 && (
-                    <div className="space-y-1 border-t border-purple-200/60 pt-1.5 text-[10px] text-purple-800/80">
-                      <div className="flex justify-between">
-                        <span>Total Inflows:</span>
-                        <span className="font-semibold">{formatNaira(settlementPreview.totalInflows)}</span>
-                      </div>
-                      {settlementPreview.totalSplitSettled > 0 && (
-                        <div className="flex justify-between items-center" title="Auto-routed directly to your bank account by Paystack via daily T+1 settlement">
-                          <span>Auto-routed to bank (T+1):</span>
-                          <span className="font-semibold">{formatNaira(settlementPreview.totalSplitSettled)}</span>
-                        </div>
-                      )}
-                      {(settlementPreview.estimatedProcessingFees ?? 0) > 0 && (
-                        <div className="flex justify-between">
-                          <span>Paystack DVA fee (1%):</span>
-                          <span className="font-semibold">−{formatNaira(settlementPreview.estimatedProcessingFees ?? 0)}</span>
-                        </div>
-                      )}
-                      {settlementPreview.totalWithdrawn > 0 && (
-                        <div className="flex justify-between">
-                          <span>Withdrawn to bank:</span>
-                          <span className="font-semibold text-purple-950">−{formatNaira(settlementPreview.totalWithdrawn)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <p className="text-[11px] text-purple-800/80 leading-relaxed">
+                    Available for instant transfer to your verified payout bank account.
+                  </p>
                   <Button
                     variant="primary"
                     size="sm"
@@ -1554,11 +1701,11 @@ export default function Account() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => { fetchDVA(); fetchTransactions(); }}
-            isLoading={loading || loadingTransactions}
+            onClick={() => refreshAccountData(true)}
+            isLoading={isRefreshing || loading || loadingTransactions || loadingPayoutHistory}
             className="text-xs"
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} /> Refresh
           </Button>
           {isActive && (
             <Link to="/transactions">
@@ -1572,10 +1719,7 @@ export default function Account() {
 
       {/* ── Mutually Exclusive State Rendering ────────────────── */}
       {loading && !dva ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3 rounded-2xl border border-gray-200/80 bg-white p-12 shadow-xs">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <p className="text-xs text-gray-500">Loading your account details…</p>
-        </div>
+        <AccountSkeleton />
       ) : isActive ? (
         renderActiveWalletHub()
       ) : isVerifying ? (

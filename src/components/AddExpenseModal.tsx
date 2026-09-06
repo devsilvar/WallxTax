@@ -58,6 +58,7 @@ export default function AddExpenseModal({
 
   // Form state (moved from Expenses.tsx)
   const [amount, setAmount] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [category, setCategory] = useState<string>('rent');
   const [categoryDetail, setCategoryDetail] = useState('');
   const [description, setDescription] = useState('');
@@ -72,6 +73,7 @@ export default function AddExpenseModal({
     if (!isOpen) return;
     if (editExpense) {
       setAmount(String(Number(editExpense.amount)));
+      setQuantity(String(editExpense.quantity ? Number(editExpense.quantity) : 1));
       setCategory(editExpense.category);
       setCategoryDetail(editExpense.categoryDetail || '');
       setDescription(editExpense.description || '');
@@ -79,6 +81,7 @@ export default function AddExpenseModal({
       setIsDeductible(editExpense.isDeductible ?? true);
     } else {
       setAmount('');
+      setQuantity('1');
       setCategory('rent');
       setCategoryDetail('');
       setDescription('');
@@ -91,8 +94,10 @@ export default function AddExpenseModal({
     e.preventDefault();
     setSaving(true);
     const basePath = `/businesses/${businessId}/expenses`;
+    const qtyNum = Number(quantity);
     const body = {
       amount: Number(amount),
+      quantity: qtyNum > 0 ? qtyNum : 1,
       category,
       // Only carry the detail for 'other'; switching away clears the stale value.
       categoryDetail: category === 'other' ? categoryDetail.trim() : null,
@@ -146,16 +151,34 @@ export default function AddExpenseModal({
         className='grid grid-cols-1 gap-4 sm:grid-cols-2'
       >
         <Input
-          label='Amount (₦)'
+          label='Total Amount (₦)'
           type='number'
           inputMode='decimal'
           step='0.01'
-          min='1'
+          min='0.01'
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           required
         />
-        <div className='space-y-1'>
+        <Input
+          label='Quantity'
+          type='number'
+          inputMode='decimal'
+          step='any'
+          min='0.01'
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          required
+        />
+        {Number(quantity) > 1 && Number(amount) > 0 && (
+          <div className='sm:col-span-2 -mt-2 px-3 py-1.5 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between'>
+            <span>Per unit breakdown:</span>
+            <span className='font-medium text-primary-600 dark:text-primary-400'>
+              ₦{(Math.round(((Number(amount) || 0) / (Number(quantity) || 1)) * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each × {quantity} = ₦{Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        )}
+        <div className='space-y-1 sm:col-span-2'>
           <label htmlFor='expense-category' className='block text-sm font-medium text-gray-700'>Category</label>
           <select
             id='expense-category'

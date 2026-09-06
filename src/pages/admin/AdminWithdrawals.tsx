@@ -37,6 +37,7 @@ interface WithdrawalRequest {
   completedAt: string | null;
   adminApprovedBy: string | null;
   adminApprovedAt: string | null;
+  autoPayoutEnabled?: boolean;
 }
 
 interface Pagination {
@@ -248,6 +249,27 @@ export default function AdminWithdrawals() {
     );
   };
 
+  const [togglingBizId, setTogglingBizId] = useState<string | null>(null);
+
+  const handleToggleAutoPayout = async (businessId: string, currentEnabled: boolean) => {
+    setTogglingBizId(businessId);
+    try {
+      await api.patch(`/admin/businesses/${businessId}/auto-payout`, {
+        enabled: !currentEnabled,
+      });
+      toast.success(`Auto-payout ${!currentEnabled ? 'enabled' : 'disabled'} for business`);
+      setWithdrawals((prev) =>
+        prev.map((w) =>
+          w.businessId === businessId ? { ...w, autoPayoutEnabled: !currentEnabled } : w
+        )
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to toggle auto-payout');
+    } finally {
+      setTogglingBizId(null);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('en-NG', {
       day: 'numeric',
@@ -415,6 +437,39 @@ export default function AdminWithdrawals() {
                             <p className="text-xs text-gray-500 font-mono">
                               {withdrawal.transferReference}
                             </p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span
+                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                  withdrawal.autoPayoutEnabled
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                }`}
+                              >
+                                {withdrawal.autoPayoutEnabled ? '⚡ Auto-Payout' : '🔒 Manual Review'}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={togglingBizId === withdrawal.businessId}
+                                onClick={() =>
+                                  handleToggleAutoPayout(
+                                    withdrawal.businessId,
+                                    Boolean(withdrawal.autoPayoutEnabled)
+                                  )
+                                }
+                                className="text-[10px] font-medium text-primary-600 hover:text-primary-800 hover:underline cursor-pointer disabled:opacity-50"
+                                title={
+                                  withdrawal.autoPayoutEnabled
+                                    ? 'Disable auto-payout for this business'
+                                    : 'Enable auto-payout for this business'
+                                }
+                              >
+                                {togglingBizId === withdrawal.businessId
+                                  ? 'Updating...'
+                                  : withdrawal.autoPayoutEnabled
+                                  ? 'Turn OFF'
+                                  : 'Turn ON'}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -439,7 +494,14 @@ export default function AdminWithdrawals() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge withdrawal={withdrawal} />
+                        <div className="space-y-1">
+                          <StatusBadge withdrawal={withdrawal} />
+                          {withdrawal.adminApprovedBy && (
+                            <p className="text-[10px] text-gray-500 truncate max-w-[140px]" title={withdrawal.adminApprovedBy}>
+                              By: {withdrawal.adminApprovedBy}
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-xs text-gray-600">

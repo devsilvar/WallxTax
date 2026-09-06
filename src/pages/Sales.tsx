@@ -109,6 +109,7 @@ type DailySale = {
   customerName: string | null;
   transactionDate: string;
   referenceId: string | null;
+  itemsCount?: number;
 };
 
 type DailySalesSummary = {
@@ -252,7 +253,19 @@ export default function Sales() {
     setDailyDate(d.toISOString().slice(0, 10));
   };
 
-  const openEdit = (s: SalesTransaction) => {
+  const openEdit = async (s: SalesTransaction) => {
+    if (biz && (s.itemsCount ?? 0) > 0 && (!s.items || s.items.length === 0)) {
+      try {
+        const res = await api.get(`/businesses/${biz.id}/sales/${s.id}`);
+        if (res.data?.data) {
+          setEditSale(res.data.data);
+          setShowAddModal(true);
+          return;
+        }
+      } catch (e) {
+        // Fallback to s
+      }
+    }
     setEditSale(s);
     setShowAddModal(true);
   };
@@ -279,7 +292,7 @@ export default function Sales() {
     }
   };
 
-  const openTransactionDetail = (sale: SalesTransaction) => {
+  const openTransactionDetail = async (sale: SalesTransaction) => {
     setSelectedTransaction({
       id: sale.id,
       type: 'sales_transaction',
@@ -291,7 +304,23 @@ export default function Sales() {
       customerName: sale.customerName,
       source: sale.source,
       businessId: biz!.id,
+      items: sale.items,
     });
+
+    if (biz && (sale.itemsCount ?? 0) > 0 && (!sale.items || sale.items.length === 0)) {
+      try {
+        const res = await api.get(`/businesses/${biz.id}/sales/${sale.id}`);
+        if (res.data?.data?.items) {
+          setSelectedTransaction((prev) =>
+            prev && prev.id === sale.id
+              ? { ...prev, items: res.data.data.items }
+              : prev
+          );
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
   };
 
   // Month navigation
@@ -628,7 +657,14 @@ export default function Sales() {
                       {formatDate(s.transactionDate)}
                     </td>
                     <td className='px-4 py-3 text-gray-700'>
-                      {s.description || '—'}
+                      <div className='flex items-center gap-1.5 flex-wrap'>
+                        <span>{s.description || '—'}</span>
+                        {(s.itemsCount ?? 0) > 0 && (
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'>
+                            · {s.itemsCount} {s.itemsCount === 1 ? 'item type' : 'item types'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className='px-4 py-3 capitalize text-gray-600'>
                       {sourceLabel(s.source)}
@@ -677,9 +713,14 @@ export default function Sales() {
                       </span>
                       {statusBadge(s.status)}
                     </div>
-                    <p className='mt-1 text-sm text-gray-600 truncate'>
-                      {s.description || '—'}
-                    </p>
+                    <div className='mt-1 text-sm text-gray-600 truncate flex items-center gap-1.5'>
+                      <span>{s.description || '—'}</span>
+                      {(s.itemsCount ?? 0) > 0 && (
+                        <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'>
+                          · {s.itemsCount} {s.itemsCount === 1 ? 'item type' : 'item types'}
+                        </span>
+                      )}
+                    </div>
                     <p className='mt-1 text-xs text-gray-400'>
                       {formatDate(s.transactionDate)} ·{' '}
                       <span className='capitalize'>
@@ -842,7 +883,14 @@ export default function Sales() {
                             {formatDate(t.transactionDate)}
                           </td>
                           <td className='max-w-[200px] truncate px-4 py-3'>
-                            {t.description || '—'}
+                            <div className='flex items-center gap-1.5 flex-wrap'>
+                              <span>{t.description || '—'}</span>
+                              {(t.itemsCount ?? 0) > 0 && (
+                                <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'>
+                                  · {t.itemsCount} {t.itemsCount === 1 ? 'item type' : 'item types'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className='px-4 py-3'>{t.customerName || '—'}</td>
                           <td className='whitespace-nowrap px-4 py-3'>

@@ -85,25 +85,15 @@ export default function PayoutWithdrawalModal({
   const numAmount = parseFloat(amountStr) || 0;
   const feeEstimate = preview.fees ? estimateWithdrawal(preview.fees, numAmount) : null;
   const isAmountValid =
-    numAmount >= 100 &&
+    numAmount >= 1000 &&
     numAmount <= available &&
     (!feeEstimate || feeEstimate.debitAmount <= available);
 
-  const handleQuickPercent = (pct: number) => {
-    const raw = (available * pct) / 100;
-    const rounded = Math.floor(raw);
-    if (rounded >= 100) {
-      setAmountStr(String(rounded));
-    } else if (available >= 100) {
-      setAmountStr('100');
-    }
-  };
-
   const handleMaxClick = () => {
     const max = Math.floor(available);
-    if (preview.fees?.withdrawal.bearer === 'platform' && max >= 100) {
+    if (preview.fees?.withdrawal.bearer === 'platform' && max >= 1000) {
       let amt = max;
-      for (let i = 0; i < 8 && amt >= 100; i += 1) {
+      for (let i = 0; i < 8 && amt >= 1000; i += 1) {
         const est = estimateWithdrawal(preview.fees, amt);
         if (est && est.debitAmount <= available) break;
         amt -= 50;
@@ -117,8 +107,8 @@ export default function PayoutWithdrawalModal({
   const handleProceedToConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAmountValid) {
-      if (numAmount < 100) {
-        toast.error('Minimum withdrawal amount is ₦100.00');
+      if (numAmount < 1000) {
+        toast.error('Minimum withdrawal amount is ₦1,000.00');
       } else if (numAmount > available) {
         toast.error('Amount exceeds available withdrawable balance');
       } else {
@@ -352,7 +342,7 @@ export default function PayoutWithdrawalModal({
                     Withdrawal Amount
                   </label>
                   <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
-                    Min: ₦100.00
+                    Min: ₦1,000.00
                   </span>
                 </div>
 
@@ -364,53 +354,35 @@ export default function PayoutWithdrawalModal({
                     id="modal-withdrawal-amount"
                     name="withdrawal-amount"
                     type="number"
-                    min={100}
+                    min={1000}
                     max={available}
                     step={100}
                     placeholder="0.00"
                     value={amountStr}
                     onChange={(e) => setAmountStr(e.target.value)}
-                    className="pl-8 font-mono text-base font-bold text-gray-900"
-                    disabled={available < 100}
+                    className="pl-8 pr-16 font-mono text-base font-bold text-gray-900"
+                    disabled={available < 1000}
                     required
                     autoComplete="off"
                     autoFocus
                   />
-                </div>
-
-                {/* Quick Amount Chips */}
-                {available >= 100 && (
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    {[
-                      { label: '25%', pct: 25 },
-                      { label: '50%', pct: 50 },
-                      { label: '75%', pct: 75 },
-                    ].map((chip) => (
-                      <button
-                        key={chip.label}
-                        type="button"
-                        onClick={() => handleQuickPercent(chip.pct)}
-                        className="flex-1 py-1 rounded-lg text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer select-none"
-                      >
-                        {chip.label}
-                      </button>
-                    ))}
+                  {available >= 1000 && (
                     <button
                       type="button"
                       onClick={handleMaxClick}
-                      className="flex-1 py-1 rounded-lg text-xs font-bold bg-purple-100 hover:bg-purple-200 text-purple-800 transition-colors cursor-pointer select-none"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-100/80 hover:bg-purple-200 rounded-md transition-colors cursor-pointer select-none"
                     >
                       Max
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <p className="text-[11px] text-gray-500">
-                  Minimum withdrawal: ₦100.00 · Transfer fee: ₦10 (≤₦5,000) or ₦25–₦50 for higher amounts.
+                  Minimum withdrawal: ₦1,000.00 · Fee: 1% capped at ₦300.00 max.
                 </p>
 
                 {/* Real-time Dynamic Fee Calculation Card */}
-                {numAmount >= 100 && feeEstimate && (
+                {numAmount >= 1000 && feeEstimate && (
                   <div className="rounded-lg bg-gray-50 border border-gray-200/80 p-3 space-y-1.5 text-xs animate-fade-in">
                     <div className="flex justify-between text-gray-500">
                       <span>Withdrawal amount:</span>
@@ -419,7 +391,7 @@ export default function PayoutWithdrawalModal({
                       </span>
                     </div>
                     <div className="flex justify-between text-gray-500">
-                      <span>Transfer fee (Paystack):</span>
+                      <span>Platform fee (1%, max ₦300):</span>
                       <span className="font-mono font-medium text-gray-700">
                         −{formatNaira(feeEstimate.fee)}
                       </span>
@@ -489,7 +461,7 @@ export default function PayoutWithdrawalModal({
                 </div>
                 {feeEstimate && (
                   <div className="flex justify-between items-center text-gray-500">
-                    <span>Paystack transfer fee</span>
+                    <span>WallX fee (1%, max ₦300)</span>
                     <span className="font-mono font-medium text-gray-700">
                       −{formatNaira(feeEstimate.fee)}
                     </span>

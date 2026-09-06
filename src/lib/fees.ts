@@ -12,6 +12,7 @@
 
 export interface PaystackFeeSchedule {
   currency: string;
+  minWithdrawal?: number;
   dvaInflow: {
     pct: number;
     cap: number;
@@ -20,6 +21,9 @@ export interface PaystackFeeSchedule {
   };
   withdrawal: {
     bearer: 'merchant' | 'platform';
+    ratePct?: number;
+    cap?: number;
+    minAmount?: number;
     bands: Array<{ upTo: number | null; fee: number }>;
     stampDuty: { amount: number; from: number };
     note: string;
@@ -29,7 +33,7 @@ export interface PaystackFeeSchedule {
 export interface WithdrawalFeeEstimate {
   /** What the SME typed in. */
   requested: number;
-  /** Transfer fee (+ stamp duty) Paystack will keep. */
+  /** WallX fee (1% capped at ₦300). */
   fee: number;
   /** What lands in the SME's bank account. */
   netAmount: number;
@@ -40,32 +44,29 @@ export interface WithdrawalFeeEstimate {
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
-/** Banded flat transfer fee + stamp duty, read from the published schedule. */
-function withdrawalCost(schedule: PaystackFeeSchedule, amount: number): number {
-  if (!Number.isFinite(amount) || amount <= 0) return 0;
-  const { bands, stampDuty } = schedule.withdrawal;
-  const band = bands.find((b) => b.upTo === null || amount <= b.upTo) ?? bands[bands.length - 1];
-  let fee = band ? band.fee : 0;
-  if (stampDuty && stampDuty.amount > 0 && amount >= stampDuty.from) fee += stampDuty.amount;
-  return fee;
-}
+export const MIN_WITHDRAWAL_AMOUNT = 1000.00;
+export const WALLX_WITHDRAWAL_PCT = 1.0;
+export const WALLX_WITHDRAWAL_CAP = 300.00;
 
 /**
- * Preview a withdrawal's fee breakdown the same way the backend's
- * `quoteWithdrawal` prices it. Returns null when the amount cannot be priced
- * (e.g. the fee would swallow the whole request in merchant mode) — the caller
- * should hide the preview and let the server return its authoritative error.
+ * Preview a withdrawal's fee breakdown matching the backend's
+ * `quoteWithdrawal` (1% capped at ₦300, min ₦1,000).
  */
 export function estimateWithdrawal(
-  schedule: PaystackFeeSchedule,
+  schedule: PaystackFeeSchedule | undefined | null,
   requestedNaira: number
 ): WithdrawalFeeEstimate | null {
   const requested = round2(Number(requestedNaira) || 0);
-  if (requested <= 0) return null;
-  const bearer = schedule.withdrawal.bearer;
+  const minFloor = schedule?.minWithdrawal ?? schedule?.withdrawal?.minAmount ?? MIN_WITHDRAWAL_AMOUNT;
+  if (requested < minFloor) return null;
+
+  const bearer = schedule?.withdrawal?.bearer ?? 'merchant';
+  const ratePct = schedule?.withdrawal?.ratePct ?? WALLX_WITHDRAWAL_PCT;
+  const cap = schedule?.withdrawal?.cap ?? WALLX_WITHDRAWAL_CAP;
+
+  const fee = round2(Math.min((requested * ratePct) / 100, cap));
 
   if (bearer === 'platform') {
-    const fee = withdrawalCost(schedule, requested);
     return {
       requested,
       fee,
@@ -75,18 +76,9 @@ export function estimateWithdrawal(
     };
   }
 
-  // Merchant mode: the fee comes out of the request, so solve for the net whose
-  // fee-inclusive cost equals what the SME asked for. The fee is banded, so
-  // iterate until it settles — converges in ≤3 steps (four possible fee values).
-  let fee = withdrawalCost(schedule, requested);
-  let net = round2(requested - fee);
-  for (let i = 0; i < 8; i += 1) {
-    const nextFee = withdrawalCost(schedule, net);
-    if (nextFee === fee) break;
-    fee = nextFee;
-    net = round2(requested - fee);
-  }
+  // Merchant mode: fee comes out of requested
+  const net = round2(requested - fee);
+  if (net <= 0) return null;
 
-  if (fee <= 0 || fee >= requested || round2(net + fee) !== requested) return null;
   return { requested, fee, netAmount: net, debitAmount: requested, bearer };
 }

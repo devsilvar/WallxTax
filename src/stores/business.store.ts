@@ -60,9 +60,15 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
           businesses.find((b) => b.id === stored) || businesses[0] || null;
         if (active) localStorage.setItem('activeBusinessId', active.id);
 
+        const currentActive = get().activeBusiness;
+        const activeChanged =
+          !currentActive ||
+          currentActive.id !== active?.id ||
+          JSON.stringify(currentActive) !== JSON.stringify(active);
+
         set({
           businesses,
-          activeBusiness: active,
+          ...(activeChanged ? { activeBusiness: active } : {}),
           lastFetchedAt: Date.now(),
         });
       } finally {

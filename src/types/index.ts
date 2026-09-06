@@ -43,6 +43,16 @@ export interface Business {
 }
 
 
+export interface SaleLineItem {
+  id?: string;
+  saleId?: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal?: number;
+  sortOrder?: number;
+}
+
 export interface SalesTransaction {
   id: string;
   businessId: string;
@@ -60,6 +70,8 @@ export interface SalesTransaction {
   transactionDate: string;
   createdAt: string;
   updatedAt?: string;
+  items?: SaleLineItem[];
+  itemsCount?: number;
 }
 
 export interface Expense {
@@ -70,6 +82,8 @@ export interface Expense {
   /** Free-text detail captured when category = 'other' */
   categoryDetail?: string | null;
   amount: number;
+  quantity?: number;
+  unitPrice?: number | null;
   expenseDate: string;
   receiptUrl?: string;
   isDeductible: boolean;
