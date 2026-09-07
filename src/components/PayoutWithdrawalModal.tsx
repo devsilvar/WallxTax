@@ -110,7 +110,14 @@ export default function PayoutWithdrawalModal({
       if (numAmount < 1000) {
         toast.error('Minimum withdrawal amount is ₦1,000.00');
       } else if (numAmount > available) {
-        toast.error('Amount exceeds available withdrawable balance');
+        if ((preview.pendingWithdrawn ?? 0) > 0) {
+          toast.error(
+            `${formatNaira(preview.pendingWithdrawn)} is currently reserved in a pending withdrawal awaiting approval. Check the Withdrawals tab.`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.error('Amount exceeds available withdrawable balance');
+        }
       } else {
         toast.error('Amount plus fee exceeds your available balance');
       }
@@ -335,6 +342,18 @@ export default function PayoutWithdrawalModal({
                 </div>
               )}
 
+              {(preview.pendingWithdrawn ?? 0) > 0 && (
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 flex items-start gap-2 text-xs">
+                  <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-amber-900">Withdrawal In Progress</p>
+                    <p className="text-amber-700 text-[11px]">
+                      {formatNaira(preview.pendingWithdrawn)} is currently reserved awaiting admin approval. Remaining available: {formatNaira(available)}.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Amount Input Block */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -515,8 +534,16 @@ export default function PayoutWithdrawalModal({
                     <input
                       key={i}
                       ref={pinInputRefs[i]}
+                      id={`payout-pin-digit-${i}`}
+                      name={`payout-pin-digit-${i}`}
                       type={showPin ? 'text' : 'password'}
                       inputMode="numeric"
+                      autoComplete="one-time-code"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       pattern="[0-9]*"
                       maxLength={1}
                       value={digit}

@@ -5,7 +5,7 @@ import {
   Building2, Share2, ArrowDownLeft, Download,
   Clock, CheckCheck, Phone, ShieldCheck, Lock,
   Search, ChevronRight, Eye, EyeOff, Wallet, ArrowUpRight, ArrowRight,
-  Zap, FileCheck, XCircle
+  Zap, FileCheck, XCircle, Info
 } from 'lucide-react';
 
 import Button from '@/components/ui/Button.tsx';
@@ -135,16 +135,18 @@ export default function Account() {
   const user = useAuthStore((s) => s.user);
 
   const [dva, setDva] = useState<DVAData | null>(() => {
-    if (biz?.virtualAccountNumber) {
+    const acct = biz?.virtualAccountNumber || user?.virtualAccountNumber;
+    const bank = biz?.virtualAccountBank || user?.virtualAccountBank || 'Wema Bank';
+    if (acct) {
       return {
         status: 'active',
-        accountNumber: biz.virtualAccountNumber,
-        bankName: biz.virtualAccountBank || 'Wema Bank',
+        accountNumber: acct,
+        bankName: bank,
       };
     }
     return null;
   });
-  const [loading, setLoading] = useState(() => !biz?.virtualAccountNumber);
+  const [loading, setLoading] = useState(() => !biz?.virtualAccountNumber && !user?.virtualAccountNumber);
   const [validating, setValidating] = useState(false);
   const [bvn, setBvn] = useState('');
   const [bvnError, setBvnError] = useState('');
@@ -210,6 +212,25 @@ export default function Account() {
   const [resolvingAccount, setResolvingAccount] = useState(false);
   const [connectingSettlement, setConnectingSettlement] = useState(false);
   const [settlementError, setSettlementError] = useState('');
+
+  const isSettlementLinked = Boolean(
+    biz?.settlementAccountNumber ||
+    settlementPreview?.settlementAccount?.isConnected ||
+    user?.settlementAccountNumber
+  );
+  const resolvedBankName =
+    settlementPreview?.settlementAccount?.bankName ||
+    biz?.settlementBankName ||
+    user?.settlementBankName ||
+    'Not Connected';
+  const resolvedAccountNum =
+    settlementPreview?.settlementAccount?.accountNumber ||
+    biz?.settlementAccountNumber ||
+    user?.settlementAccountNumber;
+  const resolvedAccountName =
+    settlementPreview?.settlementAccount?.accountName ||
+    biz?.settlementAccountName ||
+    user?.settlementAccountName;
 
   const fetchDVA = useCallback(async () => {
     if (!biz?.id) return;
@@ -988,6 +1009,10 @@ export default function Account() {
                 <div className="mt-0.5 text-[11px] text-purple-300/70 truncate max-w-[200px]">
                   {displayAccountName}
                 </div>
+                <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-purple-200/90 bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
+                  <Info className="h-3 w-3 text-purple-300 shrink-0" />
+                  <span>1% fee on incoming transfers (max ₦300)</span>
+                </div>
               </div>
               <button
                 type="button"
@@ -1035,9 +1060,12 @@ export default function Account() {
               {hideBalance ? '••••••••' : formatNaira(settlementPreview?.totalInflows ?? moneyIn.totalBalance)}
             </p>
           )}
-          <div className="mt-2 text-xs text-emerald-700 font-medium flex items-center gap-1">
-            <CheckCheck className="h-3.5 w-3.5" />
-            <span>{transactions.filter((t) => t.status === 'completed').length} completed transfers</span>
+          <div className="mt-2 text-xs flex items-center justify-between gap-1">
+            <span className="text-emerald-700 font-medium flex items-center gap-1">
+              <CheckCheck className="h-3.5 w-3.5" />
+              <span>{transactions.filter((t) => t.status === 'completed').length} completed transfers</span>
+            </span>
+            <span className="text-[10px] text-gray-400 font-medium">1% fee (max ₦300)</span>
           </div>
         </div>
 
@@ -1091,10 +1119,10 @@ export default function Account() {
             <Building2 className="h-4 w-4 text-gray-500 stroke-[2]" />
           </div>
           <p className="text-base font-bold text-gray-900 truncate">
-            {biz.settlementBankName || 'Not Connected'}
+            {resolvedBankName}
           </p>
           <div className="mt-2 text-xs text-gray-500 font-mono">
-            {biz.settlementAccountNumber ? `•••• ${biz.settlementAccountNumber.slice(-4)}` : 'Connect bank for payouts'}
+            {resolvedAccountNum ? `•••• ${resolvedAccountNum.slice(-4)}` : 'Connect bank for payouts'}
           </div>
         </div>
       </div>
@@ -1564,25 +1592,25 @@ export default function Account() {
                 </div>
                 <h3 className="text-sm font-bold text-gray-900">Payout Bank</h3>
               </div>
-              {biz.settlementAccountNumber && !showSettlementForm && (
+              {isSettlementLinked && !showSettlementForm && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                   <CheckCircle2 className="h-3 w-3" /> Linked
                 </span>
               )}
             </div>
 
-            {biz.settlementAccountNumber && !showSettlementForm ? (
+            {isSettlementLinked && !showSettlementForm ? (
               <div className="space-y-4">
                 {/* Bank Details Pill */}
                 <div className="rounded-xl bg-gray-50 border border-gray-200/70 p-3.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-gray-900">{biz.settlementAccountName}</p>
+                    <p className="text-xs font-semibold text-gray-900">{resolvedAccountName || biz.ownerName}</p>
                     <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700">
                       <ShieldCheck className="h-3 w-3" /> Verified
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 mt-0.5 font-mono">
-                    {biz.settlementBankName} · •••• {biz.settlementAccountNumber?.slice(-4)}
+                    {resolvedBankName} · •••• {resolvedAccountNum?.slice(-4)}
                   </p>
                 </div>
 
@@ -1601,11 +1629,19 @@ export default function Account() {
                   <p className="text-[11px] text-purple-800/80 leading-relaxed">
                     Available for instant transfer to your verified payout bank account.
                   </p>
+                  {(settlementPreview?.pooledPendingWithdrawn ?? settlementPreview?.pendingWithdrawn ?? 0) > 0 && (
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-2 text-[11px] text-amber-800 flex items-start gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>
+                        {formatNaira(settlementPreview?.pooledPendingWithdrawn ?? settlementPreview?.pendingWithdrawn ?? 0)} currently reserved in a pending withdrawal awaiting approval.
+                      </span>
+                    </div>
+                  )}
                   <Button
                     variant="primary"
                     size="sm"
                     onClick={() => setShowPayoutModal(true)}
-                    disabled={!biz.settlementAccountNumber}
+                    disabled={!isSettlementLinked}
                     className="w-full text-xs bg-purple-900 hover:bg-purple-950 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Withdraw Funds <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -1647,7 +1683,7 @@ export default function Account() {
                   </div>
                 </div>
               </div>
-            ) : !biz.settlementAccountNumber && !showSettlementForm ? (
+            ) : !isSettlementLinked && !showSettlementForm ? (
               <div className="text-center py-4">
                 <p className="text-xs text-gray-500 mb-3">
                   Connect your Nigerian bank account to receive automatic transfers.

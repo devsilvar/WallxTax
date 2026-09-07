@@ -29,6 +29,8 @@ import {
   Globe2,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
+import { useAuthStore } from '@/stores/auth.store.ts';
+import { useBusinessStore } from '@/stores/business.store.ts';
 import nigerian1 from '@/assets/nigerian1.jfif';
 import nigerian2 from '@/assets/nigerian2.jpg';
 import nigerian3 from '@/assets/nigerian3.jfif';
@@ -126,6 +128,9 @@ function MobileNav({
   onClose: () => void;
 }) {
   const navLinks = ['Features', 'How It Works', 'Testimonials', 'FAQ'];
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  const activeBusiness = useBusinessStore((s) => s.activeBusiness);
 
   return (
     <>
@@ -161,16 +166,53 @@ function MobileNav({
             ))}
           </nav>
           <div className='p-4 border-t border-gray-100 space-y-3'>
-            <Link to='/login' onClick={onClose} className='block'>
-              <Button variant='ghost' className='w-full justify-center'>
-                Sign in
-              </Button>
-            </Link>
-            <Link to='/register' className='block'>
-              <Button className='w-full justify-center'>
-                Get Started <ArrowRight className='h-4 w-4' />
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to='/dashboard'
+                  onClick={onClose}
+                  className='flex items-center gap-3 p-3 rounded-2xl border border-primary-100 bg-gradient-to-r from-primary-50/70 to-purple-50/50 hover:from-primary-50 hover:to-purple-50 transition-all group'
+                >
+                  <div className='flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-purple-600 text-white text-sm font-bold shrink-0 overflow-hidden ring-2 ring-white shadow-sm'>
+                    {activeBusiness?.logoUrl ? (
+                      <img
+                        src={activeBusiness.logoUrl}
+                        alt={activeBusiness.businessName}
+                        className='h-full w-full object-cover'
+                      />
+                    ) : (
+                      (activeBusiness?.businessName || user?.email || 'B').charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className='min-w-0 flex-1 text-left'>
+                    <p className='text-sm font-bold text-gray-900 truncate'>
+                      {activeBusiness?.businessName || user?.email?.split('@')[0] || 'My Business'}
+                    </p>
+                    <p className='text-xs font-semibold text-primary-600 flex items-center gap-1 group-hover:text-primary-700'>
+                      Go to Dashboard <ArrowRight className='h-3 w-3' />
+                    </p>
+                  </div>
+                </Link>
+                <Link to='/dashboard' onClick={onClose} className='block'>
+                  <Button className='w-full justify-center'>
+                    Open Dashboard <ArrowRight className='h-4 w-4' />
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to='/login' onClick={onClose} className='block'>
+                  <Button variant='ghost' className='w-full justify-center'>
+                    Sign in
+                  </Button>
+                </Link>
+                <Link to='/register' className='block'>
+                  <Button className='w-full justify-center'>
+                    Get Started <ArrowRight className='h-4 w-4' />
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -297,6 +339,18 @@ function FAQSection() {
 /* ─── Component ─── */
 export default function Landing() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const activeBusiness = useBusinessStore((s) => s.activeBusiness);
+  const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (!user) void fetchMe();
+      if (!activeBusiness) void fetchBusinesses();
+    }
+  }, [isAuthenticated, user, activeBusiness, fetchMe, fetchBusinesses]);
 
   return (
     <div className='min-h-screen bg-white overflow-x-hidden'>
@@ -322,16 +376,47 @@ export default function Landing() {
             ))}
           </nav>
           <div className='flex items-center gap-2 sm:gap-3'>
-            <Link to='/login' className='hidden sm:block text-[16px]'>
-              <Button variant='ghost' size='sm' className='text-[16px]'>
-                Sign in
-              </Button>
-            </Link>
-            <Link to='/register' className='hidden sm:block'>
-              <Button size='sm' className='text-[16px]'>
-                Get Started <ArrowRight className='h-4 w-4' />
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                to='/dashboard'
+                className='flex items-center gap-2.5 sm:gap-3 rounded-full border border-gray-200/80 bg-white/95 hover:bg-gray-50/90 pl-1.5 pr-3.5 sm:pr-4 py-1.5 shadow-sm hover:shadow-md transition-all duration-200 group'
+                title='Go to Dashboard'
+              >
+                <div className='flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-purple-600 text-white text-xs sm:text-sm font-bold shrink-0 overflow-hidden ring-2 ring-primary-100 shadow-sm'>
+                  {activeBusiness?.logoUrl ? (
+                    <img
+                      src={activeBusiness.logoUrl}
+                      alt={activeBusiness.businessName}
+                      className='h-full w-full object-cover'
+                    />
+                  ) : (
+                    (activeBusiness?.businessName || user?.email || 'B').charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className='text-left min-w-0'>
+                  <p className='text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[120px] sm:max-w-[160px] leading-tight'>
+                    {activeBusiness?.businessName || user?.email?.split('@')[0] || 'My Business'}
+                  </p>
+                  <p className='text-[10px] sm:text-[11px] font-semibold text-primary-600 flex items-center gap-1 leading-tight group-hover:text-primary-700'>
+                    <span>Dashboard</span>
+                    <ArrowRight className='h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform group-hover:translate-x-0.5' />
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <>
+                <Link to='/login' className='hidden sm:block text-[16px]'>
+                  <Button variant='ghost' size='sm' className='text-[16px]'>
+                    Sign in
+                  </Button>
+                </Link>
+                <Link to='/register' className='hidden sm:block'>
+                  <Button size='sm' className='text-[16px]'>
+                    Get Started <ArrowRight className='h-4 w-4' />
+                  </Button>
+                </Link>
+              </>
+            )}
             <button
               onClick={() => setMobileNavOpen(true)}
               className='lg:hidden flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors'
@@ -449,18 +534,26 @@ export default function Landing() {
             {/* CTA Buttons - Pill Shaped */}
             <ScrollReveal delay={300}>
               <div className='mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 px-4 sm:px-0'>
-                <Link to='/register' className='w-full sm:w-auto'>
+                <Link to={isAuthenticated ? '/dashboard' : '/register'} className='w-full sm:w-auto'>
                   <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-8 sm:px-10 py-4 text-sm sm:text-base font-bold text-white shadow-2xl shadow-primary-500/40 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/60 hover:-translate-y-1 active:scale-[0.98] overflow-hidden group'>
                     <span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700' />
                     <span className='relative flex items-center gap-2'>
-                      Start Free Today{' '}
+                      {isAuthenticated ? 'Go to Dashboard' : 'Start Free Today'}{' '}
                       <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
                     </span>
                   </button>
                 </Link>
-                <Link to='/login' className='w-full sm:w-auto'>
+                <Link to={isAuthenticated ? '/tax' : '/login'} className='w-full sm:w-auto'>
                   <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border-2 border-gray-300 bg-white/70 backdrop-blur px-8 sm:px-10 py-4 text-sm sm:text-base font-semibold text-gray-700 shadow-md transition-all duration-300 hover:border-primary-300 hover:bg-white hover:shadow-xl hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
-                    <Play className='h-4 w-4 fill-current' /> Watch Demo
+                    {isAuthenticated ? (
+                      <>
+                        <FileText className='h-4 w-4' /> View Tax Reports
+                      </>
+                    ) : (
+                      <>
+                        <Play className='h-4 w-4 fill-current' /> Watch Demo
+                      </>
+                    )}
                   </button>
                 </Link>
               </div>
@@ -1686,10 +1779,10 @@ export default function Landing() {
 
           {/* Bottom CTA */}
           <div className='mt-20 sm:mt-28 flex justify-center'>
-            <Link to='/register'>
+            <Link to={isAuthenticated ? '/dashboard' : '/register'}>
               <button className='group px-10 py-5 rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white font-bold shadow-xl shadow-primary-500/30 hover:shadow-2xl hover:shadow-primary-500/50 transition-all duration-300 hover:-translate-y-1'>
                 <span className='flex items-center gap-2'>
-                  Join growing businesses
+                  {isAuthenticated ? 'Go to Dashboard' : 'Join growing businesses'}
                   <ArrowRight className='h-5 w-5 group-hover:translate-x-1 transition-transform' />
                 </span>
               </button>
@@ -1814,18 +1907,26 @@ export default function Landing() {
           </p>
 
           <div className='mt-10 flex flex-col sm:flex-row items-center justify-center gap-4'>
-            <Link to='/register' className='w-full sm:w-auto'>
+            <Link to={isAuthenticated ? '/dashboard' : '/register'} className='w-full sm:w-auto'>
               <button className='group w-full sm:w-auto px-10 py-4 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 text-white font-bold shadow-xl shadow-primary-500/40 hover:shadow-2xl hover:shadow-primary-500/60 transition-all duration-300 hover:-translate-y-1'>
                 <span className='flex items-center justify-center gap-2'>
-                  Start Your Free Trial
+                  {isAuthenticated ? 'Go to Dashboard' : 'Start Your Free Trial'}
                   <ArrowRight className='h-5 w-5 group-hover:translate-x-1 transition-transform' />
                 </span>
               </button>
             </Link>
-            <Link to='/login' className='w-full sm:w-auto'>
+            <Link to={isAuthenticated ? '/account' : '/login'} className='w-full sm:w-auto'>
               <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-10 py-4 rounded-full border-2 border-gray-300 bg-white/70 backdrop-blur text-gray-700 font-semibold hover:border-primary-400 hover:bg-white hover:text-primary-700 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5'>
-                <Play className='h-4 w-4 fill-current' />
-                Schedule Demo
+                {isAuthenticated ? (
+                  <>
+                    <Wallet className='h-4 w-4' /> Dedicated Account
+                  </>
+                ) : (
+                  <>
+                    <Play className='h-4 w-4 fill-current' />
+                    Schedule Demo
+                  </>
+                )}
               </button>
             </Link>
           </div>

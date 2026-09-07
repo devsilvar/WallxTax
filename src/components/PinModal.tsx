@@ -153,8 +153,16 @@ export default function PinModal({
                   <input
                     key={i}
                     ref={inputRefs[i]}
+                    id={`auth-pin-digit-${i}`}
+                    name={`auth-pin-digit-${i}`}
                     type={showPin ? 'text' : 'password'}
                     inputMode="numeric"
+                    autoComplete="one-time-code"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     pattern="[0-9]*"
                     maxLength={1}
                     value={digit}

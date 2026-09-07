@@ -39,10 +39,16 @@ export interface PayoutPreviewData {
   businessName: string;
   walletBalance?: number;
   totalInflows: number;
+  businessInflows?: number;
+  pooledInflows?: number;
   totalSplitSettled: number;
   totalWithdrawn: number;
+  businessWithdrawn?: number;
+  pooledTotalWithdrawn?: number;
   pendingWithdrawn?: number;
+  pooledPendingWithdrawn?: number;
   completedWithdrawn?: number;
+  pooledCompletedWithdrawn?: number;
   taxReserve: number;
   availableForWithdrawal: number;
   /**
@@ -188,7 +194,7 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       } else if (errorCode === 'WITHDRAWAL_IN_PROGRESS') {
         toast.error('A withdrawal request is already being processed. Please wait a few seconds and try again.', { id: toastId });
       } else if (errorCode === 'INSUFFICIENT_FUNDS') {
-        toast.error('Insufficient funds available for withdrawal', { id: toastId });
+        toast.error(errorMessage || 'Insufficient funds available for withdrawal', { id: toastId, duration: 6000 });
       } else {
         toast.error(errorMessage || getErrorMessage(err, 'Withdrawal failed'), { id: toastId });
       }

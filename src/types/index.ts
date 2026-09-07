@@ -11,6 +11,15 @@ export interface User {
   isVerified: boolean;
   isActive: boolean;
   createdAt: string;
+  settlementBankCode?: string | null;
+  settlementBankName?: string | null;
+  settlementAccountNumber?: string | null;
+  settlementAccountName?: string | null;
+  settlementConnectedAt?: string | null;
+  paystackCustomerCode?: string | null;
+  virtualAccountNumber?: string | null;
+  virtualAccountBank?: string | null;
+  primaryBusinessId?: string | null;
 }
 
 export interface Business {

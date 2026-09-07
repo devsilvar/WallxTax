@@ -16,9 +16,11 @@ import {
   Loader2,
   CheckCheck,
   Package,
+  ArrowLeftRight,
 } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { useBusinessStore } from '@/stores/business.store';
 import type { SaleLineItem } from '@/types/index.ts';
 
 export type TransactionDetailType = 'dva_inflow' | 'tax_payment' | 'invoice_payment' | 'sales_transaction';
@@ -85,6 +87,33 @@ export default function TransactionDetailPanel({
   const [downloading, setDownloading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [reclassifying, setReclassifying] = useState(false);
+
+  const businesses = useBusinessStore((s) => s.businesses);
+  const otherBusinesses = businesses.filter((b) => b.id !== transaction?.businessId);
+  const [showReassign, setShowReassign] = useState(false);
+  const [targetBusinessId, setTargetBusinessId] = useState('');
+  const [reassigning, setReassigning] = useState(false);
+
+  const handleReassign = async () => {
+    if (!targetBusinessId) {
+      toast.error('Please select a target business');
+      return;
+    }
+    try {
+      setReassigning(true);
+      await api.post(`/businesses/${transaction!.businessId}/sales/${transaction!.id}/reassign`, {
+        targetBusinessId,
+      });
+      const targetBiz = businesses.find((b) => b.id === targetBusinessId);
+      toast.success(`Transaction moved to ${targetBiz?.businessName || 'target business'}`);
+      onVerifySuccess?.();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to reassign transaction');
+    } finally {
+      setReassigning(false);
+    }
+  };
 
   if (!isOpen || !transaction) return null;
 
@@ -364,6 +393,27 @@ export default function TransactionDetailPanel({
                     <Building2 className="h-3 w-3" /> Dedicated Virtual NUBAN
                   </span>
                 </div>
+                {(() => {
+                  const gross = Number(transaction.amount);
+                  const fee = Math.min(gross * 0.01, 300);
+                  const net = gross - fee;
+                  return (
+                    <>
+                      <div className="px-4 py-3 flex items-center justify-between bg-gray-50/50">
+                        <span className="text-gray-500">Gross Transfer</span>
+                        <span className="font-mono font-medium text-gray-800">{formatNaira(gross)}</span>
+                      </div>
+                      <div className="px-4 py-3 flex items-center justify-between bg-gray-50/50">
+                        <span className="text-gray-500">Paystack Gateway Fee (1%, max ₦300)</span>
+                        <span className="font-mono font-medium text-red-600">−{formatNaira(fee)}</span>
+                      </div>
+                      <div className="px-4 py-3 flex items-center justify-between bg-emerald-50/40">
+                        <span className="font-semibold text-emerald-950">Net Added to Wallet</span>
+                        <span className="font-mono font-bold text-emerald-700">{formatNaira(net)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
 
@@ -440,6 +490,60 @@ export default function TransactionDetailPanel({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Reassign Business Section for Multi-Business Owners */}
+          {(isSale || isDva) && otherBusinesses.length > 0 && (
+            <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-purple-950 font-bold">
+                  <ArrowLeftRight className="h-4 w-4 text-purple-700" />
+                  <span>Reassign to Another Business</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReassign(!showReassign)}
+                  className="text-[11px] font-semibold text-purple-700 hover:text-purple-900 cursor-pointer"
+                >
+                  {showReassign ? 'Cancel' : 'Move Sale'}
+                </button>
+              </div>
+              <p className="text-gray-600 text-[11px]">
+                Under Nigerian tax law, sales and tax obligations belong to the assigned business entity. Move misattributed transfers to keep ledgers accurate.
+              </p>
+              {showReassign && (
+                <div className="space-y-2.5 pt-1">
+                  <select
+                    value={targetBusinessId}
+                    onChange={(e) => setTargetBusinessId(e.target.value)}
+                    className="w-full text-xs rounded-lg border border-purple-200 bg-white px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-600"
+                  >
+                    <option value="">Select target business…</option>
+                    {otherBusinesses.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.businessName} ({b.merchantId || b.id.slice(0, 8)})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleReassign}
+                    disabled={!targetBusinessId || reassigning}
+                    className="w-full py-2 px-3 bg-purple-900 hover:bg-purple-950 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {reassigning ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Moving Sale…
+                      </>
+                    ) : (
+                      <>
+                        <ArrowLeftRight className="h-3.5 w-3.5" /> Confirm Move
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

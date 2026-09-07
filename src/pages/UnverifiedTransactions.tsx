@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, Sparkles, ShoppingBag, HelpCircle, Wallet, CircleDollarSign } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, Sparkles, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
@@ -34,6 +34,7 @@ function formatDate(d: string) {
 
 export default function UnverifiedTransactions() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const businesses = useBusinessStore((s) => s.businesses);
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
   
   const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
@@ -44,6 +45,7 @@ export default function UnverifiedTransactions() {
   
   // Wizard modal state
   const [verifyModal, setVerifyModal] = useState<{ transaction: SalesTransaction } | null>(null);
+  const [targetBusinessId, setTargetBusinessId] = useState<string>('');
   const [wizardStep, setWizardStep] = useState<WizardStep>('primary');
   const [, setPrimaryChoice] = useState<PrimaryChoice | null>(null);
   const [selectedClassification, setSelectedClassification] = useState<string>('');
@@ -108,18 +110,30 @@ export default function UnverifiedTransactions() {
         ? selected.isRevenue
         : ['sales_revenue', 'service_revenue'].includes(selectedClassification);
       
+      const isReassigning = targetBusinessId && targetBusinessId !== biz.id;
+      const targetBizName = businesses.find((b) => b.id === targetBusinessId)?.businessName || 'target business';
+
+      const payload = {
+        classification: selectedClassification,
+        customerName: customerName || undefined,
+        description: description || undefined,
+        targetBusinessId: isReassigning ? targetBusinessId : undefined,
+      };
+
       if (isRevenue) {
-        await api.post(`/businesses/${biz.id}/sales/${verifyModal.transaction.id}/verify`, { 
-          classification: selectedClassification,
-          customerName: customerName || undefined,
-          description: description || undefined,
-        });
-        toast.success('Transaction verified as business income');
+        await api.post(`/businesses/${biz.id}/sales/${verifyModal.transaction.id}/verify`, payload);
+        toast.success(
+          isReassigning
+            ? `Transaction verified and assigned to ${targetBizName}`
+            : 'Transaction verified as business income'
+        );
       } else {
-        await api.post(`/businesses/${biz.id}/sales/${verifyModal.transaction.id}/reclassify`, { 
-          classification: selectedClassification 
-        });
-        toast.success('Transaction reclassified successfully');
+        await api.post(`/businesses/${biz.id}/sales/${verifyModal.transaction.id}/reclassify`, payload);
+        toast.success(
+          isReassigning
+            ? `Transaction reclassified and assigned to ${targetBizName}`
+            : 'Transaction reclassified successfully'
+        );
       }
       closeModal();
       invalidateDashboard('transaction_verified');
@@ -133,6 +147,7 @@ export default function UnverifiedTransactions() {
 
   function openVerifyModal(transaction: SalesTransaction) {
     setVerifyModal({ transaction });
+    setTargetBusinessId(biz?.id || '');
     setWizardStep('primary');
     setPrimaryChoice(null);
     setSelectedClassification('');
@@ -142,6 +157,7 @@ export default function UnverifiedTransactions() {
 
   function closeModal() {
     setVerifyModal(null);
+    setTargetBusinessId('');
     setWizardStep('primary');
     setPrimaryChoice(null);
     setSelectedClassification('');
@@ -376,6 +392,32 @@ export default function UnverifiedTransactions() {
 
             {/* Body */}
             <div className="px-6 py-6 overflow-y-auto flex-1">
+              {/* Business Assignment Selector (if user has multiple businesses) */}
+              {businesses.length > 1 && (
+                <div className="mb-5 p-3.5 bg-purple-50/80 border border-purple-200/80 rounded-xl shadow-xs">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-950 mb-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-purple-700" />
+                    <span>Business Paid Into</span>
+                  </div>
+                  <select
+                    value={targetBusinessId}
+                    onChange={(e) => setTargetBusinessId(e.target.value)}
+                    className="w-full px-3 py-2 border border-purple-200 rounded-lg text-xs font-medium text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
+                  >
+                    {businesses.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.businessName} {b.id === biz.id ? '(Current Active Business)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1.5 text-[11px] text-purple-800/80">
+                    {targetBusinessId === biz.id
+                      ? 'This revenue will be credited to this business’s sales and tax reports.'
+                      : `This revenue will be moved and credited to ${businesses.find((b) => b.id === targetBusinessId)?.businessName || 'the selected business'}.`}
+                  </p>
+                </div>
+              )}
+
               {/* Step 1: Primary Choice */}
               {wizardStep === 'primary' && (
                 <div className="space-y-3">
