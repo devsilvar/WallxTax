@@ -745,13 +745,13 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
                           </Button>
                         )}
 
-                        {isPaid && (
+                        {import.meta.env.DEV && isPaid && (
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={(e) => handleReset(r.id, e)}
                             className="text-xs text-rose-600 hover:text-rose-800 hover:bg-rose-50 font-medium"
-                            title="Reset this report back to draft for testing"
+                            title="Reset this report back to draft for testing (Dev Only)"
                           >
                             <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             Reset to Draft

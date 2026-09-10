@@ -139,31 +139,107 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token!);
+    }
+  });
+  failedQueue = [];
+};
+
+function setAuthorizationHeader(req: any, token: string) {
+  if (req.headers?.set && typeof req.headers.set === 'function') {
+    req.headers.set('Authorization', `Bearer ${token}`);
+  } else if (req.headers) {
+    req.headers.Authorization = `Bearer ${token}`;
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    const url = originalRequest.url || '';
+    // Recursive loop guard: never attempt refresh if the failing endpoint is an auth route
+    if (
+      url.includes('/auth/refresh') ||
+      url.includes('/auth/login') ||
+      url.includes('/auth/register')
+    ) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // 1. Cross-tab synchronization check:
+      // If another tab already refreshed the token, localStorage will have a newer token
+      const storedToken = localStorage.getItem('accessToken');
+      const authHeader = (
+        originalRequest.headers?.Authorization ||
+        originalRequest.headers?.get?.('Authorization')
+      ) as string | undefined;
+      const sentToken = authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null;
+
+      if (storedToken && sentToken && storedToken !== sentToken) {
+        originalRequest._retry = true;
+        setAuthorizationHeader(originalRequest, storedToken);
+        return api(originalRequest);
+      }
+
+      // 2. Refresh mutex: if a refresh is already in flight, queue this request
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest._retry = true;
+            setAuthorizationHeader(originalRequest, token);
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-          const newToken = data.data.accessToken;
-          localStorage.setItem('accessToken', newToken);
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          // Lazy import — auth.store imports this module, so a top-level
-          // import would create a load-time cycle. Resolving at call-time
-          // is fine because by now both modules are fully evaluated.
-          const { useAuthStore } = await import('@/stores/auth.store.ts');
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
-        }
+      if (!refreshToken) {
+        isRefreshing = false;
+        return Promise.reject(error);
+      }
+
+      try {
+        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+        const newToken = data.data.accessToken;
+        localStorage.setItem('accessToken', newToken);
+        api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+        setAuthorizationHeader(originalRequest, newToken);
+        processQueue(null, newToken);
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        console.error('Token refresh failed:', refreshError);
+        // Lazy import — auth.store imports this module, so a top-level
+        // import would create a load-time cycle. Resolving at call-time
+        // is fine because by now both modules are fully evaluated.
+        const { useAuthStore } = await import('@/stores/auth.store.ts');
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 

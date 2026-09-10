@@ -409,6 +409,7 @@ export default function Account() {
     if (!hasPendingPayout || !biz?.id) return;
 
     const pollInterval = setInterval(() => {
+      if (document.hidden) return;
       fetchPayoutHistory(
         biz.id,
         payoutPagination.page,
@@ -438,6 +439,7 @@ export default function Account() {
     if (!isPending || !biz?.id) return;
 
     const pollInterval = setInterval(() => {
+      if (document.hidden) return;
       fetchDVA();
     }, 10000);
 
