@@ -15,11 +15,12 @@ import {
   ExternalLink,
   Loader2,
   CheckCheck,
-  Package,
   ArrowLeftRight,
+  Package,
 } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useBusinessStore } from '@/stores/business.store';
 import type { SaleLineItem } from '@/types/index.ts';
 
@@ -87,8 +88,10 @@ export default function TransactionDetailPanel({
   const [downloading, setDownloading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [reclassifying, setReclassifying] = useState(false);
+  const navigate = useNavigate();
 
   const businesses = useBusinessStore((s) => s.businesses);
+  const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const otherBusinesses = businesses.filter((b) => b.id !== transaction?.businessId);
   const [showReassign, setShowReassign] = useState(false);
   const [targetBusinessId, setTargetBusinessId] = useState('');
@@ -166,23 +169,42 @@ export default function TransactionDetailPanel({
   };
 
   const handleVerifyAsSales = async () => {
+    const bizId = transaction.businessId || activeBusiness?.id;
+    if (!bizId || !transaction.id) {
+      toast.error('Unable to verify: missing business or transaction ID');
+      return;
+    }
+
     try {
       setVerifying(true);
-      await api.post(`/businesses/${transaction.businessId}/sales/${transaction.id}/verify`);
+      await api.post(`/businesses/${bizId}/sales/${transaction.id}/verify`, {
+        classification: 'Product Sale',
+      });
       toast.success('Confirmed as taxable sales revenue');
       onVerifySuccess?.();
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Failed to verify transaction');
+      const errorMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Failed to verify transaction';
+      toast.error(errorMsg);
     } finally {
       setVerifying(false);
     }
   };
 
   const handleReclassify = async () => {
+    const bizId = transaction.businessId || activeBusiness?.id;
+    if (!bizId || !transaction.id) {
+      toast.error('Unable to reclassify: missing business or transaction ID');
+      return;
+    }
+
     try {
       setReclassifying(true);
-      await api.post(`/businesses/${transaction.businessId}/sales/${transaction.id}/reclassify`, {
+      await api.post(`/businesses/${bizId}/sales/${transaction.id}/reclassify`, {
+        classification: 'Transfer Between Accounts',
         category: 'transfer',
         isTaxable: false,
         reason: 'Internal transfer / Non-revenue funds',
@@ -191,7 +213,11 @@ export default function TransactionDetailPanel({
       onVerifySuccess?.();
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Failed to reclassify transaction');
+      const errorMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Failed to reclassify transaction';
+      toast.error(errorMsg);
     } finally {
       setReclassifying(false);
     }
@@ -289,22 +315,36 @@ export default function TransactionDetailPanel({
                   <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
                     This transfer was captured automatically. Confirm if this is taxable sales income or non-taxable funds (loan/capital).
                   </p>
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
+                      type="button"
                       onClick={handleVerifyAsSales}
                       disabled={verifying}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {verifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                       Confirm as Sales
                     </button>
                     <button
+                      type="button"
                       onClick={handleReclassify}
                       disabled={reclassifying}
-                      className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {reclassifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HelpCircle className="h-3.5 w-3.5" />}
                       Reclassify Non-Taxable
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        navigate('/sales/unverified');
+                      }}
+                      className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200/80 text-amber-900 border border-amber-300/70 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Open full classification and multi-business review page"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Review in Unverified Tab
                     </button>
                   </div>
                 </div>

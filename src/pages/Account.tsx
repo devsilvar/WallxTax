@@ -1819,6 +1819,7 @@ export default function Account() {
         transaction={selectedTxn}
         onVerifySuccess={() => {
           if (biz?.id) {
+            refreshAccountData(true);
             // Refetch transactions after verification or reclassification
             api.get<DvaTransactionsResponse>(`/businesses/${biz.id}/dva/transactions`, {
               params: { page: 1, limit: 50 },
