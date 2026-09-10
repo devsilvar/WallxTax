@@ -212,18 +212,19 @@ export default function SalesExpenseChart({
 
   return (
     <Card
-      className={`overflow-hidden border-gray-200/80 bg-white shadow-xs ${className}`}
+      noPadding
+      className={`overflow-hidden rounded-t-none rounded-b-xl border-gray-200/80 bg-white shadow-xs ${className}`}
     >
       {/* ── Header ────────────────────────────────────────── */}
-      <div className='flex flex-col gap-3 border-b border-gray-100 px-2 py-1 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='flex flex-col gap-3 border-b border-purple-800/40 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 px-4 py-3 sm:flex-row sm:items-center sm:justify-between text-white'>
         <div className='flex items-center gap-2'>
-          <BarChart3 className='h-4 w-4 text-gray-500 stroke-[2]' />
+          <BarChart3 className='h-4 w-4 text-purple-200 stroke-[2]' />
           <div className='flex items-center gap-2'>
-            <h2 className='text-sm font-semibold text-gray-900'>
+            <h2 className='text-sm font-semibold text-white tracking-wide'>
               Sales &amp; Expenses Overview
             </h2>
             {data?.period && (
-              <span className='font-mono text-[11px] text-gray-400 font-normal hidden sm:inline'>
+              <span className='font-mono text-[11px] text-purple-200/80 font-normal hidden sm:inline'>
                 ({data.period.from} – {data.period.to})
               </span>
             )}
@@ -233,7 +234,7 @@ export default function SalesExpenseChart({
         {/* ── Controls: Period pills & Chart Mode ─────────── */}
         <div className='flex flex-wrap items-center gap-2'>
           {/* Period Selector Pills */}
-          <div className='inline-flex rounded-lg bg-gray-100/70 p-0.5'>
+          <div className='inline-flex rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 p-0.5'>
             {PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
@@ -241,8 +242,8 @@ export default function SalesExpenseChart({
                 onClick={() => handlePeriodChange(opt.key)}
                 className={`rounded-md px-2 py-1 text-xs transition-all ${
                   period === opt.key
-                    ? 'bg-white text-gray-900 shadow-xs font-semibold'
-                    : 'text-gray-500 hover:text-gray-900 font-medium'
+                    ? 'bg-white text-purple-950 shadow-xs font-semibold'
+                    : 'text-purple-200 hover:text-white hover:bg-white/10 font-medium'
                 }`}
               >
                 {opt.label}
@@ -251,14 +252,14 @@ export default function SalesExpenseChart({
           </div>
 
           {/* Mode Toggle */}
-          <div className='inline-flex rounded-lg bg-gray-100/70 p-0.5'>
+          <div className='inline-flex rounded-lg bg-white/10 backdrop-blur-sm border border-white/15 p-0.5'>
             <button
               type='button'
               onClick={() => setChartMode('bars')}
               className={`rounded-md p-1.5 transition-all ${
                 chartMode === 'bars'
-                  ? 'bg-white text-gray-900 shadow-xs'
-                  : 'text-gray-400 hover:text-gray-700'
+                  ? 'bg-white text-purple-950 shadow-xs'
+                  : 'text-purple-200 hover:text-white hover:bg-white/10'
               }`}
               title='Side-by-side comparison bars'
             >
@@ -269,8 +270,8 @@ export default function SalesExpenseChart({
               onClick={() => setChartMode('area')}
               className={`rounded-md p-1.5 transition-all ${
                 chartMode === 'area'
-                  ? 'bg-white text-gray-900 shadow-xs'
-                  : 'text-gray-400 hover:text-gray-700'
+                  ? 'bg-white text-purple-950 shadow-xs'
+                  : 'text-purple-200 hover:text-white hover:bg-white/10'
               }`}
               title='Cashflow trend wave'
             >
@@ -282,10 +283,10 @@ export default function SalesExpenseChart({
           <button
             type='button'
             onClick={() => setShowBreakdown(!showBreakdown)}
-            className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all ${
               showBreakdown
-                ? 'border-gray-300 bg-gray-100 text-gray-900'
-                : 'border-gray-200 bg-white text-gray-500 hover:text-gray-800'
+                ? 'border-white bg-white text-purple-950 shadow-xs font-semibold'
+                : 'border-white/20 bg-white/10 text-purple-200 hover:bg-white/20 hover:text-white'
             }`}
           >
             <SlidersHorizontal className='h-3.5 w-3.5' />

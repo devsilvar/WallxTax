@@ -112,6 +112,9 @@ export interface TaxReport {
   paymentStatus: PaymentStatus;
   isFinalized: boolean;
   isLocked: boolean;
+  lockedAt?: string | null;
+  latestPayment?: TaxPayment | null;
+  payments?: TaxPayment[];
   createdAt: string;
   updatedAt: string;
 }

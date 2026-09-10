@@ -109,7 +109,7 @@ function formatMonth(dateStr: string): string {
   });
 }
 
-function statusDot(status: string) {
+function statusDot(status: string, onDark = false) {
   const colorMap: Record<string, string> = {
     pending: 'bg-amber-400',
     processing: 'bg-blue-400',
@@ -119,16 +119,28 @@ function statusDot(status: string) {
     reversed: 'bg-red-400',
   };
   const labelMap: Record<string, string> = {
-    pending: 'text-amber-600 bg-amber-50 border-amber-100',
-    processing: 'text-blue-600 bg-blue-50 border-blue-100',
-    completed: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-    failed: 'text-red-600 bg-red-50 border-red-100',
-    confirmed: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-    reversed: 'text-red-600 bg-red-50 border-red-100',
+    pending: onDark
+      ? 'text-amber-200 bg-amber-400/20 border-amber-300/30'
+      : 'text-amber-600 bg-amber-50 border-amber-100',
+    processing: onDark
+      ? 'text-blue-200 bg-blue-400/20 border-blue-300/30'
+      : 'text-blue-600 bg-blue-50 border-blue-100',
+    completed: onDark
+      ? 'text-emerald-200 bg-emerald-400/20 border-emerald-300/30'
+      : 'text-emerald-600 bg-emerald-50 border-emerald-100',
+    failed: onDark
+      ? 'text-rose-200 bg-rose-400/20 border-rose-300/30'
+      : 'text-red-600 bg-red-50 border-red-100',
+    confirmed: onDark
+      ? 'text-emerald-200 bg-emerald-400/20 border-emerald-300/30'
+      : 'text-emerald-600 bg-emerald-50 border-emerald-100',
+    reversed: onDark
+      ? 'text-rose-200 bg-rose-400/20 border-rose-300/30'
+      : 'text-red-600 bg-red-50 border-red-100',
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize ${labelMap[status] || 'text-gray-500 bg-gray-50 border-gray-100'}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize ${labelMap[status] || (onDark ? 'text-white/90 bg-white/10 border-white/15' : 'text-gray-500 bg-gray-50 border-gray-100')}`}
     >
       <span
         className={`h-1.5 w-1.5 rounded-full animate-pulse-soft ${colorMap[status] || 'bg-gray-400'}`}
@@ -813,15 +825,15 @@ export default function Dashboard() {
       {/* ── Current Month + Trends ──────────────────── */}
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-5 stagger-children'>
         {/* Current Month */}
-        <div className='lg:col-span-2 rounded-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200'>
-          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+        <div className='lg:col-span-2 rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+          <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
-              <div className='h-2 w-2 rounded-full bg-emerald-500 animate-pulse-soft' />
-              <h2 className='text-sm font-semibold text-gray-900'>
+              <div className='h-2 w-2 rounded-full bg-emerald-400 animate-pulse-soft shadow-xs shadow-emerald-400/50' />
+              <h2 className='text-sm font-semibold text-white tracking-wide'>
                 {t('kpis.this_month')}
               </h2>
             </div>
-            {currentMonth && statusDot(currentMonth.paymentStatus)}
+            {currentMonth && statusDot(currentMonth.paymentStatus, true)}
           </div>
           {currentMonth ? (
             <div className='px-5 py-4 space-y-3'>
@@ -923,15 +935,15 @@ export default function Dashboard() {
         </div>
 
         {/* Monthly Trends */}
-        <div className='lg:col-span-3 rounded-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200'>
-          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+        <div className='lg:col-span-3 rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+          <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
-              <BarChart3 className='h-4 w-4 text-gray-500 stroke-[2]' />
-              <h2 className='text-sm font-semibold text-gray-900'>
+              <BarChart3 className='h-4 w-4 text-purple-200 stroke-[2]' />
+              <h2 className='text-sm font-semibold text-white tracking-wide'>
                 Monthly Trends
               </h2>
             </div>
-            <span className='text-[11px] text-gray-400 bg-gray-50 rounded-full px-2.5 py-0.5 border border-gray-150 hidden sm:inline-flex'>
+            <span className='text-[11px] text-purple-200 bg-white/10 rounded-full px-2.5 py-0.5 border border-white/15 hidden sm:inline-flex backdrop-blur-xs'>
               Last 6 months
             </span>
           </div>
@@ -1023,17 +1035,17 @@ export default function Dashboard() {
       {/* ── Recent Sales + Expenses ─────────────────── */}
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2 stagger-children'>
         {/* Recent Sales */}
-        <div className='rounded-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200'>
-          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+          <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
-              <Receipt className='h-4 w-4 text-gray-500 stroke-[2]' />
-              <h2 className='text-sm font-semibold text-gray-900'>
+              <Receipt className='h-4 w-4 text-purple-200 stroke-[2]' />
+              <h2 className='text-sm font-semibold text-white tracking-wide'>
                 Recent Sales
               </h2>
             </div>
             <Link
               to='/sales'
-              className='group text-xs font-medium text-gray-400 hover:text-gray-900 flex items-center gap-1 transition-colors'
+              className='group text-xs font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors'
             >
               View all{' '}
               <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
@@ -1079,17 +1091,17 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Expenses */}
-        <div className='rounded-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200'>
-          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+          <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
-              <Wallet className='h-4 w-4 text-gray-500 stroke-[2]' />
-              <h2 className='text-sm font-semibold text-gray-900'>
+              <Wallet className='h-4 w-4 text-purple-200 stroke-[2]' />
+              <h2 className='text-sm font-semibold text-white tracking-wide'>
                 Recent Expenses
               </h2>
             </div>
             <Link
               to='/expenses'
-              className='group text-xs font-medium text-gray-400 hover:text-gray-900 flex items-center gap-1 transition-colors'
+              className='group text-xs font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors'
             >
               View all{' '}
               <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
@@ -1137,17 +1149,17 @@ export default function Dashboard() {
 
       {/* ── Recent Tax Reports ──────────────────────── */}
       {recentReports.length > 0 && (
-        <div className='rounded-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200'>
-          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+          <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
-              <FileText className='h-4 w-4 text-gray-500 stroke-[2]' />
-              <h2 className='text-sm font-semibold text-gray-900'>
+              <FileText className='h-4 w-4 text-purple-200 stroke-[2]' />
+              <h2 className='text-sm font-semibold text-white tracking-wide'>
                 Recent Reports
               </h2>
             </div>
             <Link
               to='/tax'
-              className='group text-xs font-medium text-gray-400 hover:text-gray-900 flex items-center gap-1 transition-colors'
+              className='group text-xs font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors'
             >
               View all{' '}
               <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />

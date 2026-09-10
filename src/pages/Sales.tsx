@@ -13,6 +13,7 @@ import {
   XCircle,
   Upload,
   CalendarDays,
+  FileText,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
 import AddSaleModal from '@/components/AddSaleModal.tsx';
@@ -289,6 +290,32 @@ export default function Sales() {
     } catch (err: unknown) {
       const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
       toast.error(apiErr?.message || 'Failed');
+    }
+  };
+
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
+
+  const handleDownloadReceipt = async (s: SalesTransaction | { id: string; referenceId?: string | null; source?: string }) => {
+    if (!biz) return;
+    try {
+      setDownloadingReceiptId(s.id);
+      const endpoint = s.source === 'bank_transfer'
+        ? `/businesses/${biz.id}/receipts/dva-transfers/${s.id}`
+        : `/businesses/${biz.id}/receipts/sales/${s.id}`;
+      const res = await api.get(endpoint, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Receipt-${s.referenceId || s.id.slice(-8)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Receipt downloaded successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to download receipt');
+    } finally {
+      setDownloadingReceiptId(null);
     }
   };
 
@@ -676,6 +703,14 @@ export default function Sales() {
                     <td className='px-4 py-3 text-right' onClick={(e) => e.stopPropagation()}>
                       <div className='flex items-center justify-end gap-1'>
                         <button
+                          onClick={() => handleDownloadReceipt(s)}
+                          disabled={downloadingReceiptId === s.id}
+                          className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 transition-colors'
+                          title='Download Receipt (PDF)'
+                        >
+                          <FileText className='h-4 w-4' />
+                        </button>
+                        <button
                           onClick={() => openEdit(s)}
                           className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                           title='Edit Sale'
@@ -729,6 +764,14 @@ export default function Sales() {
                     </p>
                   </div>
                   <div className='flex items-center gap-1 shrink-0' onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleDownloadReceipt(s)}
+                      disabled={downloadingReceiptId === s.id}
+                      className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 transition-colors'
+                      title='Download Receipt (PDF)'
+                    >
+                      <FileText className='h-4 w-4' />
+                    </button>
                     <button
                       onClick={() => openEdit(s)}
                       className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
@@ -905,6 +948,14 @@ export default function Sales() {
                               className='flex items-center gap-1'
                               onClick={(e) => e.stopPropagation()}
                             >
+                              <button
+                                onClick={() => handleDownloadReceipt(t)}
+                                disabled={downloadingReceiptId === t.id}
+                                className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 transition-colors'
+                                title='Download Receipt (PDF)'
+                              >
+                                <FileText className='h-4 w-4' />
+                              </button>
                               <button
                                 onClick={() =>
                                   openEdit(t as unknown as SalesTransaction)

@@ -245,6 +245,7 @@ export default function Account() {
           setAwaitingValidation(false);
           toast.success('🎉 Dedicated virtual account activated! Ready to receive transfers.');
           fetchBusinesses();
+          fetchMe();
         }
       } else if (dvaData.status === 'failed') {
         setAwaitingValidation(false);
@@ -486,14 +487,19 @@ export default function Account() {
     setBvnError('');
 
     try {
-      // Step 1: Ensure Paystack customer exists (creates code or handles missing phone)
+      // Step 1: Ensure Paystack customer exists & persist BVN on User record
       try {
-        const setupRes = await api.post(`/businesses/${biz!.id}/dva/setup-virtual-account`);
+        const setupRes = await api.post(`/businesses/${biz!.id}/dva/setup-virtual-account`, {
+          bvn,
+          bankCode,
+          accountNumber,
+        });
         if (setupRes.data.data.status === 'active') {
           setDva(setupRes.data.data);
           setAwaitingValidation(false);
           toast.success('🎉 Dedicated virtual account activated!');
-          fetchBusinesses();
+          await fetchMe();
+          await fetchBusinesses();
           return;
         }
       } catch (setupErr) {
@@ -504,6 +510,11 @@ export default function Account() {
         if (code === 'USER_PHONE_REQUIRED') {
           setShowPhoneForm(true);
           toast('Add your phone number to continue.', { icon: 'ℹ️' });
+          return;
+        }
+
+        if (code === 'BVN_ALREADY_LINKED') {
+          setBvnError('This BVN is already linked to another PayMyTax account.');
           return;
         }
 
@@ -994,10 +1005,28 @@ export default function Account() {
             </p>
           </div>
 
-          {/* Right: Embedded Virtual NUBAN Card & Actions */}
+          {/* Right: Stacked Actions + Embedded Virtual NUBAN Card */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            {/* NUBAN Box */}
-            <div className="flex items-center justify-between gap-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-4 py-3 shadow-inner">
+            {/* Actions: Download Statement & Share Details (stacked on top of each other) */}
+            <div className="order-2 sm:order-1 flex flex-col items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                className="flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-xs"
+              >
+                <Download className="h-3.5 w-3.5 text-purple-200" /> Statement
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-purple-950 hover:bg-purple-50 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                <Share2 className="h-3.5 w-3.5 text-purple-700" /> Share Details
+              </button>
+            </div>
+
+            {/* NUBAN Box (shifted right, next to the stacked actions) */}
+            <div className="order-1 sm:order-2 flex items-center justify-between gap-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-4 py-3 shadow-inner">
               <div>
                 <div className="flex items-center gap-1.5 text-[11px] text-purple-200/80">
                   <Landmark className="h-3.5 w-3.5" />
@@ -1021,24 +1050,6 @@ export default function Account() {
                 title="Copy Account Number"
               >
                 <Copy className="h-4 w-4 text-purple-200" />
-              </button>
-            </div>
-
-            {/* Actions: Download Statement & Share Details */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowExportModal(true)}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-xs"
-              >
-                <Download className="h-3.5 w-3.5 text-purple-200" /> Statement
-              </button>
-              <button
-                type="button"
-                onClick={handleShare}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-purple-950 hover:bg-purple-50 transition-all shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-              >
-                <Share2 className="h-3.5 w-3.5 text-purple-700" /> Share Details
               </button>
             </div>
           </div>

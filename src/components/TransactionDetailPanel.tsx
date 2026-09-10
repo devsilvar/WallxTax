@@ -137,11 +137,11 @@ export default function TransactionDetailPanel({
       let endpoint: string;
       if (isTax) {
         endpoint = `/businesses/${transaction.businessId}/receipts/tax-payments/${transaction.id}`;
-      } else if (isDva || isSale) {
-        // Use universal sales receipt endpoint for DVA transfers and all other sales
-        endpoint = `/businesses/${transaction.businessId}/receipts/sales/${transaction.id}`;
+      } else if (isDva) {
+        // Dedicated Bank Transfer Credit Advice receipt
+        endpoint = `/businesses/${transaction.businessId}/receipts/dva-transfers/${transaction.id}`;
       } else {
-        // Fallback for any other type
+        // Universal itemized sales receipt
         endpoint = `/businesses/${transaction.businessId}/receipts/sales/${transaction.id}`;
       }
 
