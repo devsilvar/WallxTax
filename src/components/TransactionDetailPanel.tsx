@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Loader2,
   CheckCheck,
+  CheckCircle,
   ArrowLeftRight,
   Package,
 } from 'lucide-react';
@@ -435,21 +436,18 @@ export default function TransactionDetailPanel({
                 </div>
                 {(() => {
                   const gross = Number(transaction.amount);
-                  const fee = Math.min(gross * 0.01, 300);
-                  const net = gross - fee;
                   return (
                     <>
                       <div className="px-4 py-3 flex items-center justify-between bg-gray-50/50">
                         <span className="text-gray-500">Gross Transfer</span>
                         <span className="font-mono font-medium text-gray-800">{formatNaira(gross)}</span>
                       </div>
-                      <div className="px-4 py-3 flex items-center justify-between bg-gray-50/50">
-                        <span className="text-gray-500">Paystack Gateway Fee (1%, max ₦300)</span>
-                        <span className="font-mono font-medium text-red-600">−{formatNaira(fee)}</span>
-                      </div>
                       <div className="px-4 py-3 flex items-center justify-between bg-emerald-50/40">
-                        <span className="font-semibold text-emerald-950">Net Added to Wallet</span>
-                        <span className="font-mono font-bold text-emerald-700">{formatNaira(net)}</span>
+                        <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                          <CheckCircle className="h-4 w-4 text-emerald-600 inline" />
+                          Net Added to Wallet (100%)
+                        </span>
+                        <span className="font-mono font-bold text-emerald-700">{formatNaira(gross)}</span>
                       </div>
                     </>
                   );

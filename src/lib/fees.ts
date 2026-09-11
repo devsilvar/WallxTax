@@ -22,7 +22,9 @@ export interface PaystackFeeSchedule {
   withdrawal: {
     bearer: 'merchant' | 'platform';
     ratePct?: number;
+    ratePercent?: number;
     cap?: number;
+    capAmount?: number;
     minAmount?: number;
     bands: Array<{ upTo: number | null; fee: number }>;
     stampDuty: { amount: number; from: number };
@@ -61,8 +63,8 @@ export function estimateWithdrawal(
   if (requested < minFloor) return null;
 
   const bearer = schedule?.withdrawal?.bearer ?? 'merchant';
-  const ratePct = schedule?.withdrawal?.ratePct ?? WALLX_WITHDRAWAL_PCT;
-  const cap = schedule?.withdrawal?.cap ?? WALLX_WITHDRAWAL_CAP;
+  const ratePct = schedule?.withdrawal?.ratePercent ?? schedule?.withdrawal?.ratePct ?? WALLX_WITHDRAWAL_PCT;
+  const cap = schedule?.withdrawal?.capAmount ?? schedule?.withdrawal?.cap ?? WALLX_WITHDRAWAL_CAP;
 
   const fee = round2(Math.min((requested * ratePct) / 100, cap));
 
@@ -71,14 +73,59 @@ export function estimateWithdrawal(
       requested,
       fee,
       netAmount: requested,
-      debitAmount: round2(requested + fee),
+      debitAmount: requested,
       bearer,
     };
   }
 
-  // Merchant mode: fee comes out of requested
-  const net = round2(requested - fee);
-  if (net <= 0) return null;
+  // Merchant mode (additive): WallX fee is added on top of requested amount for debitAmount.
+  // The full requested amount lands in the recipient bank account.
+  const debitAmount = round2(requested + fee);
+  return {
+    requested,
+    fee,
+    netAmount: requested,
+    debitAmount,
+    bearer,
+  };
+}
 
-  return { requested, fee, netAmount: net, debitAmount: requested, bearer };
+/**
+ * Calculates the maximum amount a merchant can request for withdrawal
+ * given their available balance and the active dynamic fee schedule.
+ * In merchant mode (additive fee), requested + fee(requested) <= available.
+ */
+export function calculateMaxWithdrawable(
+  availableNaira: number,
+  schedule?: PaystackFeeSchedule | null
+): number {
+  const available = Math.max(0, availableNaira);
+  const minAmount = schedule?.withdrawal?.minAmount ?? schedule?.minWithdrawal ?? MIN_WITHDRAWAL_AMOUNT;
+  if (available < minAmount) return 0;
+
+  const bearer = schedule?.withdrawal?.bearer ?? 'merchant';
+  if (bearer === 'platform') {
+    return Math.floor(available);
+  }
+
+  const ratePct = schedule?.withdrawal?.ratePercent ?? schedule?.withdrawal?.ratePct ?? WALLX_WITHDRAWAL_PCT;
+  const cap = schedule?.withdrawal?.capAmount ?? schedule?.withdrawal?.cap ?? WALLX_WITHDRAWAL_CAP;
+
+  if (ratePct <= 0) {
+    return Math.floor(available);
+  }
+
+  // Crossover where percentage fee reaches the cap:
+  // requested * (ratePct / 100) = cap  =>  requested = (cap * 100) / ratePct
+  const crossoverRequested = (cap * 100) / ratePct;
+  const crossoverDebit = crossoverRequested + cap;
+
+  let maxRequested: number;
+  if (available <= crossoverDebit) {
+    maxRequested = Math.floor(available / (1 + ratePct / 100));
+  } else {
+    maxRequested = Math.floor(available - cap);
+  }
+
+  return Math.max(0, maxRequested);
 }

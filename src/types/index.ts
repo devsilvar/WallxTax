@@ -610,4 +610,97 @@ export interface UnifiedLedgerResponse {
   };
 }
 
+// ─── Admin Treasury & P&L Analytics ─────────────────────────
+export interface TreasuryKPIs {
+  totalGrossInflows: number;
+  totalInflowFeesAbsorbed: number;
+  totalGrossOutflows: number;
+  totalWithdrawalFeesCollected: number;
+  totalDisbursementCost: number;
+  netPlatformMargin: number;
+  isProfitable: boolean;
+}
+
+export interface TransferMarginItem {
+  id: string;
+  date: string;
+  type: 'inflow' | 'outflow';
+  businessId: string;
+  businessName: string;
+  reference: string;
+  status: string;
+  grossAmount: number;
+  feeCollected: number;
+  gatewayCost: number;
+  netMargin: number;
+}
+
+export interface TreasuryAnalyticsData {
+  kpis: TreasuryKPIs;
+  transfers: TransferMarginItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export interface PlatformFeeConfig {
+  withdrawalFeePct: number;
+  withdrawalFeeCap: number;
+  minWithdrawalAmount: number;
+  updatedAt?: string;
+  updatedBy?: string | null;
+}
+
+export interface TransferFinancials {
+  grossAmount: number;
+  customerCredit?: number;
+  customerDebit?: number;
+  amountDisbursed?: number;
+  platformFeeCollected: number;
+  paystackInflowFeeAbsorbed?: number;
+  paystackTransferFee?: number;
+  federalStampDuty: number;
+  totalGatewayCost: number;
+  netMargin: number;
+  isProfit: boolean;
+}
+
+export interface TransferDetailBreakdown {
+  id: string;
+  type: 'inflow' | 'outflow';
+  reference: string;
+  date: string;
+  createdAt?: string;
+  completedAt?: string | null;
+  status: string;
+  business: {
+    id: string;
+    name: string;
+    owner: string;
+    email: string;
+  };
+  financials: TransferFinancials;
+  routing: {
+    channel: string;
+    provider?: string;
+    destinationBank?: string;
+    destinationBankCode?: string;
+    destinationAccountNum?: string;
+    destinationAccountName?: string;
+    paystackTransferCode?: string | null;
+    adminApprovedBy?: string | null;
+    adminApprovedAt?: string | null;
+    customerName?: string;
+    description?: string;
+    narration?: string | null;
+    failureReason?: string | null;
+  };
+}
+
+
 

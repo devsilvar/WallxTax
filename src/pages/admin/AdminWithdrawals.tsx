@@ -77,6 +77,9 @@ export default function AdminWithdrawals() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showManualSettleModal, setShowManualSettleModal] = useState(false);
+  const [manualSessionRef, setManualSessionRef] = useState('');
+  const [manualNotes, setManualNotes] = useState('');
   const [processing, setProcessing] = useState(false);
 
   const fetchWithdrawals = useCallback(async () => {
@@ -209,6 +212,40 @@ export default function AdminWithdrawals() {
     setSelectedWithdrawal(withdrawal);
     setRejectReason('');
     setShowRejectModal(true);
+  };
+
+  const openManualSettleModal = (withdrawal: WithdrawalRequest) => {
+    setSelectedWithdrawal(withdrawal);
+    setManualSessionRef('');
+    setManualNotes('');
+    setShowManualSettleModal(true);
+  };
+
+  const handleManualSettle = async () => {
+    if (!selectedWithdrawal) return;
+    if (!manualSessionRef.trim()) {
+      toast.error('Please enter the bank transfer session ID or reference');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      await api.post(`/admin/settlement/withdrawals/${selectedWithdrawal.id}/manual-settle`, {
+        sessionReference: manualSessionRef.trim(),
+        notes: manualNotes.trim() || undefined,
+      });
+      toast.success('Withdrawal marked as settled via manual bank transfer!');
+      setShowManualSettleModal(false);
+      setSelectedWithdrawal(null);
+      setManualSessionRef('');
+      setManualNotes('');
+      fetchWithdrawals();
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error?.message;
+      toast.error(errorMessage || 'Failed to settle withdrawal manually');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const getStatusConfig = (status: string) => {
@@ -516,9 +553,20 @@ export default function AdminWithdrawals() {
                               size="sm"
                               onClick={() => openApproveModal(withdrawal)}
                               className="bg-emerald-600 hover:bg-emerald-700"
+                              title="Approve and transfer via Paystack"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" />
                               Approve
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => openManualSettleModal(withdrawal)}
+                              className="text-purple-700 hover:bg-purple-50 border-purple-200"
+                              title="Transfer via company bank app and settle manually"
+                            >
+                              <Building2 className="h-3.5 w-3.5" />
+                              Settle Offline
                             </Button>
                             <Button
                               variant="secondary"
@@ -532,25 +580,51 @@ export default function AdminWithdrawals() {
                           </div>
                         )}
                         {withdrawal.status === 'processing' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={processing}
-                            onClick={() => handleRequery(withdrawal)}
-                            className="text-primary-600 hover:bg-primary-50"
-                          >
-                            <Loader2 className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />
-                            Re-query Paystack
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={processing}
+                              onClick={() => handleRequery(withdrawal)}
+                              className="text-primary-600 hover:bg-primary-50"
+                            >
+                              <Loader2 className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />
+                              Re-query Paystack
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => openManualSettleModal(withdrawal)}
+                              className="text-purple-700 hover:bg-purple-50 border-purple-200"
+                              title="Transfer via company bank app and settle manually"
+                            >
+                              <Building2 className="h-3.5 w-3.5" />
+                              Settle Offline
+                            </Button>
+                          </div>
                         )}
-                        {withdrawal.status === 'failed' && withdrawal.failureReason && (
-                          <button
-                            type="button"
-                            className="text-xs text-red-600 hover:underline"
-                            onClick={() => toast(withdrawal.failureReason || 'No reason provided', { icon: '❌' })}
-                          >
-                            View Reason
-                          </button>
+                        {withdrawal.status === 'failed' && (
+                          <div className="flex items-center justify-end gap-2">
+                            {withdrawal.failureReason && (
+                              <button
+                                type="button"
+                                className="text-xs text-red-600 hover:underline"
+                                onClick={() => toast(withdrawal.failureReason || 'No reason provided', { icon: '❌' })}
+                              >
+                                View Reason
+                              </button>
+                            )}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => openManualSettleModal(withdrawal)}
+                              className="text-purple-700 hover:bg-purple-50 border-purple-200"
+                              title="Transfer via company bank app and settle manually"
+                            >
+                              <Building2 className="h-3.5 w-3.5" />
+                              Settle Offline
+                            </Button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -731,6 +805,122 @@ export default function AdminWithdrawals() {
                 >
                   <XCircle className="h-4 w-4" />
                   Reject Request
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual / Offline Settlement Modal */}
+      {showManualSettleModal && selectedWithdrawal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-100">
+            <div className="border-b border-gray-200 px-6 py-4 bg-purple-50/80">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">Settle Manually (Offline)</h3>
+                    <p className="text-xs text-purple-700 font-medium">Direct bank transfer dispatch</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowManualSettleModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Payment Details Box */}
+              <div className="rounded-xl bg-gray-50 p-4 space-y-2.5 border border-gray-200/80 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Business</span>
+                  <span className="font-semibold text-gray-900">{selectedWithdrawal.businessName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Total Deducted (Wallet)</span>
+                  <span className="font-mono font-bold text-gray-900 text-sm">{formatNaira(selectedWithdrawal.amount)}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-gray-200/80 pt-2">
+                  <span className="font-bold text-emerald-900">Amount to Transfer to User</span>
+                  <span className="text-base font-bold text-emerald-700 font-mono">
+                    {formatNaira(selectedWithdrawal.netAmount || selectedWithdrawal.amount)}
+                  </span>
+                </div>
+                <div className="border-t border-gray-200 pt-2 space-y-1">
+                  <p className="text-gray-500 font-medium">Beneficiary Bank Details:</p>
+                  <p className="text-sm font-bold text-gray-900">{selectedWithdrawal.destinationBankName}</p>
+                  <p className="text-xs text-gray-700 font-mono font-semibold">
+                    {selectedWithdrawal.destinationAccountNum}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Account Name: {selectedWithdrawal.destinationAccountName}
+                  </p>
+                </div>
+              </div>
+
+              {/* Instructions Callout */}
+              <div className="rounded-xl bg-purple-50/70 border border-purple-200/70 p-3 text-xs text-purple-900 space-y-1">
+                <p className="font-semibold">How this works:</p>
+                <p className="text-[11px] text-purple-800">
+                  Transfer <strong>{formatNaira(selectedWithdrawal.netAmount || selectedWithdrawal.amount)}</strong> directly from your company mobile/web bank app to the beneficiary details above. Once dispatched, paste the transaction reference or session ID below.
+                </p>
+              </div>
+
+              {/* Session Reference Input */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-800 mb-1">
+                  Bank Reference / Session ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={manualSessionRef}
+                  onChange={(e) => setManualSessionRef(e.target.value)}
+                  placeholder="e.g. 000013260910123456789012345678 or GTB-TXN-..."
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 outline-none"
+                  required
+                />
+              </div>
+
+              {/* Internal Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-800 mb-1">
+                  Internal Notes <span className="text-gray-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                  placeholder="e.g. Dispatched via Access Bank Corporate Portal"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowManualSettleModal(false)}
+                  disabled={processing}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleManualSettle}
+                  isLoading={processing}
+                  disabled={!manualSessionRef.trim()}
+                  className="flex-1 bg-purple-700 hover:bg-purple-800"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Confirm Settle
                 </Button>
               </div>
             </div>

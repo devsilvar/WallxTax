@@ -16,7 +16,7 @@ import {
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { formatNaira } from '@/lib/format';
-import { estimateWithdrawal } from '@/lib/fees';
+import { estimateWithdrawal, calculateMaxWithdrawable } from '@/lib/fees';
 import { useSettlementStore, type SettlementPayoutItem } from '@/stores/settlement.store';
 import { usePinStore } from '@/stores/pin.store';
 import toast from 'react-hot-toast';
@@ -83,32 +83,24 @@ export default function PayoutWithdrawalModal({
 
   const available = preview.availableForWithdrawal || 0;
   const numAmount = parseFloat(amountStr) || 0;
+  const minWithdrawal = preview.fees?.withdrawal?.minAmount ?? preview.fees?.minWithdrawal ?? 1000;
   const feeEstimate = preview.fees ? estimateWithdrawal(preview.fees, numAmount) : null;
   const isAmountValid =
-    numAmount >= 1000 &&
+    numAmount >= minWithdrawal &&
     numAmount <= available &&
     (!feeEstimate || feeEstimate.debitAmount <= available);
 
   const handleMaxClick = () => {
-    const max = Math.floor(available);
-    if (preview.fees?.withdrawal.bearer === 'platform' && max >= 1000) {
-      let amt = max;
-      for (let i = 0; i < 8 && amt >= 1000; i += 1) {
-        const est = estimateWithdrawal(preview.fees, amt);
-        if (est && est.debitAmount <= available) break;
-        amt -= 50;
-      }
-      setAmountStr(String(Math.max(0, amt)));
-    } else {
-      setAmountStr(String(max));
-    }
+    if (available < minWithdrawal) return;
+    const maxRequested = calculateMaxWithdrawable(available, preview.fees);
+    setAmountStr(String(maxRequested));
   };
 
   const handleProceedToConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAmountValid) {
-      if (numAmount < 1000) {
-        toast.error('Minimum withdrawal amount is ₦1,000.00');
+      if (numAmount < minWithdrawal) {
+        toast.error(`Minimum withdrawal amount is ${formatNaira(minWithdrawal)}`);
       } else if (numAmount > available) {
         if ((preview.pendingWithdrawn ?? 0) > 0) {
           toast.error(
@@ -303,12 +295,6 @@ export default function PayoutWithdrawalModal({
                         <span className="font-semibold font-mono">{formatNaira(preview.totalSplitSettled)}</span>
                       </div>
                     )}
-                    {(preview.estimatedProcessingFees ?? 0) > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-purple-900/60">Paystack fee on inflow (1%):</span>
-                        <span className="font-semibold font-mono">−{formatNaira(preview.estimatedProcessingFees ?? 0)}</span>
-                      </div>
-                    )}
                     {preview.totalWithdrawn > 0 && (
                       <div className="flex justify-between">
                         <span className="text-purple-900/60">Withdrawn / in progress:</span>
@@ -373,19 +359,19 @@ export default function PayoutWithdrawalModal({
                     id="modal-withdrawal-amount"
                     name="withdrawal-amount"
                     type="number"
-                    min={1000}
+                    min={minWithdrawal}
                     max={available}
                     step={100}
                     placeholder="0.00"
                     value={amountStr}
                     onChange={(e) => setAmountStr(e.target.value)}
                     className="pl-8 pr-16 font-mono text-base font-bold text-gray-900"
-                    disabled={available < 1000}
+                    disabled={available < minWithdrawal}
                     required
                     autoComplete="off"
                     autoFocus
                   />
-                  {available >= 1000 && (
+                  {available >= minWithdrawal && (
                     <button
                       type="button"
                       onClick={handleMaxClick}
@@ -397,28 +383,28 @@ export default function PayoutWithdrawalModal({
                 </div>
 
                 <p className="text-[11px] text-gray-500">
-                  Minimum withdrawal: ₦1,000.00 · Fee: 1% capped at ₦300.00 max.
+                  Minimum withdrawal: {formatNaira(preview.fees?.withdrawal?.minAmount ?? minWithdrawal)} · Withdrawal fee: {preview.fees?.withdrawal?.ratePercent ?? 1}% capped at {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)} max.
                 </p>
 
                 {/* Real-time Dynamic Fee Calculation Card */}
-                {numAmount >= 1000 && feeEstimate && (
+                {numAmount >= minWithdrawal && feeEstimate && (
                   <div className="rounded-lg bg-gray-50 border border-gray-200/80 p-3 space-y-1.5 text-xs animate-fade-in">
                     <div className="flex justify-between text-gray-500">
-                      <span>Withdrawal amount:</span>
-                      <span className="font-mono font-medium text-gray-700">
-                        {formatNaira(numAmount)}
+                      <span>Amount to receive in bank:</span>
+                      <span className="font-mono font-bold text-emerald-700">
+                        {formatNaira(feeEstimate.netAmount)}
                       </span>
                     </div>
                     <div className="flex justify-between text-gray-500">
-                      <span>Platform fee (1%, max ₦300):</span>
+                      <span>Withdrawal fee ({preview.fees?.withdrawal?.ratePercent ?? 1}%, max {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)}):</span>
                       <span className="font-mono font-medium text-gray-700">
-                        −{formatNaira(feeEstimate.fee)}
+                        +{formatNaira(feeEstimate.fee)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-1.5 border-t border-gray-200/60">
-                      <span className="font-medium text-gray-800">You will receive in bank:</span>
-                      <span className="font-mono font-bold text-emerald-700 text-sm">
-                        {formatNaira(feeEstimate.netAmount)}
+                      <span className="font-medium text-gray-800">Total debited from WallX balance:</span>
+                      <span className="font-mono font-bold text-purple-700 text-sm">
+                        {formatNaira(feeEstimate.debitAmount)}
                       </span>
                     </div>
                   </div>
@@ -473,23 +459,23 @@ export default function PayoutWithdrawalModal({
               {/* Summary Receipt Box */}
               <div className="rounded-xl bg-gray-50 p-3.5 border border-gray-200/80 space-y-2.5 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Withdrawal Amount</span>
-                  <span className="font-mono font-bold text-gray-900 text-sm">
-                    {formatNaira(numAmount)}
+                  <span className="text-gray-500">Amount to your bank</span>
+                  <span className="font-mono font-bold text-emerald-700 text-sm">
+                    {formatNaira(feeEstimate ? feeEstimate.netAmount : numAmount)}
                   </span>
                 </div>
                 {feeEstimate && (
                   <div className="flex justify-between items-center text-gray-500">
-                    <span>WallX fee (1%, max ₦300)</span>
+                    <span>Withdrawal fee ({preview.fees?.withdrawal?.ratePercent ?? 1}%, max {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)})</span>
                     <span className="font-mono font-medium text-gray-700">
-                      −{formatNaira(feeEstimate.fee)}
+                      +{formatNaira(feeEstimate.fee)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
-                  <span className="font-semibold text-gray-900">Net to your bank</span>
-                  <span className="font-mono font-bold text-emerald-700 text-base">
-                    {formatNaira(feeEstimate ? feeEstimate.netAmount : numAmount)}
+                  <span className="font-semibold text-gray-900">Total debited from balance</span>
+                  <span className="font-mono font-bold text-purple-700 text-base">
+                    {formatNaira(feeEstimate ? feeEstimate.debitAmount : numAmount)}
                   </span>
                 </div>
                 <div className="pt-2 border-t border-gray-200 space-y-1">
@@ -635,9 +621,9 @@ export default function PayoutWithdrawalModal({
                 </div>
                 {completedPayout.fee > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Paystack fee</span>
+                    <span className="text-gray-500">Withdrawal fee</span>
                     <span className="font-mono font-medium text-gray-700">
-                      −{formatNaira(completedPayout.fee)}
+                      +{formatNaira(completedPayout.fee)}
                     </span>
                   </div>
                 )}
