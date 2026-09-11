@@ -86,10 +86,14 @@ export function getErrorMessage(error: unknown, fallback?: string): string {
 }
 
 // API base URL.
-//   - Dev (no VITE_API_BASE_URL): uses '/api/v1', which Vite proxies
+//   - Dev (no base URL set): uses '/api/v1', which Vite proxies
 //     to http://localhost:3000 (see vite.config.ts).
-//   - Prod (or when VITE_API_BASE_URL is set): uses the specified URL.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+//   - Prod (or when VITE_API_BASE_URL or API_BASE_URL is set): uses the specified URL.
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.API_BASE_URL ||
+  '/api/v1'
+).replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
