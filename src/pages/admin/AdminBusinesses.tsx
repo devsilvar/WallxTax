@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import type { AdminBusiness, Pagination } from '@/types/index.ts';
 
@@ -23,26 +24,27 @@ export default function AdminBusinesses() {
   }, [page]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Businesses</h1>
-        <p className="mt-2 text-sm text-gray-500">All registered businesses on the platform.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">Business Entities</h1>
+        <p className="mt-1 text-sm text-gray-500 font-body">All registered businesses filing taxes and holding dedicated virtual accounts.</p>
       </div>
 
       {isLoading && (
-        <div className="py-12 text-center text-gray-400">Loading...</div>
+        <TableSkeleton rows={8} columns={6} />
       )}
 
       {!isLoading && businesses.length === 0 && (
-        <Card className="py-12 text-center">
-          <Building2 className="mx-auto h-10 w-10 text-gray-200" />
-          <p className="mt-3 text-sm text-gray-400">No businesses found.</p>
+        <Card className="py-16 text-center border border-gray-200/80 shadow-xs">
+          <Building2 className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+          <p className="text-base font-semibold text-gray-800">No businesses found</p>
+          <p className="mt-1 text-xs text-gray-400">No business entities registered on the platform.</p>
         </Card>
       )}
 
       {!isLoading && businesses.length > 0 && (
         <>
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden border border-gray-200/80 shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full">
               <thead>

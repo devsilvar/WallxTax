@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, ChevronLeft, ChevronRight, Eye, ToggleLeft, ToggleRight, ShieldCheck, ShieldAlert } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { AdminUser, Pagination } from '@/types/index.ts';
@@ -52,26 +53,27 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Users</h1>
-        <p className="mt-2 text-sm text-gray-500">Manage all registered users.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">Users Directory</h1>
+        <p className="mt-1 text-sm text-gray-500 font-body">Manage platform accounts, security clearance, and business associations.</p>
       </div>
 
       {isLoading && (
-        <div className="py-12 text-center text-gray-400">Loading...</div>
+        <TableSkeleton rows={8} columns={7} />
       )}
 
       {!isLoading && users.length === 0 && (
-        <Card className="py-12 text-center">
-          <Users className="mx-auto h-10 w-10 text-gray-200" />
-          <p className="mt-3 text-sm text-gray-400">No users found.</p>
+        <Card className="py-16 text-center border border-gray-200/80 shadow-xs">
+          <Users className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+          <p className="text-base font-semibold text-gray-800">No users found</p>
+          <p className="mt-1 text-xs text-gray-400">No user accounts are registered matching the criteria.</p>
         </Card>
       )}
 
       {!isLoading && users.length > 0 && (
         <>
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden border border-gray-200/80 shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full">
               <thead>

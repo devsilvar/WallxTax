@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ScrollText, ChevronLeft, ChevronRight } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import type { AuditLog, Pagination } from '@/types/index.ts';
 
@@ -38,10 +39,10 @@ export default function AdminAuditLogs() {
   }, [page, filterAction]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-        <p className="mt-1 font-body text-sm text-gray-500">Track all platform activity.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 font-sans">Audit & Compliance Trail</h1>
+        <p className="mt-1 font-body text-sm text-gray-500">Immutable security logs tracking all administrative and system mutations.</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -50,26 +51,27 @@ export default function AdminAuditLogs() {
           placeholder="Filter by action..."
           value={filterAction}
           onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
-          className="w-full sm:w-auto rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full sm:w-auto rounded-xl border border-gray-300 px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 font-body shadow-2xs"
         />
-        {pagination && <span className="font-body text-xs text-gray-400">{pagination.total} total</span>}
+        {pagination && <span className="font-body text-xs text-gray-400">{pagination.total} total logs recorded</span>}
       </div>
 
       {isLoading && (
-        <div className="py-12 text-center text-gray-400">Loading...</div>
+        <TableSkeleton rows={8} columns={5} />
       )}
 
       {!isLoading && logs.length === 0 && (
-        <Card className="py-12 text-center">
-          <ScrollText className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">No audit logs found.</p>
+        <Card className="py-16 text-center border border-gray-200/80 shadow-xs">
+          <ScrollText className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+          <p className="text-base font-semibold text-gray-800">No audit logs found</p>
+          <p className="mt-1 text-xs text-gray-400">No events found matching the specified filter.</p>
         </Card>
       )}
 
       {!isLoading && logs.length > 0 && (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block rounded-md border border-gray-200 bg-white shadow-sm overflow-x-auto">
+          <div className="hidden md:block rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
             <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-400">

@@ -580,12 +580,13 @@ export default function Dashboard() {
   // Calculate max sales for trend bar visualization
   const maxSales = Math.max(...trends.map((t) => Number(t.totalSales)), 1);
 
-  // Profit margin for the current month visual
-  const currentMargin = currentMonth
-    ? (Number(currentMonth.grossProfit) /
-        Math.max(Number(currentMonth.totalSales), 1)) *
-      100
-    : 0;
+  // Profit margin calculation for the current month visual
+  const currentSalesNum = Number(currentMonth?.totalSales ?? 0);
+  const currentProfitNum = Number(currentMonth?.grossProfit ?? 0);
+  const currentMargin =
+    currentSalesNum > 0 ? (currentProfitNum / currentSalesNum) * 100 : 0;
+  const isOperatingLoss = currentSalesNum > 0 && currentProfitNum < 0;
+  const clampedVisualMargin = Math.max(0, Math.min(100, currentMargin));
 
   // ─── Render ─────────────────────────────────────────────
 
@@ -837,38 +838,106 @@ export default function Dashboard() {
           </div>
           {currentMonth ? (
             <div className='px-5 py-4 space-y-3'>
-              {/* Mini profit margin ring */}
-              <div className='flex items-center justify-center pb-2'>
-                <div className='relative h-18 w-18'>
-                  <svg className='h-18 w-18 -rotate-90' viewBox='0 0 80 80'>
+              {/* Profit margin circular gauge */}
+              <div className='flex flex-col items-center justify-center pt-1 pb-1'>
+                <div className='relative h-24 w-24'>
+                  <svg className='h-24 w-24 -rotate-90' viewBox='0 0 96 96'>
+                    <defs>
+                      <linearGradient id='marginRingGrad' x1='0%' y1='0%' x2='100%' y2='100%'>
+                        <stop
+                          offset='0%'
+                          stopColor={
+                            isOperatingLoss
+                              ? '#f43f5e'
+                              : currentMargin >= 20
+                              ? '#10b981'
+                              : '#f59e0b'
+                          }
+                        />
+                        <stop
+                          offset='100%'
+                          stopColor={
+                            isOperatingLoss
+                              ? '#e11d48'
+                              : currentMargin >= 20
+                              ? '#059669'
+                              : '#d97706'
+                          }
+                        />
+                      </linearGradient>
+                    </defs>
+                    {/* Background Track */}
                     <circle
-                      cx='40'
-                      cy='40'
-                      r='34'
+                      cx='48'
+                      cy='48'
+                      r='40'
                       fill='none'
                       stroke='#f1f5f9'
-                      strokeWidth='6'
+                      strokeWidth='7'
                     />
-                    <circle
-                      cx='40'
-                      cy='40'
-                      r='34'
-                      fill='none'
-                      stroke={currentMargin >= 20 ? '#10b981' : '#f59e0b'}
-                      strokeWidth='6'
-                      strokeLinecap='round'
-                      strokeDasharray={`${Math.min((currentMargin / 100) * 213.6, 213.6)} 213.6`}
-                      className='transition-all duration-1000'
-                    />
+                    {/* Active Progress Arc */}
+                    {clampedVisualMargin > 0 && (
+                      <circle
+                        cx='48'
+                        cy='48'
+                        r='40'
+                        fill='none'
+                        stroke='url(#marginRingGrad)'
+                        strokeWidth='7'
+                        strokeLinecap='round'
+                        strokeDasharray='251.33'
+                        strokeDashoffset={251.33 - (clampedVisualMargin / 100) * 251.33}
+                        className='transition-all duration-1000 ease-out'
+                      />
+                    )}
                   </svg>
-                  <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                    <span className='text-sm font-bold text-gray-900 tabular-nums'>
-                      {currentMargin.toFixed(0)}%
+                  {/* Perfectly centered text overlay */}
+                  <div className='absolute inset-0 flex flex-col items-center justify-center text-center select-none pointer-events-none'>
+                    <span
+                      className={`text-xl font-black tabular-nums leading-none tracking-tight ${
+                        isOperatingLoss ? 'text-rose-600' : 'text-gray-900'
+                      }`}
+                    >
+                      {currentSalesNum > 0 ? `${currentMargin.toFixed(0)}%` : '0%'}
                     </span>
-                    <span className='text-[9px] text-gray-400 font-medium uppercase tracking-wide'>
+                    <span className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1.5 leading-none'>
                       Margin
                     </span>
                   </div>
+                </div>
+
+                {/* Status benchmark pill */}
+                <div className='mt-2.5 flex items-center justify-center'>
+                  <span
+                    className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                      currentSalesNum === 0
+                        ? 'bg-gray-50 text-gray-500 border-gray-200'
+                        : isOperatingLoss
+                        ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                        : currentMargin >= 20
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                        : 'bg-amber-50 text-amber-700 border-amber-200/80'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        currentSalesNum === 0
+                          ? 'bg-gray-400'
+                          : isOperatingLoss
+                          ? 'bg-rose-500'
+                          : currentMargin >= 20
+                          ? 'bg-emerald-500'
+                          : 'bg-amber-500'
+                      }`}
+                    />
+                    {currentSalesNum === 0
+                      ? 'No sales recorded'
+                      : isOperatingLoss
+                      ? 'Operating Loss'
+                      : currentMargin >= 20
+                      ? 'Healthy Margin (≥20%)'
+                      : 'Below Target (<20%)'}
+                  </span>
                 </div>
               </div>
 
@@ -935,7 +1004,7 @@ export default function Dashboard() {
         </div>
 
         {/* Monthly Trends */}
-        <div className='lg:col-span-3 rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+        <div className='lg:col-span-3 rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden flex flex-col justify-start'>
           <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
               <BarChart3 className='h-4 w-4 text-purple-200 stroke-[2]' />
@@ -943,74 +1012,82 @@ export default function Dashboard() {
                 Monthly Trends
               </h2>
             </div>
-            <span className='text-[11px] text-purple-200 bg-white/10 rounded-full px-2.5 py-0.5 border border-white/15 hidden sm:inline-flex backdrop-blur-xs'>
+            <span className='text-[11px] font-medium text-purple-200 bg-white/10 rounded-full px-2.5 py-0.5 border border-white/15 hidden sm:inline-flex backdrop-blur-xs'>
               Last 6 months
             </span>
           </div>
           {trends.length > 0 ? (
-            <div className='px-5 py-3 overflow-x-auto'>
-              <div className='min-w-[480px]'>
+            <div className='px-5 py-3.5 overflow-x-auto w-full'>
+              <div className='min-w-[500px]'>
                 <table className='w-full'>
                   <thead>
-                    <tr className='text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-50'>
-                      <th className='pb-2.5 text-left'>Month</th>
-                      <th className='pb-2.5 text-left pl-3' style={{ width: '30%' }}>
-                        Sales
+                    <tr className='text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2.5'>
+                      <th className='pb-2.5 text-left font-bold'>Month</th>
+                      <th className='pb-2.5 text-left pl-3 font-bold' style={{ width: '32%' }}>
+                        Sales Volume
                       </th>
-                      <th className='pb-2.5 text-right'>Tax</th>
-                      <th className='pb-2.5 text-right'>Margin</th>
-                      <th className='pb-2.5 text-right'>Status</th>
+                      <th className='pb-2.5 text-right font-bold'>Tax Payable</th>
+                      <th className='pb-2.5 text-right font-bold'>Margin</th>
+                      <th className='pb-2.5 text-right font-bold'>Status</th>
                     </tr>
                   </thead>
-                  <tbody className='text-xs'>
+                  <tbody className='text-xs divide-y divide-gray-50'>
                     {trends
                       .slice()
                       .reverse()
-                      .map((t, i) => {
+                      .map((t) => {
                         const barWidth = Math.max(
                           (Number(t.totalSales) / maxSales) * 100,
                           4,
                         );
+                        const marginNum = Number(t.profitMargin ?? 0);
                         return (
                           <tr
                             key={t.taxMonth}
-                            className={`group hover:bg-gray-50/60 transition-colors ${
-                              i > 0 ? 'border-t border-gray-50' : ''
-                            }`}
+                            className='group hover:bg-purple-50/25 transition-colors'
                           >
-                            <td className='py-2.5 text-gray-800 font-medium whitespace-nowrap'>
+                            <td className='py-3 text-gray-900 font-semibold whitespace-nowrap'>
                               {formatMonth(t.taxMonth)}
                             </td>
-                            <td className='py-2.5 pl-3'>
-                              <div className='flex items-center gap-2'>
-                                <div className='flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden'>
+                            <td className='py-3 pl-3'>
+                              <div className='flex items-center gap-2.5'>
+                                <div className='flex-1 h-2 rounded-full bg-gray-100 overflow-hidden'>
                                   <div
-                                    className='h-full rounded-full bg-emerald-500 transition-all duration-500'
+                                    className='h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 shadow-xs'
                                     style={{ width: `${barWidth}%` }}
                                   />
                                 </div>
-                                <span className='text-gray-500 tabular-nums text-[11px] shrink-0'>
+                                <span className='text-gray-700 font-medium tabular-nums text-[12px] shrink-0'>
                                   {formatNaira(Number(t.totalSales))}
                                 </span>
                               </div>
                             </td>
-                            <td className='py-2.5 text-right text-gray-600 tabular-nums'>
+                            <td className='py-3 text-right text-gray-700 font-medium tabular-nums text-[12px]'>
                               {formatNaira(Number(t.taxPayable))}
                             </td>
-                            <td className='py-2.5 text-right'>
+                            <td className='py-3 text-right'>
                               <span
-                                className={`tabular-nums font-semibold ${
-                                  Number(t.profitMargin) >= 40
-                                    ? 'text-emerald-600'
-                                    : Number(t.profitMargin) >= 20
-                                    ? 'text-amber-600'
-                                    : 'text-rose-500'
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold tabular-nums border ${
+                                  marginNum >= 20
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                    : marginNum > 0
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200/80'
                                 }`}
                               >
-                                {Number(t.profitMargin).toFixed(1)}%
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    marginNum >= 20
+                                      ? 'bg-emerald-500'
+                                      : marginNum > 0
+                                      ? 'bg-amber-500'
+                                      : 'bg-rose-500'
+                                  }`}
+                                />
+                                {marginNum.toFixed(1)}%
                               </span>
                             </td>
-                            <td className='py-2.5 text-right'>
+                            <td className='py-3 text-right whitespace-nowrap'>
                               {statusDot(t.paymentStatus)}
                             </td>
                           </tr>
@@ -1035,7 +1112,7 @@ export default function Dashboard() {
       {/* ── Recent Sales + Expenses ─────────────────── */}
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2 stagger-children'>
         {/* Recent Sales */}
-        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden flex flex-col justify-start'>
           <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
               <Receipt className='h-4 w-4 text-purple-200 stroke-[2]' />
@@ -1045,35 +1122,41 @@ export default function Dashboard() {
             </div>
             <Link
               to='/sales'
-              className='group text-xs font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors'
+              className='group text-xs font-semibold text-purple-200 hover:text-white flex items-center gap-1.5 transition-colors'
             >
               View all{' '}
-              <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
+              <ArrowRight className='h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1' />
             </Link>
           </div>
           {recentSales.length > 0 ? (
-            <div className='px-5 py-2 divide-y divide-gray-50'>
+            <div className='px-5 py-3 space-y-1 divide-y divide-gray-50 w-full'>
               {recentSales.map((sale) => (
                 <div
                   key={sale.id}
-                  className='flex items-center justify-between py-2.5 hover:bg-gray-50/50 -mx-2 px-2 rounded-md transition-colors'
+                  className='flex items-center justify-between py-2.5 hover:bg-emerald-50/30 -mx-2.5 px-2.5 rounded-xl transition-all duration-200 group'
                 >
-                  <div className='flex items-center gap-3 min-w-0'>
-                    <div className='flex h-7 w-7 items-center justify-center rounded-lg bg-gray-50 text-gray-500 shrink-0'>
-                      <Receipt className='h-3.5 w-3.5' />
+                  <div className='flex items-center gap-2.5 min-w-0'>
+                    <div className='flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100/80 text-emerald-600 shrink-0 shadow-xs group-hover:scale-105 group-hover:bg-emerald-100/70 transition-all duration-200'>
+                      <ArrowUpRight className='h-3.5 w-3.5' strokeWidth={2} />
                     </div>
                     <div className='min-w-0'>
-                      <p className='text-xs font-medium text-gray-800 truncate'>
+                      <p className='text-xs sm:text-[13px] font-semibold text-gray-900 truncate group-hover:text-emerald-700 transition-colors'>
                         {sale.description || sale.source.replace(/_/g, ' ')}
                       </p>
-                      <p className='text-[10px] text-gray-400'>
-                        {formatDate(sale.transactionDate)}
+                      <p className='text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5'>
+                        <span className='capitalize font-medium text-gray-600'>
+                          {sale.source.replace(/_/g, ' ')}
+                        </span>
+                        <span className='h-1 w-1 rounded-full bg-gray-300' />
+                        <span>{formatDate(sale.transactionDate)}</span>
                       </p>
                     </div>
                   </div>
-                  <p className='text-xs font-semibold text-emerald-600 shrink-0 ml-3 tabular-nums'>
-                    +{formatNaira(Number(sale.amount))}
-                  </p>
+                  <div className='text-right shrink-0 ml-3'>
+                    <p className='text-xs sm:text-sm font-bold text-emerald-600 tabular-nums'>
+                      +{formatNaira(Number(sale.amount))}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1091,7 +1174,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Expenses */}
-        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+        <div className='rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden flex flex-col justify-start'>
           <div className='flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white border-b border-purple-800/40'>
             <div className='flex items-center gap-2'>
               <Wallet className='h-4 w-4 text-purple-200 stroke-[2]' />
@@ -1101,35 +1184,41 @@ export default function Dashboard() {
             </div>
             <Link
               to='/expenses'
-              className='group text-xs font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors'
+              className='group text-xs font-semibold text-purple-200 hover:text-white flex items-center gap-1.5 transition-colors'
             >
               View all{' '}
-              <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
+              <ArrowRight className='h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1' />
             </Link>
           </div>
           {recentExpenses.length > 0 ? (
-            <div className='px-5 py-2 divide-y divide-gray-50'>
+            <div className='px-5 py-3 space-y-1 divide-y divide-gray-50 w-full'>
               {recentExpenses.map((exp) => (
                 <div
                   key={exp.id}
-                  className='flex items-center justify-between py-2.5 hover:bg-gray-50/50 -mx-2 px-2 rounded-md transition-colors'
+                  className='flex items-center justify-between py-2.5 hover:bg-rose-50/30 -mx-2.5 px-2.5 rounded-xl transition-all duration-200 group'
                 >
-                  <div className='flex items-center gap-3 min-w-0'>
-                    <div className='flex h-7 w-7 items-center justify-center rounded-lg bg-gray-50 text-gray-500 shrink-0'>
-                      <Wallet className='h-3.5 w-3.5' />
+                  <div className='flex items-center gap-2.5 min-w-0'>
+                    <div className='flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 border border-rose-100/80 text-rose-600 shrink-0 shadow-xs group-hover:scale-105 group-hover:bg-rose-100/70 transition-all duration-200'>
+                      <ArrowDownRight className='h-3.5 w-3.5' strokeWidth={2} />
                     </div>
                     <div className='min-w-0'>
-                      <p className='text-xs font-medium text-gray-800 truncate'>
+                      <p className='text-xs sm:text-[13px] font-semibold text-gray-900 truncate group-hover:text-rose-700 transition-colors'>
                         {exp.description || exp.category.replace(/_/g, ' ')}
                       </p>
-                      <p className='text-[10px] text-gray-400'>
-                        <span className='capitalize'>{exp.category}</span> · {formatDate(exp.expenseDate)}
+                      <p className='text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5'>
+                        <span className='capitalize font-medium text-gray-600'>
+                          {exp.category.replace(/_/g, ' ')}
+                        </span>
+                        <span className='h-1 w-1 rounded-full bg-gray-300' />
+                        <span>{formatDate(exp.expenseDate)}</span>
                       </p>
                     </div>
                   </div>
-                  <p className='text-xs font-semibold text-red-500 shrink-0 ml-3 tabular-nums'>
-                    -{formatNaira(Number(exp.amount))}
-                  </p>
+                  <div className='text-right shrink-0 ml-3'>
+                    <p className='text-xs sm:text-sm font-bold text-rose-600 tabular-nums'>
+                      -{formatNaira(Number(exp.amount))}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1159,51 +1248,60 @@ export default function Dashboard() {
             </div>
             <Link
               to='/tax'
-              className='group text-xs font-medium text-purple-200 hover:text-white flex items-center gap-1 transition-colors'
+              className='group text-xs font-semibold text-purple-200 hover:text-white flex items-center gap-1.5 transition-colors'
             >
               View all{' '}
-              <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
+              <ArrowRight className='h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1' />
             </Link>
           </div>
-          <div className='px-5 py-3 overflow-x-auto'>
-            <div className='min-w-[480px]'>
+          <div className='px-5 py-4 overflow-x-auto'>
+            <div className='min-w-[520px]'>
               <table className='w-full'>
                 <thead>
-                  <tr className='text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-50'>
-                    <th className='pb-2.5 text-left'>Period</th>
-                    <th className='pb-2.5 text-right'>Sales</th>
-                    <th className='pb-2.5 text-right'>Expenses</th>
-                    <th className='pb-2.5 text-right'>Tax Due</th>
-                    <th className='pb-2.5 text-right'>Status</th>
+                  <tr className='text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2.5'>
+                    <th className='pb-2.5 text-left font-bold'>Period</th>
+                    <th className='pb-2.5 text-right font-bold'>Sales</th>
+                    <th className='pb-2.5 text-right font-bold'>Expenses</th>
+                    <th className='pb-2.5 text-right font-bold'>Tax Payable</th>
+                    <th className='pb-2.5 text-right font-bold'>Status</th>
+                    <th className='pb-2.5 text-right font-bold'>Action</th>
                   </tr>
                 </thead>
-                <tbody className='text-xs'>
-                  {recentReports.map((report, i) => (
+                <tbody className='text-xs divide-y divide-gray-50'>
+                  {recentReports.map((report) => (
                     <tr
                       key={report.id}
-                      className={`group hover:bg-gray-50/60 transition-colors ${
-                        i > 0 ? 'border-t border-gray-50' : ''
-                      }`}
+                      className='group hover:bg-purple-50/25 transition-colors'
                     >
-                      <td className='py-2.5 text-gray-800 font-medium'>
-                        <div className='flex items-center gap-1.5'>
-                          {formatMonth(report.taxMonth)}
+                      <td className='py-3 text-gray-900 font-semibold'>
+                        <div className='flex items-center gap-2'>
+                          <span>{formatMonth(report.taxMonth)}</span>
                           {report.isFinalized && (
-                            <CheckCircle2 className='h-3 w-3 text-emerald-500' />
+                            <span title='Finalized report' className='inline-flex'>
+                              <CheckCircle2 className='h-3.5 w-3.5 text-emerald-500' />
+                            </span>
                           )}
                         </div>
                       </td>
-                      <td className='py-2.5 text-right text-gray-500 tabular-nums'>
+                      <td className='py-3 text-right text-gray-700 font-medium tabular-nums text-[12px]'>
                         {formatNaira(Number(report.totalSales))}
                       </td>
-                      <td className='py-2.5 text-right text-gray-500 tabular-nums'>
+                      <td className='py-3 text-right text-gray-500 tabular-nums text-[12px]'>
                         {formatNaira(Number(report.totalExpenses))}
                       </td>
-                      <td className='py-2.5 text-right font-semibold text-gray-900 tabular-nums'>
+                      <td className='py-3 text-right font-bold text-gray-900 tabular-nums text-[12px]'>
                         {formatNaira(Number(report.taxPayable))}
                       </td>
-                      <td className='py-2.5 text-right'>
+                      <td className='py-3 text-right whitespace-nowrap'>
                         {statusDot(report.paymentStatus)}
+                      </td>
+                      <td className='py-3 text-right whitespace-nowrap'>
+                        <Link
+                          to={`/tax?highlight=${report.id}`}
+                          className='inline-flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:text-primary-700 hover:underline px-2 py-0.5 rounded-md hover:bg-primary-50 transition-colors'
+                        >
+                          View &rarr;
+                        </Link>
                       </td>
                     </tr>
                   ))}

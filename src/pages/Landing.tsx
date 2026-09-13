@@ -142,12 +142,12 @@ function MobileNav({
       <div
         className={`fixed inset-y-0 right-0 z-50 w-[300px] max-w-[85vw] bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <div className='flex flex-col h-full'>
-          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
-            <img src='/logo.png' alt='PayMyTax' className='h-8' />
+        <div className='flex flex-col h-full overflow-y-auto overscroll-contain'>
+          <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0'>
+            <img src='/logo.png' alt='PayMyTax' className='h-8 w-auto' />
             <button
               onClick={onClose}
-              className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+              className='min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 hover:bg-gray-100 rounded-xl transition-colors'
               aria-label='Close menu'
             >
               <X className='h-5 w-5 text-gray-500' />
@@ -165,7 +165,7 @@ function MobileNav({
               </a>
             ))}
           </nav>
-          <div className='p-4 border-t border-gray-100 space-y-3'>
+          <div className='p-4 border-t border-gray-100 space-y-3 shrink-0 pb-[max(1.25rem,env(safe-area-inset-bottom))]'>
             {isAuthenticated ? (
               <>
                 <Link
@@ -194,7 +194,7 @@ function MobileNav({
                   </div>
                 </Link>
                 <Link to='/dashboard' onClick={onClose} className='block'>
-                  <Button className='w-full justify-center'>
+                  <Button className='w-full justify-center rounded-full'>
                     Open Dashboard <ArrowRight className='h-4 w-4' />
                   </Button>
                 </Link>
@@ -202,12 +202,12 @@ function MobileNav({
             ) : (
               <>
                 <Link to='/login' onClick={onClose} className='block'>
-                  <Button variant='ghost' className='w-full justify-center'>
+                  <Button variant='ghost' className='w-full justify-center rounded-full'>
                     Sign in
                   </Button>
                 </Link>
                 <Link to='/register' className='block'>
-                  <Button className='w-full justify-center'>
+                  <Button className='w-full justify-center rounded-full'>
                     Get Started <ArrowRight className='h-4 w-4' />
                   </Button>
                 </Link>
@@ -280,7 +280,7 @@ function FAQSection() {
   return (
     <section
       id='faq'
-      className='py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'
+      className='scroll-mt-20 sm:scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'
     >
       <div className='mx-auto max-w-3xl px-4 sm:px-6'>
         <ScrollReveal className='text-center mb-14 sm:mb-16'>
@@ -336,6 +336,266 @@ function FAQSection() {
   );
 }
 
+/* ─── Interactive 3D Hero Mockup Component (Zero-dependency Motion) ─── */
+function HeroDashboardPreview() {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    setTilt({
+      x: (y - 0.5) * -10,
+      y: (x - 0.5) * 14,
+    });
+    setMousePos({ x: x * 100, y: y * 100 });
+  };
+
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+  };
+
+  return (
+    <div className='mt-10 sm:mt-14 lg:mt-16 relative mx-auto max-w-5xl px-2 sm:px-0'>
+      {/* Dynamic ambient backdrops */}
+      <div
+        className={`absolute -inset-8 rounded-3xl bg-gradient-to-r from-primary-500/30 via-purple-500/20 to-pink-500/30 blur-3xl transition-all duration-700 pointer-events-none ${
+          isHovered ? 'opacity-85 scale-105' : 'opacity-50 scale-100'
+        }`}
+      />
+      <div
+        className='absolute -top-4 -left-4 sm:-left-8 w-16 sm:w-24 h-16 sm:h-24 bg-gradient-to-br from-primary-400/20 to-purple-400/20 blur-xl animate-blob-morph animate-bounce-gentle pointer-events-none'
+        style={{ animationDelay: '0s' }}
+      />
+      <div
+        className='absolute -bottom-4 -right-4 sm:-right-8 w-20 sm:w-32 h-20 sm:h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-xl animate-blob-morph pointer-events-none'
+        style={{ animationDelay: '2s' }}
+      />
+      <div
+        className='absolute top-1/2 -right-6 w-12 h-12 bg-gradient-to-br from-fuchsia-400/15 to-purple-400/15 blur-lg animate-sway pointer-events-none'
+        style={{ animationDelay: '1s' }}
+      />
+
+      {/* Floating Badge 1 - Top Left: Live FIRS Engine Active */}
+      <div
+        className='absolute -top-4 -left-1 sm:-left-5 z-30 hidden sm:flex items-center gap-2 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/80 px-3.5 py-1.5 shadow-lg shadow-primary-900/10 transition-all duration-300 hover:scale-105 animate-bounce-gentle select-none cursor-default'
+        style={{ animationDuration: '6s' }}
+      >
+        <span className='relative flex h-2 w-2'>
+          <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
+          <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500' />
+        </span>
+        <span className='text-xs font-bold text-gray-800 tracking-tight'>
+          FIRS Engine Active
+        </span>
+      </div>
+
+      {/* Floating Badge 2 - Bottom Right: Auto Tax Calculation */}
+      <div
+        className='absolute -bottom-4 -right-1 sm:-right-5 z-30 hidden sm:flex items-center gap-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-gray-200/80 px-3.5 py-2 shadow-lg shadow-primary-900/10 transition-all duration-300 hover:scale-105 animate-sway select-none cursor-default'
+        style={{ animationDuration: '7s', animationDelay: '1s' }}
+      >
+        <div className='h-7 w-7 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white shadow-sm'>
+          <Zap className='h-3.5 w-3.5 fill-current' />
+        </div>
+        <div className='text-left'>
+          <div className='text-[9px] uppercase font-bold text-gray-400 leading-tight'>
+            Auto-calculated
+          </div>
+          <div className='text-xs font-bold text-gray-900 tabular-nums leading-tight'>
+            ₦25,500 in 0.3s
+          </div>
+        </div>
+      </div>
+
+      {/* 3D Interactive Browser Mockup Container */}
+      <div
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className='relative overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-2xl shadow-primary-900/10 mx-2 sm:mx-0 will-change-transform'
+        style={{
+          transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${isHovered ? 1.015 : 1}, ${isHovered ? 1.015 : 1}, 1)`,
+          transition: isHovered ? 'transform 0.12s ease-out' : 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          transformStyle: 'preserve-3d',
+        }}
+      >
+        {/* Dynamic Specular Light Glare following mouse */}
+        {isHovered && (
+          <div
+            className='absolute inset-0 pointer-events-none z-20 transition-opacity duration-300'
+            style={{
+              background: `radial-gradient(circle 420px at ${mousePos.x}% ${mousePos.y}%, rgba(255, 255, 255, 0.45), transparent 80%)`,
+            }}
+          />
+        )}
+
+        {/* Browser Top Bar */}
+        <div className='flex items-center gap-2 border-b border-gray-100 bg-gray-50/90 px-3 sm:px-4 py-2 sm:py-3'>
+          <div className='flex gap-1.5'>
+            <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-red-400 transition-transform duration-200 hover:scale-125' />
+            <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-amber-400 transition-transform duration-200 hover:scale-125' />
+            <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-green-400 transition-transform duration-200 hover:scale-125' />
+          </div>
+          <div className='mx-auto hidden sm:flex h-5 sm:h-6 items-center rounded-md bg-gray-100 px-2 sm:px-3'>
+            <span className='font-body text-[9px] sm:text-[10px] text-gray-400'>
+              app.paymytax.com/dashboard
+            </span>
+          </div>
+        </div>
+
+        <div className='grid grid-cols-12'>
+          <div className='col-span-3 hidden lg:block border-r border-gray-100 bg-gray-50/50 p-3 sm:p-4'>
+            <div className='flex items-center gap-2 mb-4 sm:mb-6'>
+              <div className='h-7 sm:h-8 w-7 sm:w-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-sm'>
+                <span className='text-white text-[10px] sm:text-xs font-bold'>
+                  P
+                </span>
+              </div>
+              <span className='text-[10px] sm:text-xs font-semibold text-gray-800'>
+                PayMyTax
+              </span>
+            </div>
+            {[
+              'Dashboard',
+              'Sales',
+              'Expenses',
+              'Tax Reports',
+              'Payments',
+            ].map((item, i) => (
+              <div
+                key={item}
+                className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-medium transition-colors ${
+                  i === 0
+                    ? 'bg-primary-50 text-primary-700 shadow-xs'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
+                }`}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <div className='col-span-12 lg:col-span-9 p-3 sm:p-5'>
+            <div className='flex items-center justify-between mb-3 sm:mb-5'>
+              <div>
+                <div className='text-xs sm:text-sm font-semibold text-gray-800'>
+                  Good morning, John
+                </div>
+                <div className='font-body text-[9px] sm:text-[11px] text-gray-400'>
+                  Here's your tax overview
+                </div>
+              </div>
+              <div className='flex items-center gap-1.5 sm:gap-2'>
+                <div className='relative h-6 sm:h-7 w-6 sm:w-7 rounded-full bg-primary-100 flex items-center justify-center group hover:bg-primary-200 transition-colors cursor-pointer'>
+                  <Bell className='h-3 sm:h-3.5 w-3 sm:w-3.5 text-primary-600 group-hover:rotate-12 transition-transform' />
+                  <span className='absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-red-500 animate-ping' />
+                  <span className='absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-red-500' />
+                </div>
+                <div className='h-6 sm:h-7 w-6 sm:w-7 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-[8px] sm:text-[10px] font-bold shadow-sm'>
+                  J
+                </div>
+              </div>
+            </div>
+
+            <div className='grid grid-cols-3 gap-1.5 sm:gap-3 mb-3 sm:mb-5'>
+              {[
+                {
+                  label: 'Total Sales',
+                  value: '₦700,000',
+                  change: '+12%',
+                  color: 'text-green-500',
+                },
+                {
+                  label: 'Total Expenses',
+                  value: '₦360,000',
+                  change: '-3%',
+                  color: 'text-red-400',
+                },
+                {
+                  label: 'Tax Payable',
+                  value: '₦25,500',
+                  change: '7.5%',
+                  color: 'text-primary-500',
+                },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className='rounded-xl border border-gray-100 bg-white p-1.5 sm:p-3 shadow-xs min-w-0 transition-all duration-300 hover:shadow-md hover:border-primary-200 hover:-translate-y-0.5 cursor-default'
+                >
+                  <div className='font-body text-[8px] sm:text-[10px] text-gray-400 truncate'>
+                    {s.label}
+                  </div>
+                  <div className='mt-0.5 text-[10px] sm:text-sm font-bold text-gray-800 tabular-nums truncate'>
+                    {s.value}
+                  </div>
+                  <div
+                    className={`mt-0.5 font-body text-[8px] sm:text-[10px] font-medium ${s.color}`}
+                  >
+                    {s.change}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className='rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-2 sm:p-4'>
+              <div className='flex items-center justify-between mb-1.5 sm:mb-3'>
+                <span className='text-[10px] sm:text-xs font-semibold text-gray-700'>
+                  Monthly Revenue
+                </span>
+                <span className='font-body text-[8px] sm:text-[10px] text-gray-400 hidden sm:block'>
+                  Last 6 months
+                </span>
+              </div>
+              <svg
+                viewBox='0 0 400 80'
+                className='w-full h-12 sm:h-20'
+              >
+                <defs>
+                  <linearGradient
+                    id='heroChartGrad'
+                    x1='0'
+                    y1='0'
+                    x2='0'
+                    y2='1'
+                  >
+                    <stop
+                      offset='0%'
+                      stopColor='#7c3aed'
+                      stopOpacity='0.35'
+                    />
+                    <stop
+                      offset='100%'
+                      stopColor='#7c3aed'
+                      stopOpacity='0'
+                    />
+                  </linearGradient>
+                </defs>
+                <path
+                  d='M0,65 C30,60 60,48 100,40 C140,32 170,44 200,28 C230,12 260,20 300,16 C340,12 370,8 400,4 L400,80 L0,80 Z'
+                  fill='url(#heroChartGrad)'
+                />
+                <path
+                  d='M0,65 C30,60 60,48 100,40 C140,32 170,44 200,28 C230,12 260,20 300,16 C340,12 370,8 400,4'
+                  fill='none'
+                  stroke='#7c3aed'
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                />
+                <circle cx='400' cy='4' r='3.5' fill='#7c3aed' className='animate-pulse' />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Component ─── */
 export default function Landing() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -355,21 +615,21 @@ export default function Landing() {
   return (
     <div className='min-h-screen bg-white overflow-x-hidden'>
       {/* ── Navigation ── */}
-      <header className='fixed  top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100/50'>
+      <header className='fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100/50'>
         <div className='mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3'>
           <Link to='/' className='flex items-center gap-2 sm:gap-3'>
             <img
               src='/logo.png'
               alt='PayMyTax'
-              className='h-10 sm:h-10 lg:h-12 w-auto'
+              className='h-8 sm:h-10 lg:h-12 w-auto'
             />
           </Link>
-          <nav className='hidden lg:flex items-center gap-8 my-3'>
+          <nav className='hidden lg:flex items-center gap-6 xl:gap-8 my-3'>
             {['Features', 'How It Works', 'Testimonials', 'FAQ'].map((item) => (
               <a
                 key={item}
                 href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
-                className='relative font-sans text-[16px] font-medium text-gray-600 hover:text-primary-600 transition-colors duration-200 py-1 after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-primary-500 after:transition-all after:duration-300 hover:after:w-full'
+                className='relative font-sans text-[15px] xl:text-[16px] font-medium text-gray-600 hover:text-primary-600 transition-colors duration-200 py-1 after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-primary-500 after:transition-all after:duration-300 hover:after:w-full'
               >
                 {item}
               </a>
@@ -379,7 +639,7 @@ export default function Landing() {
             {isAuthenticated ? (
               <Link
                 to='/dashboard'
-                className='flex items-center gap-2.5 sm:gap-3 rounded-full border border-gray-200/80 bg-white/95 hover:bg-gray-50/90 pl-1.5 pr-3.5 sm:pr-4 py-1.5 shadow-sm hover:shadow-md transition-all duration-200 group'
+                className='flex items-center gap-2 sm:gap-3 rounded-full border border-gray-200/80 bg-white/95 hover:bg-gray-50/90 pl-1.5 pr-1.5 sm:pr-4 py-1.5 shadow-sm hover:shadow-md transition-all duration-200 group'
                 title='Go to Dashboard'
               >
                 <div className='flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-purple-600 text-white text-xs sm:text-sm font-bold shrink-0 overflow-hidden ring-2 ring-primary-100 shadow-sm'>
@@ -393,7 +653,7 @@ export default function Landing() {
                     (activeBusiness?.businessName || user?.email || 'B').charAt(0).toUpperCase()
                   )}
                 </div>
-                <div className='text-left min-w-0'>
+                <div className='text-left min-w-0 hidden sm:block'>
                   <p className='text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[120px] sm:max-w-[160px] leading-tight'>
                     {activeBusiness?.businessName || user?.email?.split('@')[0] || 'My Business'}
                   </p>
@@ -405,21 +665,25 @@ export default function Landing() {
               </Link>
             ) : (
               <>
-                <Link to='/login' className='hidden sm:block text-[16px]'>
-                  <Button variant='ghost' size='sm' className='text-[16px]'>
+                <Link to='/login' className='hidden sm:block'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='rounded-full px-4 py-2 text-sm xl:text-[15px] font-semibold text-gray-700 hover:text-primary-600 hover:bg-gray-100/80 transition-all duration-200'
+                  >
                     Sign in
                   </Button>
                 </Link>
                 <Link to='/register' className='hidden sm:block'>
-                  <Button size='sm' className='text-[16px]'>
+                  <button className='inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white px-5 py-2 text-sm xl:text-[15px] font-semibold shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/35 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200'>
                     Get Started <ArrowRight className='h-4 w-4' />
-                  </Button>
+                  </button>
                 </Link>
               </>
             )}
             <button
               onClick={() => setMobileNavOpen(true)}
-              className='lg:hidden flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors'
+              className='lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-gray-100 active:bg-gray-200 transition-colors'
               aria-label='Open navigation menu'
             >
               <Menu className='h-5 w-5 text-gray-600' />
@@ -434,7 +698,7 @@ export default function Landing() {
       />
 
       {/* ── Hero ── */}
-      <section className='relative pt-16 sm:pt-20 lg:pt-24 pb-8 sm:pb-12 lg:pb-16'>
+      <section className='relative pt-16 sm:pt-20 lg:pt-24 pb-8 sm:pb-12 lg:pb-16 overflow-hidden'>
         <div className='absolute inset-0 bg-gradient-to-b from-primary-50/80 via-white to-white' />
         <div
           className='absolute inset-0 opacity-[0.03]'
@@ -455,33 +719,37 @@ export default function Landing() {
         <div className='relative mx-auto max-w-7xl px-4 sm:px-6 py-10'>
           <div className='text-center'>
             {/* Premium Trust Badge */}
+            {/* Premium Animated Trust Badge */}
             <ScrollReveal delay={0}>
-              <div className='inline-flex items-center gap-2 bg-white rounded-full border border-gray-200 px-4 py-2 mb-6 sm:mb-10 shadow-sm hover:shadow-md transition-shadow duration-300'>
-                <div className='flex -space-x-2'>
+              <div className='inline-flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur rounded-full border border-gray-200 px-3.5 sm:px-4 py-1.5 sm:py-2 mb-6 sm:mb-9 shadow-sm hover:shadow-md hover:border-primary-300 transition-all duration-300 hover:-translate-y-0.5 group max-w-full cursor-default'>
+                <span className='relative flex h-2 w-2 mr-0.5'>
+                  <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
+                  <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500' />
+                </span>
+                <div className='flex -space-x-1.5 group-hover:space-x-0.5 transition-all duration-300 shrink-0'>
                   {[nigerian1, nigerian2, nigerian3, nigerian4].map(
                     (avatar, i) => (
                       <img
                         key={i}
                         src={avatar}
                         alt={`Business owner ${i + 1}`}
-                        className='h-7 w-7 rounded-full border-2 border-white object-cover'
+                        className='h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-white object-cover transition-transform duration-300 group-hover:scale-105'
                       />
                     ),
                   )}
                 </div>
-                <span className='font-body text-sm font-semibold text-gray-700 pl-1'>
+                <span className='font-body text-xs sm:text-sm font-semibold text-gray-700 pl-1 truncate group-hover:text-primary-700 transition-colors'>
                   Trusted by 2,500+ businesses
                 </span>
               </div>
             </ScrollReveal>
 
-            {/* Headline */}
+            {/* Headline with Animated Gradient Flow */}
             <ScrollReveal delay={100}>
-              <h1 className='relative text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 leading-[1.1]'>
-                Stop stressing about
-                <span className='hidden xs:block' />
-                <span className='relative inline-block mt-2 sm:mt-0'>
-                  <span className='bg-gradient-to-r from-primary-700 via-primary-500 to-purple-500 bg-clip-text text-transparent animate-gradient ml-3'>
+              <h1 className='relative text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15] sm:leading-[1.1]'>
+                Stop stressing about{' '}
+                <span className='relative inline-block mt-1 sm:mt-0 group'>
+                  <span className='bg-gradient-to-r from-primary-700 via-primary-500 to-purple-500 bg-clip-text text-transparent animate-gradient'>
                     business taxes
                   </span>
                   <svg
@@ -531,27 +799,27 @@ export default function Landing() {
               </p>
             </ScrollReveal>
 
-            {/* CTA Buttons - Pill Shaped */}
+            {/* CTA Buttons - Pill Shaped with Sheen & Glow */}
             <ScrollReveal delay={300}>
-              <div className='mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 px-4 sm:px-0'>
+              <div className='mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 px-4 sm:px-0'>
                 <Link to={isAuthenticated ? '/dashboard' : '/register'} className='w-full sm:w-auto'>
-                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-8 sm:px-10 py-4 text-sm sm:text-base font-bold text-white shadow-2xl shadow-primary-500/40 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/60 hover:-translate-y-1 active:scale-[0.98] overflow-hidden group'>
-                    <span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700' />
+                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-bold text-white shadow-xl shadow-primary-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/50 hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden group'>
+                    <span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700' />
                     <span className='relative flex items-center gap-2'>
                       {isAuthenticated ? 'Go to Dashboard' : 'Start Free Today'}{' '}
-                      <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
+                      <ArrowRight className='h-4.5 w-4.5 transition-transform duration-300 group-hover:translate-x-1' />
                     </span>
                   </button>
                 </Link>
                 <Link to={isAuthenticated ? '/tax' : '/login'} className='w-full sm:w-auto'>
-                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border-2 border-gray-300 bg-white/70 backdrop-blur px-8 sm:px-10 py-4 text-sm sm:text-base font-semibold text-gray-700 shadow-md transition-all duration-300 hover:border-primary-300 hover:bg-white hover:shadow-xl hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
+                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-semibold text-gray-700 shadow-sm transition-all duration-300 hover:border-primary-300 hover:bg-white hover:shadow-md hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
                     {isAuthenticated ? (
                       <>
                         <FileText className='h-4 w-4' /> View Tax Reports
                       </>
                     ) : (
                       <>
-                        <Play className='h-4 w-4 fill-current' /> Watch Demo
+                        <Play className='h-3.5 w-3.5 fill-current' /> Watch Demo
                       </>
                     )}
                   </button>
@@ -565,11 +833,11 @@ export default function Landing() {
                 {trustIndicators.map(({ icon: Icon, text }, i) => (
                   <div
                     key={text}
-                    className='flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-50/80 border border-gray-100 hover:border-primary-200 hover:bg-primary-50/50 hover:-translate-y-0.5 hover:rotate-1 transition-all duration-300 cursor-default'
+                    className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur border border-gray-200/80 hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300 cursor-default group'
                     style={{ transitionDelay: `${i * 100}ms` }}
                   >
-                    <Icon className='h-4 w-4 text-primary-500' />
-                    <span className='font-body text-xs sm:text-sm text-gray-600 font-medium'>
+                    <Icon className='h-4 w-4 text-primary-500 group-hover:scale-110 transition-transform duration-300' />
+                    <span className='font-body text-xs sm:text-sm text-gray-600 font-medium group-hover:text-gray-900 transition-colors'>
                       {text}
                     </span>
                   </div>
@@ -577,177 +845,9 @@ export default function Landing() {
               </div>
             </ScrollReveal>
 
-            {/* Dashboard Preview */}
+            {/* Interactive 3D Dashboard Preview */}
             <ScrollReveal delay={500}>
-              <div className='mt-10 sm:mt-14 lg:mt-16 relative mx-auto max-w-5xl px-2 sm:px-0'>
-                <div className='absolute -inset-8 rounded-3xl bg-gradient-to-r from-primary-500/30 via-purple-500/20 to-pink-500/30 blur-3xl' />
-                <div
-                  className='absolute -top-4 -left-4 sm:-left-8 w-16 sm:w-24 h-16 sm:h-24 bg-gradient-to-br from-primary-400/20 to-purple-400/20 blur-xl animate-blob-morph animate-bounce-gently'
-                  style={{ animationDelay: '0s' }}
-                />
-                <div
-                  className='absolute -bottom-4 -right-4 sm:-right-8 w-20 sm:w-32 h-20 sm:h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-xl animate-blob-morph'
-                  style={{ animationDelay: '2s' }}
-                />
-                <div
-                  className='absolute top-1/2 -right-6 w-12 h-12 bg-gradient-to-br from-fuchsia-400/15 to-purple-400/15 blur-lg animate-sway'
-                  style={{ animationDelay: '1s' }}
-                />
-
-                {/* Browser mockup */}
-                <div className='relative overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-2xl shadow-primary-900/10 mx-2 sm:mx-0'>
-                  <div className='flex items-center gap-2 border-b border-gray-100 bg-gray-50/80 px-3 sm:px-4 py-2 sm:py-3'>
-                    <div className='flex gap-1.5'>
-                      <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-red-400' />
-                      <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-amber-400' />
-                      <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-green-400' />
-                    </div>
-                    <div className='mx-auto hidden sm:flex h-5 sm:h-6 items-center rounded-md bg-gray-100 px-2 sm:px-3'>
-                      <span className='font-body text-[9px] sm:text-[10px] text-gray-400'>
-                        app.paymytax.com/dashboard
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className='grid grid-cols-12'>
-                    <div className='col-span-3 hidden lg:block border-r border-gray-100 bg-gray-50/50 p-3 sm:p-4'>
-                      <div className='flex items-center gap-2 mb-4 sm:mb-6'>
-                        <div className='h-7 sm:h-8 w-7 sm:w-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center'>
-                          <span className='text-white text-[10px] sm:text-xs font-bold'>
-                            P
-                          </span>
-                        </div>
-                        <span className='text-[10px] sm:text-xs font-semibold text-gray-800'>
-                          PayMyTax
-                        </span>
-                      </div>
-                      {[
-                        'Dashboard',
-                        'Sales',
-                        'Expenses',
-                        'Tax Reports',
-                        'Payments',
-                      ].map((item, i) => (
-                        <div
-                          key={item}
-                          className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-medium ${i === 0 ? 'bg-primary-50 text-primary-700' : 'text-gray-400'}`}
-                        >
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className='col-span-12 lg:col-span-9 p-3 sm:p-5'>
-                      <div className='flex items-center justify-between mb-3 sm:mb-5'>
-                        <div>
-                          <div className='text-xs sm:text-sm font-semibold text-gray-800'>
-                            Good morning, John
-                          </div>
-                          <div className='font-body text-[9px] sm:text-[11px] text-gray-400'>
-                            Here's your tax overview
-                          </div>
-                        </div>
-                        <div className='flex items-center gap-1.5 sm:gap-2'>
-                          <div className='h-5 sm:h-7 w-5 sm:w-7 rounded-full bg-primary-100 flex items-center justify-center'>
-                            <Bell className='h-3 sm:h-3.5 w-3 sm:w-3.5 text-primary-600' />
-                          </div>
-                          <div className='h-5 sm:h-7 w-5 sm:w-7 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-[8px] sm:text-[10px] font-bold'>
-                            J
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className='grid grid-cols-3 gap-2 sm:gap-3 mb-3 sm:mb-5'>
-                        {[
-                          {
-                            label: 'Total Sales',
-                            value: '₦700,000',
-                            change: '+12%',
-                            color: 'text-green-500',
-                          },
-                          {
-                            label: 'Total Expenses',
-                            value: '₦360,000',
-                            change: '-3%',
-                            color: 'text-red-400',
-                          },
-                          {
-                            label: 'Tax Payable',
-                            value: '₦25,500',
-                            change: '7.5%',
-                            color: 'text-primary-500',
-                          },
-                        ].map((s) => (
-                          <div
-                            key={s.label}
-                            className='rounded-xl border border-gray-100 bg-white p-2 sm:p-3 shadow-sm'
-                          >
-                            <div className='font-body text-[8px] sm:text-[10px] text-gray-400'>
-                              {s.label}
-                            </div>
-                            <div className='mt-0.5 text-[11px] sm:text-sm font-bold text-gray-800'>
-                              {s.value}
-                            </div>
-                            <div
-                              className={`mt-0.5 font-body text-[8px] sm:text-[10px] font-medium ${s.color}`}
-                            >
-                              {s.change}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className='rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-2 sm:p-4'>
-                        <div className='flex items-center justify-between mb-1.5 sm:mb-3'>
-                          <span className='text-[10px] sm:text-xs font-semibold text-gray-700'>
-                            Monthly Revenue
-                          </span>
-                          <span className='font-body text-[8px] sm:text-[10px] text-gray-400 hidden sm:block'>
-                            Last 6 months
-                          </span>
-                        </div>
-                        <svg
-                          viewBox='0 0 400 80'
-                          className='w-full h-12 sm:h-20'
-                        >
-                          <defs>
-                            <linearGradient
-                              id='heroChartGrad'
-                              x1='0'
-                              y1='0'
-                              x2='0'
-                              y2='1'
-                            >
-                              <stop
-                                offset='0%'
-                                stopColor='#7c3aed'
-                                stopOpacity='0.3'
-                              />
-                              <stop
-                                offset='100%'
-                                stopColor='#7c3aed'
-                                stopOpacity='0'
-                              />
-                            </linearGradient>
-                          </defs>
-                          <path
-                            d='M0,65 C30,60 60,48 100,40 C140,32 170,44 200,28 C230,12 260,20 300,16 C340,12 370,8 400,4 L400,80 L0,80 Z'
-                            fill='url(#heroChartGrad)'
-                          />
-                          <path
-                            d='M0,65 C30,60 60,48 100,40 C140,32 170,44 200,28 C230,12 260,20 300,16 C340,12 370,8 400,4'
-                            fill='none'
-                            stroke='#7c3aed'
-                            strokeWidth='2'
-                            strokeLinecap='round'
-                          />
-                          <circle cx='400' cy='4' r='3' fill='#7c3aed' />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <HeroDashboardPreview />
             </ScrollReveal>
           </div>
         </div>
@@ -798,7 +898,7 @@ export default function Landing() {
           {/* Content Grid — Stats + Creative Visual */}
           <div className='grid lg:grid-cols-5 gap-10 sm:gap-12 lg:gap-16 items-center'>
             {/* Stats Grid */}
-            <div className='lg:col-span-2 grid grid-cols-2 gap-5 sm:gap-6'>
+            <div className='lg:col-span-2 grid grid-cols-2 gap-3.5 sm:gap-4'>
               {[
                 { icon: Receipt, value: '7.5%', label: 'FIRS Tax Rate' },
                 { icon: BadgeCheck, value: '100%', label: 'FIRS Compliant' },
@@ -806,17 +906,17 @@ export default function Landing() {
                 { icon: BarChart3, value: 'Auto', label: 'Calculation' },
               ].map((stat, i) => (
                 <ScrollReveal key={stat.label} delay={i * 100}>
-                  <div className='group relative overflow-hidden rounded-xl border border-gray-300 bg-white/80 backdrop-blur p-8 sm:p-9 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-300'>
-                    <div className='mb-6'>
+                  <div className='group relative overflow-hidden rounded-xl border border-gray-200 bg-white/80 backdrop-blur p-4 sm:p-5 transition-all duration-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary-500/10 hover:border-primary-300'>
+                    <div className='mb-3 sm:mb-4'>
                       <stat.icon
-                        className='h-10 w-10 sm:h-12 sm:w-12 text-gray-700 transition-transform duration-300 group-hover:scale-110'
-                        strokeWidth={1.2}
+                        className='h-6 w-6 sm:h-7 sm:w-7 text-gray-700 transition-transform duration-300 group-hover:scale-110'
+                        strokeWidth={1.4}
                       />
                     </div>
-                    <div className='text-3xl sm:text-4xl font-bold text-gray-900 mb-2 tracking-tight'>
+                    <div className='text-2xl sm:text-3xl font-bold text-gray-900 mb-1 tracking-tight'>
                       {stat.value}
                     </div>
-                    <div className='text-sm sm:text-[15px] text-gray-700 font-medium'>
+                    <div className='text-xs sm:text-sm text-gray-600 font-medium'>
                       {stat.label}
                     </div>
                   </div>
@@ -826,13 +926,13 @@ export default function Landing() {
 
             {/* Creative Visual — Floating phone mockup with live tax calc */}
             <ScrollReveal delay={200} className='lg:col-span-3'>
-              <div className='relative mx-auto max-w-lg lg:max-w-none aspect-[5/4] sm:aspect-[6/5]'>
+              <div className='relative mx-auto max-w-lg lg:max-w-none min-h-[460px] sm:min-h-[500px] lg:min-h-[520px] flex items-center justify-center py-6 sm:py-8 lg:py-0'>
                 {/* Glow halo */}
-                <div className='absolute inset-0 bg-gradient-to-br from-primary-500/20 via-purple-500/20 to-fuchsia-500/20 rounded-3xl blur-3xl' />
+                <div className='absolute inset-0 bg-gradient-to-br from-primary-500/20 via-purple-500/20 to-fuchsia-500/20 rounded-3xl blur-3xl pointer-events-none' />
 
                 {/* Rotating conic ring */}
                 <div
-                  className='absolute inset-8 rounded-full opacity-30'
+                  className='absolute inset-4 sm:inset-8 rounded-full opacity-30 pointer-events-none'
                   style={{
                     background:
                       'conic-gradient(from 0deg, transparent 0deg, #7c3aed 60deg, transparent 120deg, #a855f7 180deg, transparent 240deg, #d946ef 300deg, transparent 360deg)',
@@ -843,7 +943,7 @@ export default function Landing() {
 
                 {/* Floating badge — top left */}
                 <div
-                  className='absolute top-4 left-2 sm:left-0 z-20 animate-bounce-gentle'
+                  className='absolute -top-1 left-0 sm:top-4 sm:left-2 lg:left-0 z-20 scale-[0.85] sm:scale-100 origin-top-left animate-bounce-gentle'
                   style={{ animationDelay: '0.5s' }}
                 >
                   <div className='flex items-center gap-2.5 rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
@@ -866,7 +966,7 @@ export default function Landing() {
 
                 {/* Floating badge — bottom right */}
                 <div
-                  className='absolute bottom-6 right-2 sm:right-0 z-20 animate-bounce-gentle'
+                  className='absolute -bottom-1 right-0 sm:bottom-6 sm:right-2 lg:right-0 z-20 scale-[0.85] sm:scale-100 origin-bottom-right animate-bounce-gentle'
                   style={{ animationDelay: '1.8s' }}
                 >
                   <div className='flex items-center gap-2.5 rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
@@ -889,7 +989,7 @@ export default function Landing() {
 
                 {/* Floating mini chart — top right */}
                 <div
-                  className='absolute top-10 right-0 sm:right-4 z-20 animate-sway'
+                  className='hidden sm:block absolute top-6 right-2 sm:right-4 z-20 animate-sway'
                   style={{ animationDelay: '0s' }}
                 >
                   <div className='rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-4 py-3 shadow-xl shadow-primary-900/10'>
@@ -940,118 +1040,116 @@ export default function Landing() {
                 </div>
 
                 {/* Central Tax Calculation Card */}
-                <div className='absolute inset-0 flex items-center justify-center'>
-                  <div className='relative w-[88%] sm:w-[82%] lg:w-[78%] rounded-2xl bg-gradient-to-br from-gray-900 via-primary-950 to-purple-950 p-1 shadow-2xl shadow-primary-900/40'>
-                    {/* Inner card */}
-                    <div className='relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 to-purple-950 p-5 sm:p-6 lg:p-7'>
-                      {/* Subtle pattern */}
-                      <div
-                        className='absolute inset-0 opacity-[0.08]'
-                        style={{
-                          backgroundImage:
-                            'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-                          backgroundSize: '20px 20px',
-                        }}
-                      />
-                      {/* Glow corner */}
-                      <div className='absolute -top-20 -right-20 w-48 h-48 bg-primary-500/30 rounded-full blur-3xl' />
-                      <div className='absolute -bottom-20 -left-20 w-48 h-48 bg-fuchsia-500/20 rounded-full blur-3xl' />
+                <div className='relative w-[92%] sm:w-[84%] lg:w-[78%] max-w-[420px] rounded-2xl bg-gradient-to-br from-gray-900 via-primary-950 to-purple-950 p-1 shadow-2xl shadow-primary-900/40 my-auto z-10'>
+                  {/* Inner card */}
+                  <div className='relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 to-purple-950 p-4 sm:p-6 lg:p-7'>
+                    {/* Subtle pattern */}
+                    <div
+                      className='absolute inset-0 opacity-[0.08]'
+                      style={{
+                        backgroundImage:
+                          'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+                        backgroundSize: '20px 20px',
+                      }}
+                    />
+                    {/* Glow corner */}
+                    <div className='absolute -top-20 -right-20 w-48 h-48 bg-primary-500/30 rounded-full blur-3xl' />
+                    <div className='absolute -bottom-20 -left-20 w-48 h-48 bg-fuchsia-500/20 rounded-full blur-3xl' />
 
-                      <div className='relative'>
-                        {/* Header */}
-                        <div className='flex items-center justify-between mb-5 sm:mb-6'>
-                          <div className='flex items-center gap-2'>
-                            <div className='h-8 w-8 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center'>
-                              <Receipt className='h-4 w-4 text-white' />
-                            </div>
-                            <div>
-                              <div className='text-[10px] uppercase tracking-wider text-white/50 font-semibold'>
-                                Tax Summary
-                              </div>
-                              <div className='text-xs font-bold text-white'>
-                                March 2026
-                              </div>
-                            </div>
+                    <div className='relative'>
+                      {/* Header */}
+                      <div className='flex items-center justify-between mb-4 sm:mb-6'>
+                        <div className='flex items-center gap-2'>
+                          <div className='h-8 w-8 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center'>
+                            <Receipt className='h-4 w-4 text-white' />
                           </div>
-                          <div className='flex items-center gap-1.5 rounded-full bg-green-500/15 border border-green-400/30 px-2.5 py-1'>
-                            <div className='h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse' />
-                            <span className='text-[10px] font-semibold text-green-300'>
-                              Live
-                            </span>
+                          <div>
+                            <div className='text-[10px] uppercase tracking-wider text-white/50 font-semibold'>
+                              Tax Summary
+                            </div>
+                            <div className='text-xs font-bold text-white'>
+                              March 2026
+                            </div>
                           </div>
                         </div>
-
-                        {/* Calculation rows */}
-                        <div className='space-y-2.5 sm:space-y-3 mb-4 sm:mb-5'>
-                          <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3.5 py-2.5 backdrop-blur-sm'>
-                            <div className='flex items-center gap-2'>
-                              <div className='h-6 w-6 rounded-md bg-green-500/20 flex items-center justify-center'>
-                                <TrendingUp className='h-3 w-3 text-green-400' />
-                              </div>
-                              <span className='text-xs text-white/70 font-medium'>
-                                Total Sales
-                              </span>
-                            </div>
-                            <span className='text-sm font-bold text-white tabular-nums'>
-                              ₦700,000
-                            </span>
-                          </div>
-
-                          <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3.5 py-2.5 backdrop-blur-sm'>
-                            <div className='flex items-center gap-2'>
-                              <div className='h-6 w-6 rounded-md bg-red-500/20 flex items-center justify-center'>
-                                <Receipt className='h-3 w-3 text-red-400' />
-                              </div>
-                              <span className='text-xs text-white/70 font-medium'>
-                                Expenses
-                              </span>
-                            </div>
-                            <span className='text-sm font-bold text-white tabular-nums'>
-                              −₦360,000
-                            </span>
-                          </div>
-
-                          <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3.5 py-2.5 backdrop-blur-sm'>
-                            <div className='flex items-center gap-2'>
-                              <div className='h-6 w-6 rounded-md bg-primary-500/20 flex items-center justify-center'>
-                                <BarChart3 className='h-3 w-3 text-primary-300' />
-                              </div>
-                              <span className='text-xs text-white/70 font-medium'>
-                                Gross Profit
-                              </span>
-                            </div>
-                            <span className='text-sm font-bold text-white tabular-nums'>
-                              ₦340,000
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Divider with formula */}
-                        <div className='relative flex items-center gap-3 my-4'>
-                          <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
-                          <span className='text-[9px] font-mono font-bold uppercase tracking-wider text-white/40'>
-                            × 7.5% FIRS
+                        <div className='flex items-center gap-1.5 rounded-full bg-green-500/15 border border-green-400/30 px-2.5 py-1'>
+                          <div className='h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse' />
+                          <span className='text-[10px] font-semibold text-green-300'>
+                            Live
                           </span>
-                          <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
+                        </div>
+                      </div>
+
+                      {/* Calculation rows */}
+                      <div className='space-y-2.5 sm:space-y-3 mb-4 sm:mb-5'>
+                        <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 sm:px-3.5 py-2 sm:py-2.5 backdrop-blur-sm'>
+                          <div className='flex items-center gap-2'>
+                            <div className='h-6 w-6 rounded-md bg-green-500/20 flex items-center justify-center'>
+                              <TrendingUp className='h-3 w-3 text-green-400' />
+                            </div>
+                            <span className='text-xs text-white/70 font-medium'>
+                              Total Sales
+                            </span>
+                          </div>
+                          <span className='text-sm font-bold text-white tabular-nums'>
+                            ₦700,000
+                          </span>
                         </div>
 
-                        {/* Tax Payable — hero number */}
-                        <div className='relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 via-purple-500 to-fuchsia-500 p-[1.5px]'>
-                          <div className='rounded-xl bg-gradient-to-br from-primary-600/90 to-purple-700/90 backdrop-blur-sm px-4 py-3.5 sm:py-4'>
-                            <div className='flex items-end justify-between'>
-                              <div>
-                                <div className='text-[10px] uppercase tracking-wider text-white/70 font-semibold mb-0.5'>
-                                  Tax Payable
-                                </div>
-                                <div className='text-2xl sm:text-3xl font-bold text-white tabular-nums leading-none'>
-                                  ₦25,500
-                                </div>
-                              </div>
-                              <button className='flex items-center gap-1.5 rounded-lg bg-white text-primary-700 px-3 py-1.5 text-[11px] font-bold shadow-lg hover:shadow-xl transition-shadow'>
-                                Pay now
-                                <ArrowRight className='h-3 w-3' />
-                              </button>
+                        <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 sm:px-3.5 py-2 sm:py-2.5 backdrop-blur-sm'>
+                          <div className='flex items-center gap-2'>
+                            <div className='h-6 w-6 rounded-md bg-red-500/20 flex items-center justify-center'>
+                              <Receipt className='h-3 w-3 text-red-400' />
                             </div>
+                            <span className='text-xs text-white/70 font-medium'>
+                              Expenses
+                            </span>
+                          </div>
+                          <span className='text-sm font-bold text-white tabular-nums'>
+                            −₦360,000
+                          </span>
+                        </div>
+
+                        <div className='flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 sm:px-3.5 py-2 sm:py-2.5 backdrop-blur-sm'>
+                          <div className='flex items-center gap-2'>
+                            <div className='h-6 w-6 rounded-md bg-primary-500/20 flex items-center justify-center'>
+                              <BarChart3 className='h-3 w-3 text-primary-300' />
+                            </div>
+                            <span className='text-xs text-white/70 font-medium'>
+                              Gross Profit
+                            </span>
+                          </div>
+                          <span className='text-sm font-bold text-white tabular-nums'>
+                            ₦340,000
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Divider with formula */}
+                      <div className='relative flex items-center gap-3 my-3 sm:my-4'>
+                        <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
+                        <span className='text-[9px] font-mono font-bold uppercase tracking-wider text-white/40'>
+                          × 7.5% FIRS
+                        </span>
+                        <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
+                      </div>
+
+                      {/* Tax Payable — hero number */}
+                      <div className='relative overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 via-purple-500 to-fuchsia-500 p-[1.5px]'>
+                        <div className='rounded-xl bg-gradient-to-br from-primary-600/90 to-purple-700/90 backdrop-blur-sm px-3.5 sm:px-4 py-3 sm:py-4'>
+                          <div className='flex items-end justify-between gap-2'>
+                            <div>
+                              <div className='text-[10px] uppercase tracking-wider text-white/70 font-semibold mb-0.5'>
+                                Tax Payable
+                              </div>
+                              <div className='text-xl sm:text-2xl lg:text-3xl font-bold text-white tabular-nums leading-none'>
+                                ₦25,500
+                              </div>
+                            </div>
+                            <button className='flex items-center gap-1.5 rounded-lg bg-white text-primary-700 px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] font-bold shadow-lg hover:shadow-xl transition-shadow shrink-0'>
+                              Pay now
+                              <ArrowRight className='h-3 w-3' />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1067,7 +1165,7 @@ export default function Landing() {
       {/* ── Features ── */}
       <section
         id='features'
-        className='py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-white to-gray-50/50 relative overflow-hidden'
+        className='scroll-mt-20 sm:scroll-mt-24 py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-white to-gray-50/50 relative overflow-hidden'
       >
         <div
           className='absolute top-1/2 left-1/4 w-64 h-64 bg-gradient-to-br from-primary-400/10 to-purple-400/10 blur-3xl animate-blob-morph'
@@ -1224,11 +1322,11 @@ export default function Landing() {
               delay={300}
               className='sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full'
             >
-              <div className='relative h-full overflow-hidden rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 to-purple-50 p-5 sm:p-6 group hover:shadow-lg hover:shadow-fuchsia-500/10 transition-all duration-500'>
-                <div className='flex items-center gap-5 h-full'>
-                  <div className='flex-shrink-0 w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-fuchsia-500/10 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500'>
+              <div className='relative h-full overflow-hidden rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 to-purple-50 p-4 sm:p-6 group hover:shadow-lg hover:shadow-fuchsia-500/10 transition-all duration-500'>
+                <div className='flex items-center gap-3 sm:gap-5 h-full'>
+                  <div className='flex-shrink-0 w-12 sm:w-14 h-12 sm:h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-fuchsia-500/10 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500'>
                     <Bell
-                      className='w-6 h-6 text-fuchsia-600'
+                      className='w-5 sm:w-6 h-5 sm:h-6 text-fuchsia-600'
                       strokeWidth={1.5}
                     />
                   </div>
@@ -1257,7 +1355,7 @@ export default function Landing() {
             {/* 5. Real-Time Dashboard — tall (1×2) */}
             <ScrollReveal
               delay={400}
-              className='lg:col-span-1 lg:row-span-2 h-full'
+              className='sm:col-span-2 lg:col-span-1 lg:row-span-2 h-full'
             >
               <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-violet-50/40 p-5 sm:p-6 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-500'>
                 <div className='flex h-full flex-col'>
@@ -1411,11 +1509,11 @@ export default function Landing() {
       </section>
 
       {/* ── Why Choose Us - Million Dollar Section ── */}
-      <section className='py-20 sm:py-24 lg:py-32 bg-white relative overflow-hidden'>
+      <section className='py-14 sm:py-18 lg:py-24 bg-white relative overflow-hidden'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
           {/* Section Header - Consistent with other sections */}
-          <ScrollReveal className='mx-auto max-w-3xl mb-20 sm:mb-28 text-center'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-5 py-2 mb-6 shadow-sm'>
+          <ScrollReveal className='mx-auto max-w-3xl mb-10 sm:mb-14 text-center'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-1.5 mb-4 shadow-sm'>
               <span className='relative flex h-2 w-2'>
                 <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
                 <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
@@ -1424,20 +1522,20 @@ export default function Landing() {
                 Why WallxTax
               </span>
             </span>
-            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6'>
+            <h2 className='text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-3 sm:mb-4'>
               Professional tools for{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
                 serious businesses
               </span>
             </h2>
-            <p className='font-body text-base sm:text-lg text-gray-600 max-w-2xl mx-auto'>
+            <p className='font-body text-sm sm:text-base text-gray-600 max-w-2xl mx-auto'>
               Built by professionals. For professionals. Every feature designed
               to make tax management smarter, faster, and more reliable.
             </p>
           </ScrollReveal>
 
-          {/* Feature Grid - Professional Cards */}
-          <div className='grid md:grid-cols-2 gap-6 sm:gap-8 lg:gap-10'>
+          {/* Feature Grid - All 4 boxes on the same line on desktop with taller images & refined sizing */}
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-4 xl:gap-6'>
             {[
               {
                 icon: Calculator,
@@ -1485,46 +1583,46 @@ export default function Landing() {
                 image: '/images/mobile-interface.jpg',
               },
             ].map((item, i) => (
-              <ScrollReveal key={item.title} delay={i * 80} className='group'>
-                <div className='relative h-full rounded-2xl overflow-hidden bg-white border border-gray-200 transition-all duration-500 hover:border-primary-300 hover:shadow-xl hover:shadow-primary-500/10 hover:-translate-y-1 flex flex-col'>
-                  {/* Image Section - Balanced proportion */}
-                  <div className='relative h-48 sm:h-56 overflow-hidden bg-gray-100'>
+              <ScrollReveal key={item.title} delay={i * 80} className='group h-full'>
+                <div className='relative h-full rounded-2xl overflow-hidden bg-white border border-gray-200/90 shadow-sm hover:shadow-2xl hover:shadow-primary-500/15 hover:border-primary-300 transition-all duration-500 hover:-translate-y-1.5 flex flex-col'>
+                  {/* Image Section - Taller & beautifully framed */}
+                  <div className='relative h-44 sm:h-52 lg:h-44 xl:h-52 overflow-hidden bg-gray-100'>
                     <img
                       src={item.image}
                       alt={item.title}
-                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
+                      className='w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108'
                     />
-                    <div className='absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent' />
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent' />
 
                     {/* Feature Badge - Accented */}
-                    <div className='absolute top-4 right-4 inline-flex items-center gap-1.5 bg-white/95 backdrop-blur px-3 py-1.5 rounded-full shadow-sm'>
+                    <div className='absolute top-3 right-3 inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full shadow-md border border-white/70'>
                       <span
-                        className={`h-1.5 w-1.5 rounded-full bg-gradient-to-br ${item.accent}`}
+                        className={`h-2 w-2 rounded-full bg-gradient-to-br ${item.accent}`}
                       />
-                      <span className='text-[11px] font-bold uppercase tracking-wider text-gray-800'>
+                      <span className='text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-800'>
                         {item.feature}
                       </span>
                     </div>
                   </div>
 
                   {/* Content Section */}
-                  <div className='px-6 sm:px-7 pt-6 pb-7 flex flex-col flex-1'>
-                    {/* Icon + Title row — icon now lives inside content, never clipped */}
-                    <div className='flex items-center gap-4 mb-3'>
+                  <div className='p-5 sm:p-5 xl:p-6 flex flex-col flex-1'>
+                    {/* Icon + Title row */}
+                    <div className='flex items-center gap-3 mb-3'>
                       <div
-                        className={`flex-shrink-0 h-12 w-12 rounded-xl ${item.tint.split(' ')[0]} flex items-center justify-center transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
+                        className={`flex-shrink-0 h-10 w-10 sm:h-11 sm:w-11 rounded-xl ${item.tint.split(' ')[0]} flex items-center justify-center shadow-xs transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
                       >
                         <item.icon
-                          className={`h-6 w-6 ${item.tint.split(' ')[1]}`}
-                          strokeWidth={1.6}
+                          className={`h-5 w-5 sm:h-5.5 sm:w-5.5 ${item.tint.split(' ')[1]}`}
+                          strokeWidth={1.8}
                         />
                       </div>
-                      <h3 className='text-xl sm:text-2xl font-bold text-gray-900 leading-snug'>
+                      <h3 className='text-base sm:text-lg xl:text-[19px] font-bold text-gray-900 leading-snug group-hover:text-primary-700 transition-colors'>
                         {item.title}
                       </h3>
                     </div>
 
-                    <p className='font-body text-[15px] leading-relaxed text-gray-600 mb-5'>
+                    <p className='font-body text-xs sm:text-sm xl:text-[14px] leading-relaxed text-gray-600 mb-4'>
                       {item.description}
                     </p>
 
@@ -1533,24 +1631,26 @@ export default function Landing() {
                       {item.detail.split(' • ').map((point) => (
                         <li
                           key={point}
-                          className='flex items-center gap-2.5 text-sm text-gray-700'
+                          className='flex items-center gap-2 text-xs sm:text-[13px] text-gray-700'
                         >
-                          <CheckCircle2
-                            className={`h-4 w-4 flex-shrink-0 ${item.tint.split(' ')[1]}`}
-                            strokeWidth={2.5}
-                          />
+                          <div className={`h-4 w-4 rounded-full ${item.tint.split(' ')[0]} flex items-center justify-center shrink-0`}>
+                            <CheckCircle2
+                              className={`h-3 w-3 ${item.tint.split(' ')[1]}`}
+                              strokeWidth={2.8}
+                            />
+                          </div>
                           <span className='font-medium'>{point}</span>
                         </li>
                       ))}
                     </ul>
 
-                    {/* Footer accent — visible always (low-key), brightens on hover */}
-                    <div className='flex items-center justify-between pt-4 border-t border-gray-100'>
-                      <span className='text-xs font-semibold uppercase tracking-wider text-gray-500'>
+                    {/* Footer accent */}
+                    <div className='pt-3.5 border-t border-gray-100 flex items-center justify-between mt-auto'>
+                      <span className='text-[11px] font-semibold uppercase tracking-wider text-gray-400'>
                         Included as standard
                       </span>
                       <div
-                        className={`h-1.5 w-12 rounded-full bg-gradient-to-r ${item.accent} opacity-50 group-hover:opacity-100 transition-opacity duration-300`}
+                        className={`h-1.5 w-10 rounded-full bg-gradient-to-r ${item.accent} opacity-40 group-hover:opacity-100 transition-opacity duration-300`}
                       />
                     </div>
                   </div>
@@ -1564,11 +1664,11 @@ export default function Landing() {
       {/* ── How It Works ── */}
       <section
         id='how-it-works'
-        className='py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'
+        className='scroll-mt-20 sm:scroll-mt-24 py-14 sm:py-18 lg:py-24 bg-white relative overflow-hidden'
       >
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-16 sm:mb-20'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-6 shadow-sm'>
+          <ScrollReveal className='mx-auto max-w-2xl text-center mb-10 sm:mb-14'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-4 shadow-sm'>
               <span className='relative flex h-2 w-2'>
                 <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
                 <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
@@ -1583,13 +1683,13 @@ export default function Landing() {
                 three simple steps
               </span>
             </h2>
-            <p className='mt-5 sm:mt-6 font-body text-base sm:text-lg text-gray-600'>
+            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-600'>
               Your path to effortless tax management, designed for clarity and
               speed.
             </p>
           </ScrollReveal>
 
-          <div className='grid grid-cols-1 lg:grid-cols-3 gap-10 sm:gap-12 relative'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-6 xl:gap-8 relative max-w-xl sm:max-w-2xl lg:max-w-none mx-auto'>
             {[
               {
                 title: 'Create Your Account',
@@ -1618,46 +1718,46 @@ export default function Landing() {
                 delay={index * 150}
                 className='relative group'
               >
-                <div className='flex flex-col h-full rounded-2xl border border-gray-300 overflow-hidden bg-white shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-primary-500/20 hover:border-primary-400 hover:-translate-y-3'>
+                <div className='flex flex-col h-full rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-md transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/15 hover:border-primary-300 hover:-translate-y-1.5'>
                   {/* Image Section with gradient overlay */}
-                  <div className='relative h-60 sm:h-72 overflow-hidden bg-gray-100'>
+                  <div className='relative h-36 sm:h-44 lg:h-40 xl:h-44 overflow-hidden bg-gray-100'>
                     <img
                       src={step.image}
                       alt={step.title}
-                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
+                      className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
                     />
                     {/* Gradient overlay for depth */}
                     <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent' />
 
-                    {/* Step Number Badge - Large and prominent */}
-                    <div className='absolute top-5 right-5 w-14 h-14 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-xl border border-white/80'>
-                      <span className='text-2xl font-bold text-gray-900'>
+                    {/* Step Number Badge - Refined proportion */}
+                    <div className='absolute top-3.5 right-3.5 w-10 sm:w-11 h-10 sm:h-11 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-md border border-white/80'>
+                      <span className='text-lg sm:text-xl font-bold text-gray-900'>
                         {step.stepNum}
                       </span>
                     </div>
 
                     {/* Step indicator text */}
-                    <div className='absolute bottom-5 left-5 right-5'>
-                      <div className='text-white/90 font-semibold text-sm tracking-wide'>
+                    <div className='absolute bottom-3.5 left-4 right-4'>
+                      <div className='text-white/90 font-semibold text-xs sm:text-[13px] tracking-wide'>
                         STEP {step.stepNum} OF 3
                       </div>
                     </div>
                   </div>
 
                   {/* Content Section */}
-                  <div className='flex-grow p-8 sm:p-9 flex flex-col justify-between'>
+                  <div className='flex-grow p-5 sm:p-6 lg:p-5 xl:p-6 flex flex-col justify-between'>
                     {/* Title and Description */}
                     <div>
-                      <h3 className='text-2xl sm:text-2xl font-bold text-gray-900 leading-tight mb-4'>
+                      <h3 className='text-lg sm:text-xl font-bold text-gray-900 leading-tight mb-2 sm:mb-2.5'>
                         {step.title}
                       </h3>
-                      <p className='font-body text-[15px] sm:text-base leading-relaxed text-gray-600'>
+                      <p className='font-body text-xs sm:text-sm lg:text-[14px] leading-relaxed text-gray-600'>
                         {step.description}
                       </p>
                     </div>
 
                     {/* Progress bar — always visible, subtle */}
-                    <div className='mt-6'>
+                    <div className='mt-4 sm:mt-5'>
                       <div className='h-1 w-full bg-gray-100 rounded-full overflow-hidden'>
                         <div
                           className='h-full bg-gradient-to-r from-primary-500 to-purple-500 rounded-full transition-all duration-500 group-hover:from-primary-600 group-hover:to-purple-600'
@@ -1669,8 +1769,8 @@ export default function Landing() {
 
                   {/* Arrow connector */}
                   {index < 2 && (
-                    <div className='hidden lg:flex absolute -right-7 top-1/2 -translate-y-1/2 z-20 h-12 w-12 items-center justify-center rounded-full bg-white border border-gray-300 text-gray-400 shadow-lg transition-all duration-300 group-hover:bg-primary-50 group-hover:border-primary-400 group-hover:text-primary-500'>
-                      <ChevronRight className='h-6 w-6' />
+                    <div className='hidden lg:flex absolute -right-4 xl:-right-5 top-1/2 -translate-y-1/2 z-20 h-9 w-9 xl:h-10 xl:w-10 items-center justify-center rounded-full bg-white border border-gray-200 text-gray-400 shadow-md transition-all duration-300 group-hover:bg-primary-50 group-hover:border-primary-400 group-hover:text-primary-500'>
+                      <ChevronRight className='h-4 w-4 xl:h-5 xl:w-5' />
                     </div>
                   )}
                 </div>
@@ -1681,11 +1781,11 @@ export default function Landing() {
       </section>
 
       {/* ── Showcase Gallery - Creative Premium Section ── */}
-      <section className='py-20 sm:py-24 lg:py-32 bg-gradient-to-b from-gray-50/50 to-white relative overflow-hidden'>
+      <section className='py-14 sm:py-18 lg:py-24 bg-gradient-to-b from-gray-50/50 to-white relative overflow-hidden'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6'>
           {/* Header - Consistent centered style */}
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-16 sm:mb-20'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-5 py-2 mb-6 shadow-sm'>
+          <ScrollReveal className='mx-auto max-w-2xl text-center mb-10 sm:mb-14'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-4 shadow-sm'>
               <Globe2 className='h-4 w-4 text-primary-500' />
               <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
                 In Practice
@@ -1697,93 +1797,102 @@ export default function Landing() {
                 growing businesses
               </span>
             </h2>
-            <p className='mt-6 font-body text-base sm:text-lg text-gray-600 max-w-xl mx-auto'>
+            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-600 max-w-xl mx-auto'>
               From startups to established enterprises — see how businesses
               across Nigeria manage taxes with clarity and confidence.
             </p>
           </ScrollReveal>
 
           {/* Creative Masonry Gallery */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 auto-rows-max'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-max'>
             {[
               {
                 image: '/images/workspace.jpg',
                 title: 'Professional Setup',
                 subtitle: 'Clean workspace, clear finances',
+                span: 'sm:col-span-1 lg:col-span-1',
+                height: 'h-44 sm:h-48 lg:h-52',
               },
               {
                 image: '/images/team-efficiency.jpg',
                 title: 'Team Efficiency',
                 subtitle: 'Collaborative financial management',
                 span: 'sm:col-span-1 lg:col-span-2 lg:row-span-1',
-              },
-              {
-                image: '/images/business-growth.jpg',
-                title: 'Growth Metrics',
-                subtitle: 'Track expansion with precision',
+                height: 'h-44 sm:h-48 lg:h-52',
               },
               {
                 image: '/images/mobile-interface.jpg',
                 title: 'On-The-Go',
                 subtitle: 'Tax management, anywhere, anytime',
-                span: 'sm:col-span-2 lg:col-span-1 lg:row-span-2',
+                span: 'sm:col-span-1 lg:col-span-1 lg:row-span-2',
+                height: 'h-44 sm:h-48 lg:h-full lg:min-h-[440px]',
+              },
+              {
+                image: '/images/business-growth.jpg',
+                title: 'Growth Metrics',
+                subtitle: 'Track expansion with precision',
+                span: 'sm:col-span-1 lg:col-span-1',
+                height: 'h-44 sm:h-48 lg:h-52',
               },
               {
                 image: '/images/dashboard-hero.jpg',
                 title: 'Real-Time Insights',
                 subtitle: 'Live dashboards for smart decisions',
+                span: 'sm:col-span-1 lg:col-span-1',
+                height: 'h-44 sm:h-48 lg:h-52',
               },
               {
                 image: '/images/compliance-secure.jpg',
                 title: 'Security & Trust',
                 subtitle: 'Enterprise protection for your data',
-                span: 'sm:col-span-2 lg:col-span-2',
+                span: 'sm:col-span-1 lg:col-span-2',
+                height: 'h-44 sm:h-48 lg:h-52',
               },
             ].map((item, i) => (
               <ScrollReveal
                 key={item.title}
                 delay={i * 100}
-                className={`group relative overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer h-64 sm:h-72 lg:h-80 ${item.span || ''}`}
+                className={`group relative overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 cursor-pointer ${item.height} ${item.span || ''}`}
               >
                 {/* Image with sophisticated overlay */}
                 <img
                   src={item.image}
                   alt={item.title}
-                  className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
+                  className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
                 />
 
                 {/* Gradient Overlay - Elegant */}
                 <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500' />
 
                 {/* Content - Positioned at bottom */}
-                <div className='absolute inset-0 flex flex-col justify-end p-7 sm:p-8'>
-                  <h3 className='text-xl sm:text-2xl font-bold text-white leading-tight mb-2'>
+                <div className='absolute inset-0 flex flex-col justify-end p-4 sm:p-5'>
+                  <h3 className='text-lg sm:text-xl font-bold text-white leading-snug mb-1'>
                     {item.title}
                   </h3>
-                  <p className='font-body text-sm sm:text-base text-white/90'>
+                  <p className='font-body text-xs sm:text-sm text-white/90'>
                     {item.subtitle}
                   </p>
 
                   {/* Hover indicator */}
-                  <div className='mt-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+                  <div className='mt-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
                     <div className='flex-1 h-0.5 bg-gradient-to-r from-white to-transparent' />
                     <ChevronRight className='h-4 w-4 text-white' />
                   </div>
                 </div>
 
                 {/* Corner accent on hover */}
-                <div className='absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-bl-3xl' />
+                <div className='absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-bl-2xl' />
               </ScrollReveal>
             ))}
           </div>
 
           {/* Bottom CTA */}
-          <div className='mt-20 sm:mt-28 flex justify-center'>
+          <div className='mt-10 sm:mt-14 flex justify-center'>
             <Link to={isAuthenticated ? '/dashboard' : '/register'}>
-              <button className='group px-10 py-5 rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white font-bold shadow-xl shadow-primary-500/30 hover:shadow-2xl hover:shadow-primary-500/50 transition-all duration-300 hover:-translate-y-1'>
+              <button className='group px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white text-sm sm:text-base font-semibold shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/40 transition-all duration-300 hover:-translate-y-0.5'>
                 <span className='flex items-center gap-2'>
                   {isAuthenticated ? 'Go to Dashboard' : 'Join growing businesses'}
-                  <ArrowRight className='h-5 w-5 group-hover:translate-x-1 transition-transform' />
+                  <ArrowRight className='h-4.5 w-4.5 group-hover:translate-x-1 transition-transform' />
                 </span>
               </button>
             </Link>
@@ -1794,7 +1903,7 @@ export default function Landing() {
       {/* ── Testimonials ── */}
       <section
         id='testimonials'
-        className='py-16 sm:py-20 lg:py-28 relative overflow-hidden'
+        className='scroll-mt-20 sm:scroll-mt-24 py-14 sm:py-18 lg:py-24 relative overflow-hidden'
       >
         <div className='absolute inset-0 z-0'>
           <img
@@ -1806,8 +1915,8 @@ export default function Landing() {
         </div>
 
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative z-10'>
-          <ScrollReveal className='mx-auto max-w-3xl text-center mb-16 sm:mb-20'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-5 py-2 mb-6 shadow-sm'>
+          <ScrollReveal className='mx-auto max-w-3xl text-center mb-10 sm:mb-14'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-4 shadow-sm'>
               <span className='flex h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse' />
               <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-700'>
                 Real Results
@@ -1819,7 +1928,7 @@ export default function Landing() {
                 thousands of businesses
               </span>
             </h2>
-            <p className='mt-6 font-body text-base sm:text-lg text-gray-700'>
+            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-700'>
               Hear from business owners who've transformed their tax management.
             </p>
           </ScrollReveal>
@@ -1828,19 +1937,19 @@ export default function Landing() {
             staggerDelay={150}
             className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6'
           >
-            {testimonials.map((t) => (
+            {testimonials.map((t, i) => (
               <div
                 key={t.name}
-                className='group relative overflow-hidden rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur p-7 sm:p-8 transition-all duration-500 hover:shadow-lg hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1'
+                className={`group relative overflow-hidden rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur p-5 sm:p-6 transition-all duration-500 hover:shadow-lg hover:shadow-primary-500/10 hover:border-primary-100/50 hover:-translate-y-1 ${i === 2 ? 'md:col-span-2 lg:col-span-1 md:max-w-md md:mx-auto lg:max-w-none w-full' : ''}`}
               >
                 <div
                   className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${t.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
                 />
-                <div className='absolute top-4 right-6 sm:right-8 text-5xl sm:text-6xl lg:text-7xl font-serif bg-gradient-to-br from-primary-100 to-purple-50 bg-clip-text text-transparent leading-none select-none'>
+                <div className='absolute top-3 right-5 sm:right-6 text-5xl sm:text-6xl font-serif bg-gradient-to-br from-primary-100 to-purple-50 bg-clip-text text-transparent leading-none select-none'>
                   "
                 </div>
 
-                <div className='flex gap-0.5 mb-5 sm:mb-6'>
+                <div className='flex gap-0.5 mb-4 sm:mb-5'>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
@@ -1849,22 +1958,22 @@ export default function Landing() {
                   ))}
                 </div>
 
-                <p className='font-body text-sm sm:text-[15px] lg:text-base leading-relaxed text-gray-600 relative z-10'>
+                <p className='font-body text-xs sm:text-sm lg:text-[14px] leading-relaxed text-gray-600 relative z-10'>
                   "{t.quote}"
                 </p>
 
-                <div className='mt-6 sm:mt-8 flex items-center gap-4 pt-5 border-t border-gray-100'>
+                <div className='mt-5 sm:mt-6 flex items-center gap-3.5 pt-4 border-t border-gray-100'>
                   <div
-                    className={`relative flex h-12 sm:h-14 w-12 sm:w-14 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-white text-base sm:text-lg font-bold shadow-xl shadow-primary-500/20`}
+                    className={`relative flex h-11 sm:h-12 w-11 sm:w-12 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-white text-sm sm:text-base font-bold shadow-md shadow-primary-500/20`}
                   >
                     {t.avatar}
-                    <div className='absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white' />
+                    <div className='absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-400 border-2 border-white' />
                   </div>
                   <div>
-                    <div className='text-base sm:text-lg font-bold text-gray-900'>
+                    <div className='text-sm sm:text-base font-bold text-gray-900'>
                       {t.name}
                     </div>
-                    <div className='font-body text-xs sm:text-sm text-gray-500'>
+                    <div className='font-body text-xs sm:text-[13px] text-gray-500'>
                       {t.role}
                     </div>
                   </div>
@@ -1879,13 +1988,13 @@ export default function Landing() {
       <FAQSection />
 
       {/* ── Final CTA ── */}
-      <section className='relative py-20 sm:py-24 lg:py-28 overflow-hidden bg-gradient-to-b from-white to-gray-50'>
+      <section className='relative py-14 sm:py-18 lg:py-24 overflow-hidden bg-gradient-to-b from-white to-gray-50'>
         {/* Ambient glows */}
         <div className='absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-gradient-radial from-primary-400/15 via-transparent to-transparent blur-3xl pointer-events-none' />
         <div className='absolute bottom-0 right-0 w-[400px] h-[400px] bg-fuchsia-300/10 blur-3xl rounded-full pointer-events-none' />
 
         <ScrollReveal className='relative mx-auto max-w-4xl px-4 sm:px-6 text-center'>
-          <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-1.5 mb-6 shadow-sm'>
+          <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-1.5 mb-4 shadow-sm'>
             <span className='relative flex h-2 w-2'>
               <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
               <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
@@ -1900,23 +2009,23 @@ export default function Landing() {
               tax management?
             </span>
           </h2>
-          <p className='mt-6 font-body text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed'>
+          <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed'>
             Join thousands of Nigerian businesses that trust PayMyTax for FIRS
             compliance — without the spreadsheets, the panic, or the late
             penalties.
           </p>
 
-          <div className='mt-10 flex flex-col sm:flex-row items-center justify-center gap-4'>
+          <div className='mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4'>
             <Link to={isAuthenticated ? '/dashboard' : '/register'} className='w-full sm:w-auto'>
-              <button className='group w-full sm:w-auto px-10 py-4 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 text-white font-bold shadow-xl shadow-primary-500/40 hover:shadow-2xl hover:shadow-primary-500/60 transition-all duration-300 hover:-translate-y-1'>
+              <button className='group w-full sm:w-auto px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 text-white text-sm sm:text-base font-semibold shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/50 transition-all duration-300 hover:-translate-y-0.5'>
                 <span className='flex items-center justify-center gap-2'>
                   {isAuthenticated ? 'Go to Dashboard' : 'Start Your Free Trial'}
-                  <ArrowRight className='h-5 w-5 group-hover:translate-x-1 transition-transform' />
+                  <ArrowRight className='h-4.5 w-4.5 group-hover:translate-x-1 transition-transform' />
                 </span>
               </button>
             </Link>
             <Link to={isAuthenticated ? '/account' : '/login'} className='w-full sm:w-auto'>
-              <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-10 py-4 rounded-full border-2 border-gray-300 bg-white/70 backdrop-blur text-gray-700 font-semibold hover:border-primary-400 hover:bg-white hover:text-primary-700 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5'>
+              <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full border border-gray-300 bg-white/80 backdrop-blur text-gray-700 text-sm sm:text-base font-semibold hover:border-primary-400 hover:bg-white hover:text-primary-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5'>
                 {isAuthenticated ? (
                   <>
                     <Wallet className='h-4 w-4' /> Dedicated Account
@@ -1932,7 +2041,7 @@ export default function Landing() {
           </div>
 
           {/* Trust line below CTAs */}
-          <div className='mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-500'>
+          <div className='mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs sm:text-sm text-gray-500'>
             <span className='inline-flex items-center gap-1.5'>
               <CheckCircle2
                 className='h-4 w-4 text-green-500'
@@ -1996,7 +2105,7 @@ export default function Landing() {
                     target='_blank'
                     rel='noopener noreferrer'
                     aria-label={s.label}
-                    className='h-9 w-9 rounded-full border border-gray-800 flex items-center justify-center text-gray-500 hover:text-white hover:bg-primary-600 hover:border-primary-600 transition-colors duration-200'
+                    className='h-11 w-11 min-h-[44px] min-w-[44px] rounded-full border border-gray-800 flex items-center justify-center text-gray-500 hover:text-white hover:bg-primary-600 hover:border-primary-600 transition-colors duration-200'
                   >
                     <svg
                       className='h-4 w-4'
