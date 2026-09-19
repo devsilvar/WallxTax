@@ -30,6 +30,8 @@ export default function AdminLayout() {
       crumbs.push({ label: 'Withdrawals & Settlement', to: '/admin/withdrawals' });
     } else if (path.startsWith('/admin/audit-logs')) {
       crumbs.push({ label: 'Audit Logs', to: '/admin/audit-logs' });
+    } else if (path.startsWith('/admin/ai-settings')) {
+      crumbs.push({ label: 'AI Provider Settings', to: '/admin/ai-settings' });
     }
 
     return crumbs;

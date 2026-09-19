@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, Sparkles, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2 } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
@@ -234,7 +234,7 @@ export default function UnverifiedTransactions() {
         <div className="rounded-xl border border-primary-100 bg-gradient-to-br from-primary-50 to-white p-4 shadow-xs hover:border-primary-200 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-primary-700">Action Needed</span>
-            <Sparkles className="h-4 w-4 text-primary-600" />
+            <CheckCircle2 className="h-4 w-4 text-primary-600" />
           </div>
           <p className="mt-2 text-base font-semibold text-primary-900">
             {total > 0 ? 'Review Now' : 'All Clear'}

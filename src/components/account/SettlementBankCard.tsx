@@ -40,11 +40,11 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   accountName,
   availableBalance = 0,
   pendingWithdrawn = 0,
-  autoSplitEnabled = false,
-  updatingAutoSplit = false,
+  autoSplitEnabled: _autoSplitEnabled = false,
+  updatingAutoSplit: _updatingAutoSplit = false,
   isBalanceLoading = false,
   onWithdraw,
-  onToggleAutoSplit,
+  onToggleAutoSplit: _onToggleAutoSplit,
   banks,
   banksLoading = false,
   banksError = '',
@@ -201,8 +201,8 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
             )}
           </div>
 
-          {/* Auto-Split 7.5% Tax Toggle */}
-          <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+          {/* Auto-Split 7.5% Tax Toggle - Disabled / Not needed */}
+          {/* <div className="flex items-center justify-between pt-1 border-t border-gray-100">
             <div>
               <p className="text-xs font-semibold text-gray-900">7.5% Tax Auto-Split</p>
               <p className="text-[10px] text-gray-500">Set aside 7.5% of every transfer for tax</p>
@@ -223,7 +223,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
                 }`}
               />
             </button>
-          </div>
+          </div> */}
 
           {/* Payout Bank Lock Notice */}
           <div

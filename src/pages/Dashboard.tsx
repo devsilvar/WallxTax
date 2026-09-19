@@ -18,7 +18,6 @@ import {
   Heart,
   BarChart3,
   Activity,
-  Sparkles,
   Wallet,
   ArrowRight,
   ArrowUpRight,
@@ -987,7 +986,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className='px-5 py-8 text-center'>
-              <Sparkles className='mx-auto h-6 w-6 text-gray-300' />
+              <FileText className='mx-auto h-6 w-6 text-gray-300' />
               <p className='mt-2 text-sm font-medium text-gray-600'>
                 No report for this month yet
               </p>

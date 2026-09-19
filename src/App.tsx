@@ -46,6 +46,7 @@ const AdminUserDetail = lazy(() => import('@/pages/admin/AdminUserDetail.tsx'));
 const AdminBusinesses = lazy(() => import('@/pages/admin/AdminBusinesses.tsx'));
 const AdminAuditLogs = lazy(() => import('@/pages/admin/AdminAuditLogs.tsx'));
 const AdminWithdrawals = lazy(() => import('@/pages/admin/AdminWithdrawals.tsx'));
+const AdminAISettings = lazy(() => import('@/pages/admin/AdminAISettings.tsx'));
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -111,6 +112,7 @@ export default function App() {
                 <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
                 <Route path="/admin/settlement/withdrawals" element={<AdminWithdrawals />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+                <Route path="/admin/ai-settings" element={<AdminAISettings />} />
               </Route>
             </Route>
 

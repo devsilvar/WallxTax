@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { PaystackFeeSchedule } from '@/lib/fees';
+import type { RegulatoryMeta } from '@/types';
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -85,6 +86,7 @@ export interface SettlementPayoutItem {
 
 interface SettlementStore {
   preview: PayoutPreviewData | null;
+  regulatory: RegulatoryMeta | null;
   history: SettlementPayoutItem[];
   loadingPreview: boolean;
   loadingHistory: boolean;
@@ -120,6 +122,7 @@ interface SettlementStore {
 
 export const useSettlementStore = create<SettlementStore>((set, get) => ({
   preview: null,
+  regulatory: null,
   history: [],
   loadingPreview: false,
   loadingHistory: false,
@@ -137,7 +140,10 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     set({ loadingPreview: true });
     try {
       const res = await api.get(`/businesses/${businessId}/settlement/preview`);
-      set({ preview: res.data.data });
+      set({
+        preview: res.data.data,
+        regulatory: res.data.meta?.regulatory ?? null,
+      });
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to fetch settlement details'));
     } finally {

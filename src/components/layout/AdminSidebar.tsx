@@ -10,6 +10,7 @@ import {
   LogOut,
   X,
   ShieldCheck,
+  Bot,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import api from '@/lib/axios.ts';
@@ -57,6 +58,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       badge: pendingWithdrawals > 0 ? pendingWithdrawals : undefined,
     },
     { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+    { to: '/admin/ai-settings', label: 'AI Settings', icon: Bot },
   ];
 
   const sidebarContent = (

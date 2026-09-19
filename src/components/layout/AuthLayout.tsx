@@ -31,8 +31,8 @@ const highlights = [
 export default function AuthLayout() {
   return (
     <div className="flex min-h-screen">
-      {/* Left panel — branding & value proposition (60% width on desktop) */}
-      <div className="hidden lg:flex lg:w-[58%] xl:w-[60%] 2xl:w-[62%] relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-700 to-indigo-950 flex-col justify-between p-10 lg:p-12 xl:p-16 2xl:p-20">
+      {/* Left panel — branding & value proposition (strictly 60% width on desktop) */}
+      <div className="hidden lg:flex lg:w-[60%] lg:flex-none relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-700 to-indigo-950 flex-col justify-between p-10 lg:p-12 xl:p-16 2xl:p-20">
         {/* Background ambient accents */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_20%_0%,rgba(168,85,247,0.35),transparent)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_100%,rgba(99,102,241,0.25),transparent)] pointer-events-none" />
@@ -123,8 +123,8 @@ export default function AuthLayout() {
         </div>
       </div>
 
-      {/* Right panel — form (40% width on desktop) */}
-      <div className="flex flex-1 lg:w-[42%] xl:w-[40%] 2xl:w-[38%] flex-col items-center justify-center px-6 sm:px-10 lg:px-8 xl:px-12 py-10 sm:py-12 bg-gray-50/70 overflow-y-auto min-h-screen">
+      {/* Right panel — form (strictly 40% width on desktop) */}
+      <div className="flex flex-1 lg:flex-none lg:w-[40%] flex-col items-center justify-center px-6 sm:px-10 lg:px-8 xl:px-12 py-10 sm:py-12 bg-gray-50/70 overflow-y-auto min-h-screen">
         {/* Mobile logo header */}
         <div className="mb-8 sm:mb-10 lg:hidden text-center">
           <Link

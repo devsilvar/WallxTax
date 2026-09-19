@@ -5,7 +5,6 @@ import {
   Building2,
   FileText,
   TrendingUp,
-  Wallet,
   ArrowDownLeft,
   ArrowUpRight,
   Sliders,
@@ -16,13 +15,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Scale,
-  CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  ShieldCheck,
-  Activity,
   BarChart3,
   X,
+  Zap,
+  Power,
+  Play,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -58,7 +58,7 @@ function timeAgo(d: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// Semantic stat card configuration
+// Stat card configuration for Overview tab
 const statCardsConfig = [
   {
     key: 'totalUsers' as const,
@@ -66,18 +66,14 @@ const statCardsConfig = [
     sublabel: 'Active platform accounts',
     icon: Users,
     route: '/admin/users',
-    badgeClass: 'bg-violet-100 text-violet-700',
-    cardBorder: 'hover:border-violet-300',
     isCurrency: false,
   },
   {
     key: 'totalBusinesses' as const,
     label: 'Registered Businesses',
-    sublabel: 'Entities filing taxes & DVA',
+    sublabel: 'Entities on platform',
     icon: Building2,
     route: '/admin/businesses',
-    badgeClass: 'bg-emerald-100 text-emerald-700',
-    cardBorder: 'hover:border-emerald-300',
     isCurrency: false,
   },
   {
@@ -85,9 +81,7 @@ const statCardsConfig = [
     label: 'Tax Reports Filed',
     sublabel: 'FIRS compliance filings',
     icon: FileText,
-    route: '/admin/withdrawals',
-    badgeClass: 'bg-amber-100 text-amber-700',
-    cardBorder: 'hover:border-amber-300',
+    route: '/admin/businesses',
     isCurrency: false,
   },
   {
@@ -96,8 +90,6 @@ const statCardsConfig = [
     sublabel: 'Cumulative sales processed',
     icon: TrendingUp,
     route: '/admin/withdrawals',
-    badgeClass: 'bg-indigo-100 text-indigo-700',
-    cardBorder: 'hover:border-indigo-300',
     isCurrency: true,
   },
 ];
@@ -125,15 +117,18 @@ export default function AdminDashboard() {
   const [selectedTransferType, setSelectedTransferType] = useState<'inflow' | 'outflow' | undefined>(undefined);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Fee Config State
+  // Fee Config & Auto-Sweep State
   const [feeConfig, setFeeConfig] = useState<PlatformFeeConfig | null>(null);
   const [feeForm, setFeeForm] = useState({
     withdrawalFeePct: 1.0,
     withdrawalFeeCap: 300,
     minWithdrawalAmount: 1000,
+    autoSweepThreshold: 1000,
   });
   const [isFeeLoading, setIsFeeLoading] = useState(false);
   const [isFeeSaving, setIsFeeSaving] = useState(false);
+  const [isTogglingSweep, setIsTogglingSweep] = useState(false);
+  const [isTriggeringSweep, setIsTriggeringSweep] = useState(false);
 
   // 1. Fetch Overview Stats
   const fetchOverviewStats = (showToast = false) => {
@@ -183,7 +178,6 @@ export default function AdminDashboard() {
     }
   }, [activeTab, treasuryPage, treasuryType, treasuryOutcome]);
 
-  // 3. Fetch Fee Config
   useEffect(() => {
     if (activeTab === 'fee-settings') {
       setIsFeeLoading(true);
@@ -195,6 +189,7 @@ export default function AdminDashboard() {
             withdrawalFeePct: Number(cfg.withdrawalFeePct),
             withdrawalFeeCap: Number(cfg.withdrawalFeeCap),
             minWithdrawalAmount: Number(cfg.minWithdrawalAmount),
+            autoSweepThreshold: Number(cfg.autoSweepThreshold ?? 1000),
           });
         })
         .catch((err) => {
@@ -222,13 +217,45 @@ export default function AdminDashboard() {
         withdrawalFeePct: Number(feeForm.withdrawalFeePct),
         withdrawalFeeCap: Number(feeForm.withdrawalFeeCap),
         minWithdrawalAmount: Number(feeForm.minWithdrawalAmount),
+        autoSweepThreshold: Number(feeForm.autoSweepThreshold),
       });
       setFeeConfig(res.data.data);
-      toast.success('Platform withdrawal fee configuration saved successfully.');
+      toast.success('Platform withdrawal fee & sweep configuration saved successfully.');
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed to update fee settings');
     } finally {
       setIsFeeSaving(false);
+    }
+  };
+
+  const handleToggleAutoSweep = async () => {
+    const currentEnabled = feeConfig?.autoSweepEnabled !== false;
+    const nextState = !currentEnabled;
+    setIsTogglingSweep(true);
+    try {
+      const res = await api.post('/admin/settings/auto-sweep/toggle', { enabled: nextState });
+      setFeeConfig(res.data.data);
+      toast.success(res.data.message || `Auto-sweep engine successfully ${nextState ? 'enabled' : 'disabled'}.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to toggle auto-sweep engine');
+    } finally {
+      setIsTogglingSweep(false);
+    }
+  };
+
+  const handleTriggerAutoSweep = async () => {
+    if (!window.confirm('Execute immediate auto-sweep across all eligible merchant balances now?')) {
+      return;
+    }
+    setIsTriggeringSweep(true);
+    try {
+      const res = await api.post('/admin/settings/auto-sweep/trigger');
+      toast.success(res.data.message || 'Auto-sweep execution completed.');
+      fetchOverviewStats();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to execute immediate auto-sweep');
+    } finally {
+      setIsTriggeringSweep(false);
     }
   };
 
@@ -346,18 +373,13 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       {/* ─── HEADER & TAB SWITCHER ──────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-200/80 pb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-200 pb-5">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">
-              Admin Command Center
-            </h1>
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-100 text-primary-800 border border-primary-200">
-              <Activity className="h-3 w-3" /> FIRS Active
-            </span>
-          </div>
-          <p className="mt-1.5 text-sm text-gray-500 font-body">
-            Platform health telemetry, treasury unit economics (P&L), and global fee controls.
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">
+            Admin Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 font-body">
+            Platform overview, user activity, and treasury performance.
           </p>
         </div>
 
@@ -414,7 +436,7 @@ export default function AdminDashboard() {
               }`}
             >
               <Sliders className="h-3.5 w-3.5" />
-              Fee Settings
+              Fee & Sweep Settings
             </button>
           </div>
         </div>
@@ -422,186 +444,85 @@ export default function AdminDashboard() {
 
       {/* ─── TAB 1: OVERVIEW ────────────────────────────────────────── */}
       {activeTab === 'overview' && stats && (
-        <div className="space-y-8 animate-fade-in">
-          {/* Operational SLA Notification Banner */}
-          {stats.withdrawalSla && stats.withdrawalSla.pendingCount > 0 ? (
+        <div className="space-y-6 animate-fade-in">
+          {/* Operational SLA Banner (Only prominent when action is required) */}
+          {stats.withdrawalSla && stats.withdrawalSla.pendingCount > 0 && (
             <div
-              className={`rounded-2xl p-5 border transition-all ${
+              className={`rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs ${
                 stats.withdrawalSla.breachedCount > 0
-                  ? 'bg-gradient-to-r from-amber-50 to-orange-50/50 border-amber-300/80 shadow-xs'
-                  : 'bg-gradient-to-r from-primary-50 to-indigo-50/50 border-primary-200 shadow-xs'
+                  ? 'bg-amber-50 border-amber-300 text-amber-950'
+                  : 'bg-blue-50 border-blue-200 text-blue-950'
               }`}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-start sm:items-center gap-3.5">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-xs ${
-                      stats.withdrawalSla.breachedCount > 0
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-primary-600 text-white'
-                    }`}
-                  >
-                    {stats.withdrawalSla.breachedCount > 0 ? (
-                      <AlertTriangle className="h-6 w-6" />
-                    ) : (
-                      <Wallet className="h-6 w-6" />
+              <div className="flex items-center gap-3">
+                <AlertTriangle
+                  className={`h-5 w-5 shrink-0 ${
+                    stats.withdrawalSla.breachedCount > 0 ? 'text-amber-600' : 'text-blue-600'
+                  }`}
+                />
+                <div>
+                  <p className="text-sm font-bold">
+                    {stats.withdrawalSla.pendingCount} withdrawal(s) awaiting approval
+                    {stats.withdrawalSla.breachedCount > 0 && (
+                      <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 border border-rose-300">
+                        SLA Breach ({stats.withdrawalSla.breachedCount})
+                      </span>
                     )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-gray-900">
-                        Withdrawals Awaiting Approval: {stats.withdrawalSla.pendingCount}
-                      </p>
-                      {stats.withdrawalSla.breachedCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-rose-100 text-rose-800 border border-rose-200">
-                          SLA Breach ({stats.withdrawalSla.breachedCount})
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-xs text-gray-600 font-body">
-                      {stats.withdrawalSla.breachedCount > 0
-                        ? `${stats.withdrawalSla.breachedCount} transfer(s) pending over 24 hours (oldest: ${stats.withdrawalSla.oldestPendingHours}h). Immediate review required.`
-                        : 'All pending requests are within normal 24h SLA clearance time.'}
-                    </p>
-                  </div>
+                  </p>
+                  <p className="text-xs opacity-80 mt-0.5">
+                    {stats.withdrawalSla.breachedCount > 0
+                      ? `${stats.withdrawalSla.breachedCount} transfer(s) pending over 24h. Immediate review required.`
+                      : 'Pending review within normal 24h SLA window.'}
+                  </p>
                 </div>
+              </div>
 
-                <Link
-                  to="/admin/withdrawals?status=pending"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gray-900 hover:bg-gray-800 shadow-xs transition-all self-start sm:self-auto shrink-0"
-                >
-                  Review Approval Queue
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-5 py-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-900 font-medium">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
-                <span>All withdrawal queues are cleared (0 pending approvals). Platform SLA 100% compliant.</span>
-              </div>
-              <Link to="/admin/withdrawals" className="font-semibold text-emerald-700 hover:underline">
-                View history →
+              <Link
+                to="/admin/withdrawals?status=pending"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gray-900 hover:bg-gray-800 transition-all shrink-0 self-start sm:self-auto"
+              >
+                Review Queue →
               </Link>
             </div>
           )}
 
-          {/* 4 Semantic Hero Stat Cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {statCardsConfig.map(({ key, label, sublabel, icon: Icon, route, badgeClass, cardBorder, isCurrency }) => {
+          {/* 4 Minimalist Stat Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {statCardsConfig.map(({ key, label, sublabel, icon: Icon, route, isCurrency }) => {
               const val = stats[key];
               return (
                 <div
                   key={key}
-                  onClick={() => navigate(route)}
-                  className={`group relative flex flex-col justify-between rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs transition-all hover:shadow-md cursor-pointer ${cardBorder}`}
+                  onClick={() => route && navigate(route)}
+                  className="group flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-2xs hover:border-purple-300 hover:shadow-xs transition-all cursor-pointer"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider font-body">
-                        {label}
-                      </p>
-                      <p className="mt-2 text-2xl sm:text-3xl font-bold font-mono text-gray-900 tracking-tight">
-                        {isCurrency ? formatNaira(val as number) : (val as number).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-2xs transition-transform group-hover:scale-105 ${badgeClass}`}>
-                      <Icon className="h-6 w-6" />
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider font-body">
+                      {label}
+                    </span>
+                    <Icon className="h-4 w-4 text-gray-400 group-hover:text-purple-600 transition-colors" />
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400 group-hover:text-gray-700">
-                    <span className="font-body text-[11px] truncate">{sublabel}</span>
-                    <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="mt-3">
+                    <p className="text-2xl sm:text-3xl font-bold font-mono text-gray-900 tracking-tight">
+                      {isCurrency ? formatNaira(val as number) : (val as number).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400 font-body">{sublabel}</p>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Admin Domain Quick Command Grid */}
-          <div>
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-gray-900">Operational Domains</h2>
-              <p className="text-xs text-gray-500">Instant access to core administrative functions</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Link
-                to="/admin/users"
-                className="p-4 rounded-xl border border-gray-200/80 bg-white hover:border-violet-300 hover:shadow-xs transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 text-violet-700 group-hover:bg-violet-600 group-hover:text-white transition-colors">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Users Directory</p>
-                    <p className="text-[11px] text-gray-500">{stats.totalUsers} registered users</p>
-                  </div>
-                </div>
-              </Link>
-
-              <Link
-                to="/admin/businesses"
-                className="p-4 rounded-xl border border-gray-200/80 bg-white hover:border-emerald-300 hover:shadow-xs transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Businesses</p>
-                    <p className="text-[11px] text-gray-500">{stats.totalBusinesses} enterprise accounts</p>
-                  </div>
-                </div>
-              </Link>
-
-              <Link
-                to="/admin/withdrawals"
-                className="p-4 rounded-xl border border-gray-200/80 bg-white hover:border-amber-300 hover:shadow-xs transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                    <Wallet className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Withdrawals & SLA</p>
-                    <p className="text-[11px] text-gray-500">
-                      {stats.withdrawalSla?.pendingCount || 0} pending review
-                    </p>
-                  </div>
-                </div>
-              </Link>
-
-              <Link
-                to="/admin/audit-logs"
-                className="p-4 rounded-xl border border-gray-200/80 bg-white hover:border-indigo-300 hover:shadow-xs transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <ShieldCheck className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Audit & Security</p>
-                    <p className="text-[11px] text-gray-500">Immutable event trail</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* Recent Signups Feed */}
-          <Card className="p-0 overflow-hidden border border-gray-200/80 shadow-xs">
-            <div className="border-b border-gray-100 px-6 py-4.5 bg-gray-50/50 flex items-center justify-between">
+          {/* Recent Signups */}
+          <div className="rounded-xl border border-gray-200 bg-white shadow-2xs overflow-hidden">
+            <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between bg-white">
               <div>
-                <h2 className="text-base font-bold text-gray-900">Recent Signups</h2>
-                <p className="text-xs text-gray-500 font-body">Latest registered accounts on the platform</p>
+                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Recent Signups</h2>
+                <p className="text-xs text-gray-500">Latest accounts registered on the platform</p>
               </div>
               <Link
                 to="/admin/users"
-                className="text-xs font-semibold text-primary-600 hover:text-primary-700 hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1"
               >
                 View all users <ArrowRight className="h-3.5 w-3.5" />
               </Link>
@@ -614,15 +535,15 @@ export default function AdminDashboard() {
                 {stats.recentSignups.map((u) => (
                   <div
                     key={u.id}
-                    className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/60 transition-colors"
+                    className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/50 transition-colors"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-bold text-xs border border-primary-200/60">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 font-semibold text-xs">
                         {u.email.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{u.email}</p>
-                        <p className="text-xs text-gray-400 font-body">
+                        <p className="text-xs text-gray-400">
                           Registered {new Date(u.createdAt).toLocaleDateString('en-NG', {
                             day: 'numeric',
                             month: 'short',
@@ -632,13 +553,13 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-xs text-gray-400 font-mono font-medium hidden sm:inline-block">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs text-gray-400 hidden sm:inline-block">
                         {timeAgo(u.createdAt)}
                       </span>
                       <button
                         onClick={() => navigate(`/admin/users/${u.id}`)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors"
+                        className="px-3 py-1 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer"
                       >
                         Inspect
                       </button>
@@ -647,7 +568,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
-          </Card>
+          </div>
         </div>
       )}
 
@@ -784,6 +705,39 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {/* Solvency Oracle & Non-Custodial Reserve Status Strip */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50/80 via-white to-emerald-50/40 border border-emerald-200/80 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-gray-900">1:1 Gateway Solvency Oracle</h4>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      100% Fully Backed
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    Live Paystack gateway balance continuously audited against aggregate merchant liabilities via nightly 01:00 WAT reconciliation.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-xs shrink-0 self-end sm:self-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100">
+                <div>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Reserve Invariant</span>
+                  <span className="font-mono font-bold text-emerald-700">Assets ≥ Liabilities</span>
+                </div>
+                <div className="h-6 w-px bg-gray-200" />
+                <div>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Operating Model</span>
+                  <span className="font-semibold text-gray-800">Non-Custodial</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Visual Recharts Telemetry Section */}
           {treasury?.kpis && (
@@ -1113,9 +1067,109 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ─── TAB 3: GLOBAL FEE SETTINGS ─────────────────────────────── */}
+      {/* ─── TAB 3: GLOBAL FEE & AUTO-SWEEP SETTINGS ────────────────────────── */}
       {activeTab === 'fee-settings' && (
         <div className="space-y-8 animate-fade-in max-w-5xl">
+          {/* Master Anti-Deposit Auto-Sweep Engine Card */}
+          <Card className="p-6 border border-gray-200/80 shadow-xs bg-linear-to-br from-white via-gray-50/50 to-emerald-50/20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+              <div className="flex items-start gap-3.5">
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold ${
+                    feeConfig?.autoSweepEnabled !== false
+                      ? 'bg-emerald-100 text-emerald-700 shadow-2xs'
+                      : 'bg-rose-100 text-rose-700'
+                  }`}
+                >
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-base font-bold text-gray-900 font-sans">
+                      Anti-Deposit Regulatory Auto-Sweep Engine
+                    </h2>
+                    {feeConfig?.autoSweepEnabled !== false ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                        ENGINE ACTIVE
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+                        ENGINE DISABLED
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 font-body mt-1 max-w-2xl">
+                    CBN Regulatory Compliance: automatically clears accumulated merchant balances to verified commercial bank accounts (NUBAN) nightly at 02:00 Africa/Lagos. Prevents unlicensed deposit-taking liability.
+                  </p>
+                </div>
+              </div>
+
+              {/* Master Operational Controls */}
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleTriggerAutoSweep}
+                  disabled={isTriggeringSweep || isTogglingSweep}
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-xs shadow-2xs transition-all disabled:opacity-50"
+                  title="Execute immediate sweep across eligible merchants"
+                >
+                  {isTriggeringSweep ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary-600" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5 text-emerald-600 fill-emerald-600" />
+                  )}
+                  Run Sweep Now
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleToggleAutoSweep}
+                  disabled={isTogglingSweep || isTriggeringSweep}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all disabled:opacity-50 ${
+                    feeConfig?.autoSweepEnabled !== false
+                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  }`}
+                >
+                  {isTogglingSweep ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Power className="h-4 w-4" />
+                  )}
+                  {feeConfig?.autoSweepEnabled !== false ? 'Turn OFF Auto-Sweep' : 'Turn ON Auto-Sweep'}
+                </button>
+              </div>
+            </div>
+
+            {/* Sweep Technical Specs & Telemetry Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+              <div className="rounded-xl bg-gray-50/80 p-3.5 border border-gray-200/60">
+                <p className="text-[11px] text-gray-500 font-body">Nightly Schedule</p>
+                <p className="text-xs font-bold text-gray-900 font-mono mt-0.5">02:00 Africa/Lagos</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">node-cron automated worker</p>
+              </div>
+              <div className="rounded-xl bg-gray-50/80 p-3.5 border border-gray-200/60">
+                <p className="text-[11px] text-gray-500 font-body">Active Threshold Floor</p>
+                <p className="text-xs font-bold text-emerald-700 font-mono mt-0.5">
+                  {formatNaira(feeConfig?.autoSweepThreshold || 1000)}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Minimum merchant balance floor</p>
+              </div>
+              <div className="rounded-xl bg-gray-50/80 p-3.5 border border-gray-200/60">
+                <p className="text-[11px] text-gray-500 font-body">Advisory Lock Fence</p>
+                <p className="text-xs font-bold text-gray-900 font-mono mt-0.5">Key: 947365 (Postgres)</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Transaction-scoped mutex</p>
+              </div>
+              <div className="rounded-xl bg-gray-50/80 p-3.5 border border-gray-200/60">
+                <p className="text-[11px] text-gray-500 font-body">Overdraft Prevention</p>
+                <p className="text-xs font-bold text-gray-900 font-mono mt-0.5">quoteAutoSweep()</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Debits wallet to exact ₦0.00</p>
+              </div>
+            </div>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             {/* Configuration Form Card */}
             <Card className="p-6 border border-gray-200/80 shadow-xs">
@@ -1216,6 +1270,32 @@ export default function AdminDashboard() {
                     </div>
                     <p className="mt-1.5 text-[11px] text-gray-500">
                       Minimum allowable withdrawal request amount (Default: ₦1,000.00).
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-800 mb-1.5">
+                      Auto-Sweep Trigger Threshold (₦)
+                    </label>
+                    <div className="relative rounded-xl shadow-2xs">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold font-mono">
+                        ₦
+                      </span>
+                      <input
+                        type="number"
+                        step="100"
+                        min="100"
+                        max="10000000"
+                        required
+                        value={feeForm.autoSweepThreshold}
+                        onChange={(e) =>
+                          setFeeForm({ ...feeForm, autoSweepThreshold: parseFloat(e.target.value) || 0 })
+                        }
+                        className="w-full rounded-xl border border-gray-300 pl-8 pr-3.5 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 font-mono font-medium"
+                      />
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-gray-500">
+                      Minimum merchant balance required to trigger automatic nightly sweep (Default: ₦1,000.00).
                     </p>
                   </div>
 

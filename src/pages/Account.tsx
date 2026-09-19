@@ -34,6 +34,7 @@ export default function Account() {
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
 
   const settlementPreview = useSettlementStore((s) => s.preview);
+  const regulatory = useSettlementStore((s) => s.regulatory);
   const loadingPreview = useSettlementStore((s) => s.loadingPreview);
   const fetchSettlementPreview = useSettlementStore((s) => s.fetchPreview);
   const toggleAutoSplit = useSettlementStore((s) => s.toggleAutoSplit);
@@ -201,7 +202,11 @@ export default function Account() {
                 }}
               />
 
-              <ComplianceTierCard businessName={biz.businessName} bvnVerifiedAt={user?.bvnVerifiedAt} />
+              <ComplianceTierCard
+                businessName={biz.businessName}
+                bvnVerifiedAt={user?.bvnVerifiedAt}
+                regulatory={regulatory}
+              />
             </div>
           </div>
         </div>

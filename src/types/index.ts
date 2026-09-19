@@ -20,6 +20,8 @@ export interface User {
   virtualAccountNumber?: string | null;
   virtualAccountBank?: string | null;
   primaryBusinessId?: string | null;
+  regulatoryTermsAcceptedAt?: string | null;
+  regulatoryTermsVersion?: string | null;
 }
 
 export interface Business {
@@ -652,6 +654,8 @@ export interface PlatformFeeConfig {
   withdrawalFeePct: number;
   withdrawalFeeCap: number;
   minWithdrawalAmount: number;
+  autoSweepEnabled?: boolean;
+  autoSweepThreshold?: number;
   updatedAt?: string;
   updatedBy?: string | null;
 }
@@ -700,6 +704,17 @@ export interface TransferDetailBreakdown {
     narration?: string | null;
     failureReason?: string | null;
   };
+}
+
+export interface RegulatoryMeta {
+  companyLegalName: string;
+  platformRole: string;
+  partnerPSP: string;
+  partnerPSPLicense: string;
+  partnerBanks: string;
+  governingLaw: string;
+  nonCustodialNotice: string;
+  termsVersion: string;
 }
 
 

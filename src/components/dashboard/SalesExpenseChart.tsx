@@ -18,7 +18,6 @@ import {
   Calendar,
   SlidersHorizontal,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -477,7 +476,7 @@ export default function SalesExpenseChart({
           </div>
         ) : !hasData ? (
           <div className='flex h-72 flex-col items-center justify-center text-center'>
-            <Sparkles className='h-7 w-7 text-gray-300' />
+            <BarChart3 className='h-7 w-7 text-gray-300' />
             <p className='mt-2 text-sm font-semibold text-gray-700'>
               No transactions recorded in this period
             </p>
