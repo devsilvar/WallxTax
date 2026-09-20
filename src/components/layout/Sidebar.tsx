@@ -19,6 +19,7 @@ import {
   Zap,
   AlertCircle,
   Bot,
+  BookOpen,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -48,6 +49,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { to: '/sales/unverified', label: t('unverified'), icon: AlertCircle },
         { to: '/expenses', label: t('expenses'), icon: Wallet },
         { to: '/invoices', label: t('invoices'), icon: FileText },
+        { to: '/debtors', label: t('debtors', { defaultValue: 'Debtors' }), icon: BookOpen },
         { to: '/ai', label: t('ai_assistant'), icon: Bot },
       ],
     },

@@ -1,5 +1,6 @@
-import React, { lazy, Suspense } from 'react';
-import { Copy, Loader2 } from 'lucide-react';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Copy, Loader2, X } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import toast from 'react-hot-toast';
 
@@ -22,6 +23,15 @@ export const AccountQrModal: React.FC<AccountQrModalProps> = ({
   accountNumber,
   accountName,
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   if (!isOpen || !accountNumber) return null;
 
   const handleCopy = () => {
@@ -29,22 +39,32 @@ export const AccountQrModal: React.FC<AccountQrModalProps> = ({
     toast.success('Copied to clipboard');
   };
 
-  return (
+  return createPortal(
     <div
       data-testid="account-qr-modal"
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl p-6 sm:p-7 max-w-sm w-full shadow-2xl animate-scale-in"
+        className="relative z-10 w-full max-w-sm flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 p-6 sm:p-7 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-none border border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-100 transition-colors cursor-pointer"
+          title="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         <div className="text-center mb-5">
-          <h3 className="text-base font-bold text-gray-900">Scan to Transfer</h3>
+          <h3 className="text-sm font-bold text-gray-900 tracking-tight">Scan to Transfer</h3>
           <p className="text-xs text-gray-500 mt-0.5">Show this to a customer to receive an instant transfer</p>
         </div>
-        <div className="bg-gray-50 rounded-xl p-5 mb-5 border border-gray-100">
-          <div className="bg-white p-4 rounded-lg flex flex-col items-center shadow-xs">
+
+        <div className="bg-gray-50 rounded-none p-5 mb-5 border border-gray-200">
+          <div className="bg-white p-4 rounded-none border border-gray-200 flex flex-col items-center shadow-xs">
             <Suspense fallback={<Loader2 className="h-10 w-10 animate-spin text-gray-300 my-12" />}>
               <QRCode
                 value={`Pay ${businessName}\nBank: ${bankName}\nAccount Number: ${accountNumber}\nAccount Name: ${accountName}`}
@@ -61,16 +81,18 @@ export const AccountQrModal: React.FC<AccountQrModalProps> = ({
             </p>
           </div>
         </div>
+
         <div className="flex gap-2">
-          <Button className="flex-1 text-xs" onClick={handleCopy}>
+          <Button className="flex-1 text-xs rounded-none" onClick={handleCopy}>
             <Copy className="h-3.5 w-3.5" /> Copy Details
           </Button>
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-xs">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs rounded-none">
             Close
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

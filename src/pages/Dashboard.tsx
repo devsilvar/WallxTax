@@ -32,11 +32,14 @@ import {
   Eye,
   EyeOff,
   Shield,
+  BookOpen,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import { useCreditStore } from '@/stores/credit.store.ts';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense } from '@/types/index.ts';
 
@@ -106,6 +109,38 @@ function formatMonth(dateStr: string): string {
     month: 'short',
     year: 'numeric',
   });
+}
+
+function getCreditDueStatus(dueDateStr: string, status: string) {
+  if (status === 'paid') {
+    return { label: 'Settled', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+  }
+  if (status === 'written_off') {
+    return { label: 'Written Off', color: 'text-gray-600 bg-gray-100 border-gray-200' };
+  }
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDateStr);
+  due.setHours(0, 0, 0, 0);
+
+  const diffTime = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    const overdueDays = Math.abs(diffDays);
+    return {
+      label: `${overdueDays}d overdue`,
+      color: 'text-rose-700 bg-rose-50 border-rose-200 font-semibold',
+    };
+  }
+  if (diffDays === 0) {
+    return { label: 'Due today', color: 'text-amber-700 bg-amber-50 border-amber-200 font-semibold' };
+  }
+  return {
+    label: `Due in ${diffDays}d`,
+    color: 'text-gray-700 bg-gray-50 border-gray-200',
+  };
 }
 
 function statusDot(status: string, onDark = false) {
@@ -388,6 +423,12 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
 
+  // Credit / Debtors Store
+  const creditSummary = useCreditStore((s) => s.summary);
+  const recentCredits = useCreditStore((s) => s.credits);
+  const fetchCreditSummary = useCreditStore((s) => s.fetchSummary);
+  const fetchCredits = useCreditStore((s) => s.fetchCredits);
+
   // BVN reveal state (PIN-authenticated, in-memory session only)
   const [showPinModal, setShowPinModal] = useState(false);
   const [bvnRevealed, setBvnRevealed] = useState(false);
@@ -457,6 +498,9 @@ export default function Dashboard() {
     // with the refreshing pill.
     if (cached) setIsRefreshing(true);
 
+    fetchCreditSummary(bid);
+    fetchCredits(bid, { limit: 5 });
+
     fetchDashboardBundle(bid)
       .then((bundle) => {
         if (cancelled) return;
@@ -498,6 +542,9 @@ export default function Dashboard() {
       }
       
       setIsRefreshing(true);
+      fetchCreditSummary(bid);
+      fetchCredits(bid, { limit: 5 });
+
       fetchDashboardBundle(bid)
         .then((bundle) => {
           dashboardCache.set(bid, { data: bundle, fetchedAt: Date.now() });
@@ -725,6 +772,14 @@ export default function Dashboard() {
                 <Plus className='h-3.5 w-3.5' /> Add Sale
               </button>
             </Link>
+            <Link to='/debtors'>
+              <button
+                type='button'
+                className='flex items-center gap-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 px-3.5 py-2 text-xs font-medium text-white hover:bg-white/20 transition-all hover:scale-[1.02] active:scale-[0.98]'
+              >
+                <BookOpen className='h-3.5 w-3.5 text-purple-200' /> Debtors
+              </button>
+            </Link>
             <Link to='/tax'>
               <button
                 type='button'
@@ -756,6 +811,23 @@ export default function Dashboard() {
             className='group text-xs font-semibold text-amber-700 hover:text-amber-900 flex items-center gap-1 transition-colors'
           >
             Pay now{' '}
+            <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
+          </Link>
+        </div>
+      )}
+
+      {/* ── Alert: Overdue Debtors ─────────────────────────── */}
+      {(creditSummary?.overdueAmount ?? 0) > 0 && (
+        <div className='animate-scale-in flex items-center justify-between rounded-xl border border-rose-200/60 bg-rose-50/60 px-4 py-2.5 transition-colors duration-200'>
+          <p className='text-xs text-rose-700 font-medium'>
+            <span className='inline-block h-1.5 w-1.5 rounded-full bg-rose-500 mr-2 align-middle' />
+            <span className='font-bold'>{formatNaira(creditSummary!.overdueAmount)}</span> in overdue receivables
+          </p>
+          <Link
+            to='/debtors?status=overdue'
+            className='group text-[11px] font-semibold text-rose-600 hover:text-rose-800 flex items-center gap-1 transition-colors'
+          >
+            Review
             <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
           </Link>
         </div>
@@ -815,6 +887,95 @@ export default function Dashboard() {
             7.5% <span className='text-xs font-normal text-gray-500'>Gross Profit</span>
           </p>
           <p className='mt-1 text-[11px] text-gray-400 font-body'>FIRS VAT standard</p>
+        </div>
+      </div>
+
+      {/* ── Receivables Overview ────────────────────────────── */}
+      <div className='rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs hover:border-gray-300 transition-all duration-200'>
+        <div className='flex items-center justify-between mb-4'>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 shrink-0 shadow-xs'>
+              <Wallet className='h-4 w-4' />
+            </div>
+            <div>
+              <div className='flex items-center gap-2'>
+                <h3 className='text-[13px] font-bold text-gray-900'>Receivables & Debtors</h3>
+                <span className='inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 border border-indigo-100/80'>
+                  {creditSummary?.activeDebtors ?? 0} active
+                </span>
+              </div>
+              <p className='text-[11px] text-gray-400 mt-0.5'>Money owed to you by customers & credit accounts</p>
+            </div>
+          </div>
+          <Link
+            to='/debtors'
+            className='group text-[11px] font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 bg-primary-50/60 hover:bg-primary-50 px-2.5 py-1 rounded-lg border border-primary-200/40 transition-all'
+          >
+            Manage Book
+            <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
+          </Link>
+        </div>
+
+        <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+          {/* Outstanding */}
+          <div className='rounded-xl bg-gray-50/70 p-3 border border-gray-100/80 hover:bg-gray-50 transition-colors'>
+            <div className='flex items-center justify-between'>
+              <span className='text-[10px] font-medium text-gray-500 uppercase tracking-wider'>Outstanding</span>
+              <CircleDollarSign className='h-3.5 w-3.5 text-amber-600' />
+            </div>
+            <p className='mt-1 text-base sm:text-lg font-bold text-gray-900 tabular-nums leading-none'>
+              {formatNaira(creditSummary?.totalOutstanding ?? 0)}
+            </p>
+            <span className='text-[10px] text-gray-400 block mt-1'>Unpaid balance</span>
+          </div>
+
+          {/* Overdue */}
+          <div className={`rounded-xl p-3 border transition-colors ${
+            (creditSummary?.overdueAmount ?? 0) > 0
+              ? 'bg-rose-50/50 border-rose-200/70'
+              : 'bg-gray-50/70 border-gray-100/80'
+          }`}>
+            <div className='flex items-center justify-between'>
+              <span className={`text-[10px] font-medium uppercase tracking-wider ${
+                (creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-700' : 'text-gray-500'
+              }`}>Overdue</span>
+              <Clock className={`h-3.5 w-3.5 ${(creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600' : 'text-gray-400'}`} />
+            </div>
+            <p className={`mt-1 text-base sm:text-lg font-bold tabular-nums leading-none ${
+              (creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600' : 'text-gray-900'
+            }`}>
+              {formatNaira(creditSummary?.overdueAmount ?? 0)}
+            </p>
+            <span className={`text-[10px] block mt-1 ${
+              (creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600 font-medium' : 'text-gray-400'
+            }`}>
+              {(creditSummary?.overdueAmount ?? 0) > 0 ? 'Needs urgent collection' : 'None overdue'}
+            </span>
+          </div>
+
+          {/* Recovered This Month */}
+          <div className='rounded-xl bg-emerald-50/40 p-3 border border-emerald-100/70 hover:bg-emerald-50/60 transition-colors'>
+            <div className='flex items-center justify-between'>
+              <span className='text-[10px] font-medium text-emerald-800 uppercase tracking-wider'>Recovered (Month)</span>
+              <TrendingUp className='h-3.5 w-3.5 text-emerald-600' />
+            </div>
+            <p className='mt-1 text-base sm:text-lg font-bold text-emerald-600 tabular-nums leading-none'>
+              {formatNaira(creditSummary?.recoveredThisMonth ?? 0)}
+            </p>
+            <span className='text-[10px] text-emerald-700/80 block mt-1'>Tax recognized</span>
+          </div>
+
+          {/* Active Debtors */}
+          <div className='rounded-xl bg-indigo-50/40 p-3 border border-indigo-100/70 hover:bg-indigo-50/60 transition-colors'>
+            <div className='flex items-center justify-between'>
+              <span className='text-[10px] font-medium text-indigo-800 uppercase tracking-wider'>Debtors</span>
+              <Users className='h-3.5 w-3.5 text-indigo-600' />
+            </div>
+            <p className='mt-1 text-base sm:text-lg font-bold text-indigo-900 tabular-nums leading-none'>
+              {creditSummary?.activeDebtors ?? 0}
+            </p>
+            <span className='text-[10px] text-indigo-700/80 block mt-1'>Owing accounts</span>
+          </div>
         </div>
       </div>
 
@@ -1233,6 +1394,96 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Recent Debtors ─────────────────────────────────── */}
+      <div className='rounded-xl border border-gray-200/80 bg-white shadow-xs hover:border-gray-300 transition-all duration-200 overflow-hidden'>
+        <div className='flex items-center justify-between px-5 py-3.5 border-b border-gray-100'>
+          <div className='flex items-center gap-2.5'>
+            <div className='flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100/80 shrink-0'>
+              <Users className='h-3.5 w-3.5' />
+            </div>
+            <div>
+              <h2 className='text-[13px] font-semibold text-gray-900'>Recent Debtors</h2>
+            </div>
+          </div>
+          <Link
+            to='/debtors'
+            className='group text-[11px] font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors'
+          >
+            View all debtors
+            <ArrowRight className='h-3 w-3 transition-transform group-hover:translate-x-0.5' />
+          </Link>
+        </div>
+        {recentCredits.length > 0 ? (
+          <div className='divide-y divide-gray-50'>
+            {recentCredits.slice(0, 5).map((credit) => {
+              const dueStatus = getCreditDueStatus(credit.dueDate, credit.status);
+              const initials =
+                credit.customerName
+                  .split(' ')
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((p) => p[0].toUpperCase())
+                  .join('') || 'C';
+
+              return (
+                <Link
+                  key={credit.id}
+                  to='/debtors'
+                  className='flex items-center justify-between px-5 py-3 hover:bg-gray-50/70 transition-colors group'
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200/60 shrink-0 group-hover:border-indigo-200 group-hover:bg-indigo-50 group-hover:text-indigo-700 transition-colors'>
+                      {initials}
+                    </div>
+                    <div className='min-w-0'>
+                      <p className='text-[13px] font-semibold text-gray-900 truncate group-hover:text-primary-700 transition-colors'>
+                        {credit.customerName}
+                      </p>
+                      <div className='flex items-center gap-1.5 mt-0.5'>
+                        {credit.customerPhone && (
+                          <span className='text-[11px] text-gray-400'>{credit.customerPhone}</span>
+                        )}
+                        {credit.customerPhone && <span className='h-0.5 w-0.5 rounded-full bg-gray-300' />}
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.2 rounded border ${dueStatus.color}`}>
+                          <Clock className='h-2.5 w-2.5' />
+                          {dueStatus.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className='text-right shrink-0 ml-4'>
+                    <p
+                      className={`text-sm font-bold tabular-nums ${
+                        credit.status === 'paid'
+                          ? 'text-gray-400 line-through'
+                          : credit.status === 'overdue'
+                          ? 'text-rose-600'
+                          : 'text-gray-900'
+                      }`}
+                    >
+                      {formatNaira(Number(credit.balance))}
+                    </p>
+                    <span className='text-[10px] text-gray-400'>
+                      {credit.status === 'paid' ? 'Settled' : 'Balance'}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className='px-5 py-8'>
+            <EmptyMini
+              icon={BookOpen}
+              message='No debtors yet'
+              subMessage='Customer credit and outstanding balances appear here'
+              linkTo='/debtors'
+              linkLabel='Go to Debtors'
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Recent Tax Reports ──────────────────────── */}

@@ -16,6 +16,7 @@
  *     a third caller.
  */
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Upload,
@@ -208,29 +209,38 @@ export default function SalesImportModal({ isOpen, businessId, onClose, onImport
 
   // ─── Render ────────────────────────────────────────────────
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary-50 p-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary-600" />
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !uploading && !committing) onClose();
+      }}
+    >
+      <div className="relative z-10 w-full max-w-3xl max-h-[88vh] overflow-hidden rounded-none bg-white shadow-2xl border border-gray-300 flex flex-col my-auto pointer-events-auto animate-in zoom-in-95 duration-150">
+        {/* Pinned Straight Header */}
+        <div className="shrink-0 flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-gray-50">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-none bg-primary-50 text-primary-600 border border-primary-200 shrink-0">
+              <FileSpreadsheet className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Import sales from Excel</h2>
-              <p className="text-xs text-gray-500">
+              <h2 className="text-sm sm:text-base font-bold text-gray-900 leading-tight">Import sales from Excel</h2>
+              <p className="text-[11px] text-gray-500 mt-0.5">
                 Step {step === 'upload' ? 1 : step === 'preview' ? 2 : 3} of 3
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-            <X className="h-5 w-5" />
+          <button
+            onClick={onClose}
+            disabled={uploading || committing}
+            className="rounded-none p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors disabled:opacity-40"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {step === 'upload' && (
             <UploadStep
               file={file}
@@ -251,14 +261,14 @@ export default function SalesImportModal({ isOpen, businessId, onClose, onImport
           {step === 'result' && result && <ResultStep result={result} />}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+        {/* Pinned Straight Footer */}
+        <div className="shrink-0 flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-5 py-3">
           {step === 'upload' && (
             <>
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="secondary" onClick={onClose} className="rounded-none border-gray-300">
                 Cancel
               </Button>
-              <Button onClick={uploadForPreview} isLoading={uploading} disabled={!file}>
+              <Button onClick={uploadForPreview} isLoading={uploading} disabled={!file} className="rounded-none">
                 <Upload className="h-4 w-4" /> Preview import
               </Button>
             </>
@@ -266,10 +276,10 @@ export default function SalesImportModal({ isOpen, businessId, onClose, onImport
 
           {step === 'preview' && preview && (
             <>
-              <Button variant="secondary" onClick={() => setStep('upload')}>
+              <Button variant="secondary" onClick={() => setStep('upload')} className="rounded-none border-gray-300">
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
-              <Button onClick={commit} isLoading={committing} disabled={preview.summary.valid === 0}>
+              <Button onClick={commit} isLoading={committing} disabled={preview.summary.valid === 0} className="rounded-none">
                 Import {preview.summary.valid} row{preview.summary.valid === 1 ? '' : 's'}
               </Button>
             </>
@@ -277,15 +287,16 @@ export default function SalesImportModal({ isOpen, businessId, onClose, onImport
 
           {step === 'result' && (
             <>
-              <Button variant="secondary" onClick={startOver}>
+              <Button variant="secondary" onClick={startOver} className="rounded-none border-gray-300">
                 <RefreshCw className="h-4 w-4" /> Import more
               </Button>
-              <Button onClick={onClose}>Close</Button>
+              <Button onClick={onClose} className="rounded-none">Close</Button>
             </>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -305,7 +316,7 @@ function UploadStep(props: {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-primary-100 bg-primary-50 p-4">
+      <div className="rounded-none border border-primary-200 bg-primary-50 p-4">
         <div className="flex items-start gap-3">
           <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
           <div className="flex-1 text-sm">
@@ -317,7 +328,7 @@ function UploadStep(props: {
             <button
               type="button"
               onClick={onDownloadTemplate}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-primary-700 shadow-sm hover:bg-primary-100"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-none border border-primary-300 bg-white px-3 py-1.5 text-xs font-medium text-primary-700 shadow-sm hover:bg-primary-100 transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> Download template
             </button>
@@ -326,7 +337,7 @@ function UploadStep(props: {
       </div>
 
       {file ? (
-        <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="flex items-center gap-3 rounded-none border border-gray-200 bg-white p-4">
           <FileSpreadsheet className="h-8 w-8 text-green-600" />
           <div className="flex-1 min-w-0">
             <p className="truncate font-medium text-gray-900">{file.name}</p>
@@ -334,7 +345,7 @@ function UploadStep(props: {
           </div>
           <button
             onClick={onRemove}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-none p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
             <X className="h-4 w-4" />
           </button>
@@ -348,7 +359,7 @@ function UploadStep(props: {
           onDragLeave={() => setDragActive(false)}
           onDrop={onDrop}
           onClick={() => inputRef.current?.click()}
-          className={`cursor-pointer rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
+          className={`cursor-pointer rounded-none border-2 border-dashed p-10 text-center transition-colors ${
             dragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300 bg-gray-50 hover:border-gray-400'
           }`}
         >
@@ -379,11 +390,11 @@ function PreviewStep({ preview, fileName }: { preview: SalesImportPreview; fileN
   const { summary, rows } = preview;
 
   const chips: Array<{ label: string; count: number; className: string }> = [
-    { label: 'Valid', count: summary.valid, className: 'bg-green-100 text-green-700' },
-    { label: 'Invalid', count: summary.invalid, className: 'bg-red-100 text-red-700' },
-    { label: 'Dup in file', count: summary.duplicateInFile, className: 'bg-amber-100 text-amber-700' },
-    { label: 'Already imported', count: summary.duplicateInDb, className: 'bg-orange-100 text-orange-700' },
-    { label: 'Locked month', count: summary.locked, className: 'bg-gray-200 text-gray-700' },
+    { label: 'Valid', count: summary.valid, className: 'bg-green-50 text-green-700 border-green-200' },
+    { label: 'Invalid', count: summary.invalid, className: 'bg-red-50 text-red-700 border-red-200' },
+    { label: 'Dup in file', count: summary.duplicateInFile, className: 'bg-amber-50 text-amber-700 border-amber-200' },
+    { label: 'Already imported', count: summary.duplicateInDb, className: 'bg-orange-50 text-orange-700 border-orange-200' },
+    { label: 'Locked month', count: summary.locked, className: 'bg-gray-100 text-gray-700 border-gray-200' },
   ];
 
   return (
@@ -400,8 +411,8 @@ function PreviewStep({ preview, fileName }: { preview: SalesImportPreview; fileN
         {chips.map((c) => (
           <span
             key={c.label}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-              c.count === 0 ? 'bg-gray-100 text-gray-400' : c.className
+            className={`inline-flex items-center gap-1.5 rounded-none border px-2.5 py-1 text-xs font-medium ${
+              c.count === 0 ? 'bg-gray-50 text-gray-400 border-gray-200' : c.className
             }`}
           >
             {c.label}: <span className="font-bold">{c.count}</span>
@@ -409,7 +420,7 @@ function PreviewStep({ preview, fileName }: { preview: SalesImportPreview; fileN
         ))}
       </div>
 
-      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="rounded-none border border-gray-200 overflow-hidden">
         <div className="max-h-80 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -458,7 +469,7 @@ function PreviewRowDisplay({ row }: { row: SalesImportPreviewRow }) {
       <td className="px-3 py-2 text-gray-500">{row.rowNumber}</td>
       <td className="px-3 py-2">
         <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+          className={`inline-flex items-center gap-1 rounded-none border px-2 py-0.5 text-xs font-medium ${badge.className}`}
         >
           {badge.icon}
           {badge.label}
@@ -505,7 +516,7 @@ function ResultStep({ result }: { result: SalesImportCommitResult }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-center">
+      <div className="rounded-none border border-green-200 bg-green-50 p-5 text-center">
         <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
         <p className="mt-3 text-2xl font-bold text-green-700">
           Imported {result.imported} sale{result.imported === 1 ? '' : 's'}
@@ -518,7 +529,7 @@ function ResultStep({ result }: { result: SalesImportCommitResult }) {
       </div>
 
       {skipped > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-none border border-gray-200 bg-white p-4">
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">Skipped breakdown</p>
           <dl className="space-y-1 text-sm">
             <SkipRow label="Invalid rows" value={result.invalidCount} />

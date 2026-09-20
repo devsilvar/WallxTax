@@ -26,6 +26,8 @@ const Expenses = lazy(() => import('@/pages/Expenses.tsx'));
 const Invoices = lazy(() => import('@/pages/Invoices.tsx'));
 const InvoiceForm = lazy(() => import('@/pages/InvoiceForm.tsx'));
 const InvoiceDetail = lazy(() => import('@/pages/InvoiceDetail.tsx'));
+const Debtors = lazy(() => import('@/pages/Debtors.tsx'));
+const DebtorDetail = lazy(() => import('@/pages/DebtorDetail.tsx'));
 const UnverifiedTransactions = lazy(() => import('@/pages/UnverifiedTransactions.tsx'));
 const TestTransferSimulator = lazy(() => import('@/pages/TestTransferSimulator.tsx'));
 const AIAssistant = lazy(() => import('@/pages/AIAssistant.tsx'));
@@ -88,6 +90,8 @@ export default function App() {
                 <Route path="/invoices/new" element={<InvoiceForm />} />
                 <Route path="/invoices/:id" element={<InvoiceDetail />} />
                 <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
+                <Route path="/debtors" element={<Debtors />} />
+                <Route path="/debtors/:id" element={<DebtorDetail />} />
                 <Route path="/ai" element={<AIAssistant />} />
                 <Route path="/tax" element={<TaxReports />} />
                 <Route path="/payments" element={<Payments />} />

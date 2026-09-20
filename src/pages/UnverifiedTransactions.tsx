@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2, BookOpen } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
@@ -61,6 +63,15 @@ export default function UnverifiedTransactions() {
       fetchClassifications();
     }
   }, [biz, page]);
+
+  useEffect(() => {
+    if (!verifyModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [verifyModal]);
 
   async function fetchClassifications() {
     setLoadingClassifications(true);
@@ -247,14 +258,22 @@ export default function UnverifiedTransactions() {
 
       {/* Info Alert */}
       {total > 0 && (
-        <div className="rounded-xl border border-blue-200/50 bg-gradient-to-r from-blue-50 via-cyan-50/30 to-blue-50 px-4 py-3 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-blue-900">
-            <p className="font-medium mb-0.5">Why verify transactions?</p>
-            <p className="text-blue-700 text-xs leading-relaxed">
-              Not all money received is taxable income. Gifts, loans, refunds, and capital injections shouldn't count toward your tax liability. Classify each payment correctly to ensure accurate tax reporting.
-            </p>
+        <div className="rounded-xl border border-blue-200/50 bg-gradient-to-r from-blue-50 via-cyan-50/30 to-blue-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-900">
+              <p className="font-medium mb-0.5">Why verify transactions?</p>
+              <p className="text-blue-700 text-xs leading-relaxed">
+                Not all money received is taxable income. Gifts, loans, refunds, and capital injections shouldn't count toward your tax liability. Classify each payment correctly to ensure accurate tax reporting.
+              </p>
+            </div>
           </div>
+          <Link
+            to="/debtors"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 text-xs font-semibold shrink-0 transition-colors self-start sm:self-auto"
+          >
+            <BookOpen className="h-3.5 w-3.5" /> Reconcile Debtor
+          </Link>
         </div>
       )}
 
@@ -365,44 +384,50 @@ export default function UnverifiedTransactions() {
       )}
 
       {/* Two-Step Wizard Modal */}
-      {verifyModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <CircleDollarSign className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900">Verify Transaction</h3>
-                    <p className="text-sm text-gray-500 tabular-nums">
-                      {formatNaira(Number(verifyModal.transaction.amount))} • {formatDate(verifyModal.transaction.transactionDate)}
-                    </p>
-                  </div>
+      {verifyModal && createPortal(
+        <div className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 cursor-default" onClick={closeModal} />
+
+          {/* Dialog Container */}
+          <div className="relative z-10 w-full max-w-2xl max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150">
+            {/* Pinned Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 shrink-0 bg-gray-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gray-900 text-white">
+                  <CircleDollarSign className="h-4 w-4" />
                 </div>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1.5 hover:bg-gray-100"
-                  disabled={actioningId === verifyModal.transaction.id}
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <div>
+                  <h3 className="text-sm font-semibold tracking-tight text-gray-900">Verify Transaction</h3>
+                  <p className="text-xs text-gray-500 font-mono">
+                    {formatNaira(Number(verifyModal.transaction.amount))} • {formatDate(verifyModal.transaction.transactionDate)}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer"
+                disabled={actioningId === verifyModal.transaction.id}
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Body */}
-            <div className="px-6 py-6 overflow-y-auto flex-1">
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
               {/* Business Assignment Selector (if user has multiple businesses) */}
               {businesses.length > 1 && (
-                <div className="mb-5 p-3.5 bg-purple-50/80 border border-purple-200/80 rounded-xl shadow-xs">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-950 mb-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-purple-700" />
+                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-none">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900 mb-1.5 uppercase tracking-wider">
+                    <Building2 className="h-3.5 w-3.5 text-gray-700" />
                     <span>Business Paid Into</span>
                   </div>
                   <select
                     value={targetBusinessId}
                     onChange={(e) => setTargetBusinessId(e.target.value)}
-                    className="w-full px-3 py-2 border border-purple-200 rounded-lg text-xs font-medium text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-none text-xs font-medium text-gray-900 bg-white focus:outline-none focus:border-gray-900 focus:ring-0"
                   >
                     {businesses.map((b) => (
                       <option key={b.id} value={b.id}>
@@ -410,7 +435,7 @@ export default function UnverifiedTransactions() {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1.5 text-[11px] text-purple-800/80">
+                  <p className="mt-1.5 text-[11px] text-gray-500">
                     {targetBusinessId === biz.id
                       ? 'This revenue will be credited to this business’s sales and tax reports.'
                       : `This revenue will be moved and credited to ${businesses.find((b) => b.id === targetBusinessId)?.businessName || 'the selected business'}.`}
@@ -431,60 +456,63 @@ export default function UnverifiedTransactions() {
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => handlePrimaryChoice('business_sale')}
-                    className="w-full text-left p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 bg-gradient-to-br from-green-50 to-white hover:from-green-100 hover:to-green-50 transition-all group"
+                    className="w-full text-left p-4 rounded-none border border-gray-300 hover:border-gray-900 bg-white hover:bg-gray-50/80 transition-all cursor-pointer group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-11 w-11 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                        <ShoppingBag className="h-6 w-6 text-green-600" />
+                      <div className="h-10 w-10 rounded-none bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                        <ShoppingBag className="h-5 w-5 text-emerald-700" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h5 className="font-semibold text-gray-900 text-sm mb-0.5 flex items-center gap-1.5">
                           Business Sale or Service
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                         </h5>
                         <p className="text-xs text-gray-600 mb-1.5">
                           Customer paid for goods or services you provided
                         </p>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 font-medium">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-medium">
                           ✓ Taxable Income
                         </span>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-green-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-900 transition-colors shrink-0 mt-1" />
                     </div>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => handlePrimaryChoice('not_sale')}
-                    className="w-full text-left p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 bg-gradient-to-br from-orange-50 to-white hover:from-orange-100 hover:to-orange-50 transition-all group"
+                    className="w-full text-left p-4 rounded-none border border-gray-300 hover:border-gray-900 bg-white hover:bg-gray-50/80 transition-all cursor-pointer group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-11 w-11 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                        <Gift className="h-6 w-6 text-orange-600" />
+                      <div className="h-10 w-10 rounded-none bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+                        <Gift className="h-5 w-5 text-amber-700" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h5 className="font-semibold text-gray-900 text-sm mb-0.5 flex items-center gap-1.5">
                           Gift, Loan, or Refund
-                          <X className="h-3.5 w-3.5 text-orange-600" />
+                          <X className="h-3.5 w-3.5 text-amber-700" />
                         </h5>
                         <p className="text-xs text-gray-600 mb-1.5">
                           Money received but not earned through business operations
                         </p>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-orange-100 text-orange-700 font-medium">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[10px] bg-amber-100 text-amber-800 border border-amber-300 font-medium">
                           ✗ NOT Taxable
                         </span>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-900 transition-colors shrink-0 mt-1" />
                     </div>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => handlePrimaryChoice('not_sure')}
-                    className="w-full text-left p-4 rounded-lg border-2 border-gray-200 hover:border-gray-400 bg-gradient-to-br from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-all group"
+                    className="w-full text-left p-4 rounded-none border border-gray-300 hover:border-gray-900 bg-white hover:bg-gray-50/80 transition-all cursor-pointer group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-11 w-11 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                        <HelpCircle className="h-6 w-6 text-gray-600" />
+                      <div className="h-10 w-10 rounded-none bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                        <HelpCircle className="h-5 w-5 text-gray-700" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h5 className="font-semibold text-gray-900 text-sm mb-0.5">
@@ -494,7 +522,7 @@ export default function UnverifiedTransactions() {
                           Show me all classification options with examples
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-900 transition-colors shrink-0 mt-1" />
                     </div>
                   </button>
                 </div>
@@ -504,35 +532,40 @@ export default function UnverifiedTransactions() {
               {wizardStep === 'revenue' && (
                 <div className="space-y-4">
                   <button
+                    type="button"
                     onClick={goBackToPrimary}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium mb-4 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Back
                   </button>
 
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="font-medium text-green-900 mb-0.5">Business Income (Taxable)</p>
-                        <p className="text-green-700 text-xs">This transaction will count toward your tax calculation</p>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-none p-3">
+                    <div className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <p className="font-semibold text-emerald-950 mb-0.5">Business Income (Taxable)</p>
+                        <p className="text-emerald-800 text-[11px]">This transaction will count toward your tax calculation</p>
                       </div>
                     </div>
                   </div>
 
-                  <h4 className="font-semibold text-gray-900 mb-3">What type of business income?</h4>
+                  <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">What type of business income?</h4>
                   
                   <div className="space-y-2">
                     {loadingClassifications ? (
-                      <div className="text-center py-6 text-gray-500 text-sm">Loading transaction types...</div>
+                      <div className="text-center py-6 text-gray-500 text-xs">Loading transaction types...</div>
                     ) : (
                       classifications
                         .filter((c) => c.isRevenue)
                         .map((classification) => (
                           <label
                             key={classification.id}
-                            className="flex items-start gap-3 p-4 rounded-lg border-2 border-gray-200 hover:border-green-400 cursor-pointer transition-all bg-white"
+                            className={`flex items-start gap-3 p-3.5 rounded-none border cursor-pointer transition-all ${
+                              selectedClassification === classification.name
+                                ? 'border-gray-950 bg-gray-50 ring-1 ring-gray-950'
+                                : 'border-gray-200 hover:border-gray-400 bg-white'
+                            }`}
                           >
                             <input
                               type="radio"
@@ -540,12 +573,12 @@ export default function UnverifiedTransactions() {
                               value={classification.name}
                               checked={selectedClassification === classification.name}
                               onChange={(e) => setSelectedClassification(e.target.value)}
-                              className="mt-0.5 h-4 w-4 text-green-600 focus:ring-green-500"
+                              className="mt-0.5 h-4 w-4 text-gray-900 focus:ring-0"
                             />
                             <div className="flex-1">
-                              <div className="font-medium text-gray-900 text-sm">{classification.name}</div>
+                              <div className="font-medium text-gray-900 text-xs">{classification.name}</div>
                               {classification.description && (
-                                <div className="text-xs text-gray-600 mt-0.5">{classification.description}</div>
+                                <div className="text-[11px] text-gray-500 mt-0.5">{classification.description}</div>
                               )}
                             </div>
                           </label>
@@ -553,30 +586,30 @@ export default function UnverifiedTransactions() {
                     )}
                   </div>
 
-                  <div className="mt-6 space-y-3">
+                  <div className="mt-4 space-y-3 pt-3 border-t border-gray-200">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Customer Name (Optional)
+                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                        Customer Name <span className="text-gray-400 lowercase font-normal">(Optional)</span>
                       </label>
                       <input
                         type="text"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="e.g., Chukwuma Okafor"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:border-gray-900 focus:ring-0 text-xs"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Description (Optional)
+                      <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                        Description <span className="text-gray-400 lowercase font-normal">(Optional)</span>
                       </label>
                       <input
                         type="text"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="e.g., Payment for invoice #1234"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                        placeholder="e.g., Payment for goods supplied"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:border-gray-900 focus:ring-0 text-xs"
                       />
                     </div>
                   </div>
@@ -587,24 +620,25 @@ export default function UnverifiedTransactions() {
               {wizardStep === 'non_revenue' && (
                 <div className="space-y-4">
                   <button
+                    type="button"
                     onClick={goBackToPrimary}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium mb-4 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Back
                   </button>
 
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
-                    <div className="flex items-start gap-3">
-                      <X className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="font-medium text-orange-900 mb-0.5">Non-Taxable Receipt</p>
-                        <p className="text-orange-700 text-xs">This won't count toward your tax calculation</p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-none p-3">
+                    <div className="flex items-start gap-2.5">
+                      <X className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <p className="font-semibold text-amber-950 mb-0.5">Non-Taxable Receipt</p>
+                        <p className="text-amber-800 text-[11px]">This won't count toward your tax calculation</p>
                       </div>
                     </div>
                   </div>
 
-                  <h4 className="font-semibold text-gray-900 mb-3">What type of receipt?</h4>
+                  <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">What type of receipt?</h4>
 
                   <div className="space-y-2">
                     {classifications
@@ -612,7 +646,11 @@ export default function UnverifiedTransactions() {
                       .map((classification) => (
                         <label
                           key={classification.id}
-                          className="flex items-start gap-3 p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 cursor-pointer transition-all bg-white"
+                          className={`flex items-start gap-3 p-3.5 rounded-none border cursor-pointer transition-all ${
+                            selectedClassification === classification.name
+                              ? 'border-gray-950 bg-gray-50 ring-1 ring-gray-950'
+                              : 'border-gray-200 hover:border-gray-400 bg-white'
+                          }`}
                         >
                           <input
                             type="radio"
@@ -620,12 +658,12 @@ export default function UnverifiedTransactions() {
                             value={classification.name}
                             checked={selectedClassification === classification.name}
                             onChange={(e) => setSelectedClassification(e.target.value)}
-                            className="mt-0.5 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                            className="mt-0.5 h-4 w-4 text-gray-900 focus:ring-0"
                           />
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900 text-sm">{classification.name}</div>
+                            <div className="font-medium text-gray-900 text-xs">{classification.name}</div>
                             {classification.description && (
-                              <div className="text-xs text-gray-600 mt-0.5">{classification.description}</div>
+                              <div className="text-[11px] text-gray-500 mt-0.5">{classification.description}</div>
                             )}
                           </div>
                         </label>
@@ -638,24 +676,25 @@ export default function UnverifiedTransactions() {
               {wizardStep === 'all' && (
                 <div className="space-y-4">
                   <button
+                    type="button"
                     onClick={goBackToPrimary}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium mb-4 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Back
                   </button>
 
-                  <h4 className="font-semibold text-gray-900 mb-3">Select classification</h4>
+                  <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">Select classification</h4>
 
                   {loadingClassifications ? (
-                    <div className="text-center py-8 text-gray-500 text-sm">Loading classifications...</div>
+                    <div className="text-center py-8 text-gray-500 text-xs">Loading classifications...</div>
                   ) : (
                     <div className="space-y-3">
                       {/* Group Taxable */}
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <h5 className="text-xs font-semibold text-green-700 uppercase tracking-wide">Taxable Income</h5>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <h5 className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">Taxable Income</h5>
                         </div>
                         <div className="space-y-1.5">
                           {classifications
@@ -663,7 +702,11 @@ export default function UnverifiedTransactions() {
                             .map((c) => (
                               <label
                                 key={c.id}
-                                className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-green-400 cursor-pointer transition-all bg-white text-sm"
+                                className={`flex items-start gap-3 p-3 rounded-none border cursor-pointer transition-all ${
+                                  selectedClassification === c.name
+                                    ? 'border-gray-950 bg-gray-50 ring-1 ring-gray-950'
+                                    : 'border-gray-200 hover:border-gray-400 bg-white text-xs'
+                                }`}
                               >
                                 <input
                                   type="radio"
@@ -671,12 +714,12 @@ export default function UnverifiedTransactions() {
                                   value={c.name}
                                   checked={selectedClassification === c.name}
                                   onChange={(e) => setSelectedClassification(e.target.value)}
-                                  className="mt-0.5 h-4 w-4 text-green-600 focus:ring-green-500"
+                                  className="mt-0.5 h-4 w-4 text-gray-900 focus:ring-0"
                                 />
                                 <div className="flex-1">
-                                  <div className="font-medium text-gray-900">{c.name}</div>
+                                  <div className="font-medium text-gray-900 text-xs">{c.name}</div>
                                   {c.description && (
-                                    <div className="text-xs text-gray-600 mt-0.5">{c.description}</div>
+                                    <div className="text-[11px] text-gray-500 mt-0.5">{c.description}</div>
                                   )}
                                 </div>
                               </label>
@@ -687,8 +730,8 @@ export default function UnverifiedTransactions() {
                       {/* Group Non-Taxable */}
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <X className="h-4 w-4 text-orange-600" />
-                          <h5 className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Non-Taxable</h5>
+                          <X className="h-3.5 w-3.5 text-amber-700" />
+                          <h5 className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Non-Taxable</h5>
                         </div>
                         <div className="space-y-1.5">
                           {classifications
@@ -696,7 +739,11 @@ export default function UnverifiedTransactions() {
                             .map((c) => (
                               <label
                                 key={c.id}
-                                className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-orange-400 cursor-pointer transition-all bg-white text-sm"
+                                className={`flex items-start gap-3 p-3 rounded-none border cursor-pointer transition-all ${
+                                  selectedClassification === c.name
+                                    ? 'border-gray-950 bg-gray-50 ring-1 ring-gray-950'
+                                    : 'border-gray-200 hover:border-gray-400 bg-white text-xs'
+                                }`}
                               >
                                 <input
                                   type="radio"
@@ -704,12 +751,12 @@ export default function UnverifiedTransactions() {
                                   value={c.name}
                                   checked={selectedClassification === c.name}
                                   onChange={(e) => setSelectedClassification(e.target.value)}
-                                  className="mt-0.5 h-4 w-4 text-orange-600 focus:ring-orange-500"
+                                  className="mt-0.5 h-4 w-4 text-gray-900 focus:ring-0"
                                 />
                                 <div className="flex-1">
-                                  <div className="font-medium text-gray-900">{c.name}</div>
+                                  <div className="font-medium text-gray-900 text-xs">{c.name}</div>
                                   {c.description && (
-                                    <div className="text-xs text-gray-600 mt-0.5">{c.description}</div>
+                                    <div className="text-[11px] text-gray-500 mt-0.5">{c.description}</div>
                                   )}
                                 </div>
                               </label>
@@ -722,12 +769,13 @@ export default function UnverifiedTransactions() {
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3">
+            {/* Pinned Footer */}
+            <div className="flex items-center justify-end gap-2.5 border-t border-gray-200 bg-gray-50/80 px-5 py-3 shrink-0">
               <Button
-                variant="secondary"
+                variant="outline"
                 onClick={closeModal}
                 disabled={actioningId === verifyModal.transaction.id}
+                className="rounded-none text-xs"
               >
                 Cancel
               </Button>
@@ -739,14 +787,15 @@ export default function UnverifiedTransactions() {
                     actioningId === verifyModal.transaction.id
                   }
                   isLoading={actioningId === verifyModal.transaction.id}
-                  className="min-w-[120px]"
+                  className="rounded-none text-xs min-w-[120px]"
                 >
                   Confirm
                 </Button>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

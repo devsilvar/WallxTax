@@ -70,7 +70,7 @@ export default function SaleItemsEditor({
           type="button"
           onClick={handleAddItem}
           disabled={disabled || items.length >= 50}
-          className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 disabled:opacity-50 transition-colors rounded-none"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Item</span>
@@ -84,7 +84,7 @@ export default function SaleItemsEditor({
           return (
             <div
               key={index}
-              className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-2"
+              className="p-2.5 rounded-none border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-2"
             >
               <div className="flex items-center gap-2">
                 <input
@@ -94,14 +94,14 @@ export default function SaleItemsEditor({
                   onChange={(e) => handleItemChange(index, 'name', e.target.value)}
                   disabled={disabled}
                   required
-                  className="flex-1 min-w-0 text-sm px-2.5 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="flex-1 min-w-0 text-sm px-2.5 py-1.5 rounded-none border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-gray-900"
                 />
                 {items.length > 1 && (
                   <button
                     type="button"
                     onClick={() => handleRemoveItem(index)}
                     disabled={disabled}
-                    className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-none transition-colors"
                     title="Remove item"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -124,7 +124,7 @@ export default function SaleItemsEditor({
                     }
                     disabled={disabled}
                     required
-                    className="w-full text-sm px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="w-full text-sm px-2 py-1 rounded-none border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-gray-900"
                   />
                 </div>
 
@@ -143,7 +143,7 @@ export default function SaleItemsEditor({
                     }
                     disabled={disabled}
                     required
-                    className="w-full text-sm px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="w-full text-sm px-2 py-1 rounded-none border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-gray-900"
                   />
                 </div>
 
@@ -162,7 +162,7 @@ export default function SaleItemsEditor({
       </div>
 
       {/* Items total summary */}
-      <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary-50 dark:bg-primary-950/40 border border-primary-100 dark:border-primary-900/50">
+      <div className="flex items-center justify-between p-2.5 rounded-none bg-primary-50 dark:bg-primary-950/40 border border-primary-100 dark:border-primary-900/50">
         <span className="text-xs font-medium text-primary-900 dark:text-primary-200">
           Total Amount:
         </span>

@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import toast from 'react-hot-toast';
 import api from '@/lib/axios.ts';
-import { ArrowLeft, Mail, CheckCircle, Copy, ExternalLink, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, Copy, ExternalLink, AlertCircle, X } from 'lucide-react';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,15 @@ export default function ForgotPassword() {
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [showDevModal, setShowDevModal] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!showDevModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showDevModal]);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -83,60 +93,61 @@ export default function ForgotPassword() {
         </div>
 
         {/* Dev Mode Modal - Shows reset link when email service unavailable */}
-        {showDevModal && resetLink && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <div className="flex items-start justify-between mb-4">
+        {showDevModal && resetLink && createPortal(
+          <div className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden">
+            <div className="absolute inset-0 cursor-default" onClick={() => setShowDevModal(false)} />
+            <div className="relative z-10 bg-white rounded-none border border-gray-300 shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-start justify-between mb-4 border-b border-gray-200 pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <AlertCircle className="h-5 w-5 text-yellow-600" strokeWidth={2} />
+                  <div className="w-9 h-9 bg-gray-900 text-white rounded-none flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">Development Mode</h3>
-                    <p className="text-sm text-gray-600 mt-0.5">Email service not configured</p>
+                    <h3 className="text-sm font-bold text-gray-900 tracking-tight">Development Mode</h3>
+                    <p className="text-xs text-gray-500">Email service not configured</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowDevModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                  aria-label="Close"
                 >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="font-body text-sm text-blue-900 mb-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-none p-4 mb-4">
+                <p className="font-body text-xs text-blue-900 mb-3">
                   Since the email service isn't fully configured, here's your password reset link:
                 </p>
-                <div className="bg-white border border-blue-300 rounded p-3 mb-3 font-mono text-xs break-all text-gray-700">
+                <div className="bg-white border border-blue-200 rounded-none p-3 mb-3 font-mono text-xs break-all text-gray-800">
                   {resetLink}
                 </div>
                 <div className="flex gap-2">
                   <Button
                     onClick={handleDevLinkClick}
-                    className="flex-1 py-2 text-sm"
+                    className="flex-1 py-2 text-xs rounded-none"
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" strokeWidth={2.5} />
+                    <ExternalLink className="h-3.5 w-3.5 mr-2" />
                     Reset Password Now
                   </Button>
                   <Button
                     onClick={() => copyToClipboard(resetLink)}
                     variant="outline"
-                    className="px-4 py-2"
+                    className="px-4 py-2 rounded-none text-xs"
                   >
-                    <Copy className="h-4 w-4" strokeWidth={2.5} />
+                    <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+              <div className="bg-gray-50 rounded-none border border-gray-200 p-3 text-[11px] text-gray-600">
                 <strong className="text-gray-900">Note:</strong> This link is only shown in development mode. 
                 In production, users will receive an email with the reset link.
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         <div className="mb-8 text-center">

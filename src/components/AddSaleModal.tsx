@@ -235,10 +235,10 @@ export default function AddSaleModal({
       size={mode === 'items' ? 'lg' : 'md'}
       footer={
         <>
-          <Button type='button' variant='secondary' onClick={onClose} disabled={saving}>
+          <Button variant='secondary' onClick={onClose} disabled={saving} className='rounded-none border-gray-300'>
             Cancel
           </Button>
-          <Button type='submit' form='add-sale-form' isLoading={saving}>
+          <Button type='submit' form='add-sale-form' isLoading={saving} className='rounded-none'>
             {isEdit ? 'Update' : 'Create'}
           </Button>
         </>
@@ -254,13 +254,13 @@ export default function AddSaleModal({
           <label className='block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400'>
             Transaction Type
           </label>
-          <div className='grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg gap-1'>
+          <div className='grid grid-cols-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-none border border-gray-200 dark:border-slate-700 gap-1'>
             <button
               type='button'
               onClick={() => setMode('items')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-md transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-none transition-all ${
                 mode === 'items'
-                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm border border-gray-200 dark:border-slate-600'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
@@ -270,9 +270,9 @@ export default function AddSaleModal({
             <button
               type='button'
               onClick={() => setMode('single')}
-              className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-md transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-none transition-all ${
                 mode === 'single'
-                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm border border-gray-200 dark:border-slate-600'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
@@ -297,6 +297,7 @@ export default function AddSaleModal({
             placeholder='0.00'
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
             required
           />
         ) : (
@@ -309,12 +310,12 @@ export default function AddSaleModal({
           </div>
         )}
         <div className='space-y-1'>
-          <label htmlFor='sale-source' className='block text-sm font-medium text-gray-700'>Payment Type</label>
+          <label htmlFor='sale-source' className='block text-xs font-semibold text-gray-700'>Payment Type</label>
           <select
             id='sale-source'
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+            className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
           >
             {sourceOptions.map((s) => (
               <option key={s} value={s}>
@@ -332,29 +333,32 @@ export default function AddSaleModal({
           }
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
         />
         <Input
           label='Customer Name'
           placeholder='e.g. Alhaji Musa'
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
         />
         <Input
           label='Transaction Date'
           type='date'
           value={transactionDate}
           onChange={(e) => setTransactionDate(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
         <div className='space-y-1'>
-          <label htmlFor='sale-classification' className='block text-sm font-medium text-gray-700'>
+          <label htmlFor='sale-classification' className='block text-xs font-semibold text-gray-700'>
             Classification (Optional)
           </label>
           <select
             id='sale-classification'
             value={classification}
             onChange={(e) => setClassification(e.target.value)}
-            className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+            className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
             disabled={loadingClassifications}
           >
             <option value=''>Not classified</option>

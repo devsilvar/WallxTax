@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShieldCheck,
   X,
@@ -32,6 +33,15 @@ export default function PaymentConfirmationModal({
   business,
   onSuccess,
 }: PaymentConfirmationModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const hasPin = usePinStore((s) => s.hasPin);
@@ -89,108 +99,115 @@ export default function PaymentConfirmationModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-        <div
-          className="relative w-full max-w-lg overflow-hidden bg-white rounded-2xl shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200"
-          role="dialog"
-          aria-modal="true"
-        >
-          {/* Top Banner */}
-          <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-primary-800 px-6 py-5 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-xs border border-white/20">
-                  <ShieldCheck className="h-6 w-6 text-emerald-200" />
+      {createPortal(
+        <div className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 cursor-default" onClick={isLoading ? undefined : onClose} />
+
+          {/* Dialog Container */}
+          <div
+            className="relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Pinned Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 shrink-0 bg-gray-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gray-900 text-white">
+                  <ShieldCheck className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">Tax Remittance Assessment</h2>
-                  <p className="text-xs text-emerald-100">Official FIRS SME Compliance Bill</p>
+                  <h2 className="text-sm font-semibold tracking-tight text-gray-900">Tax Remittance Assessment</h2>
+                  <p className="text-xs text-gray-500">Official FIRS SME Compliance Bill</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 disabled={isLoading}
-                className="rounded-lg p-1 text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                className="rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                aria-label="Close"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
 
-          <div className="p-6 space-y-5">
-            {/* Taxpayer Meta */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs text-gray-600">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-gray-400" />
-                <span className="font-semibold text-gray-900">{business.businessName}</span>
-                {business.taxId && (
-                  <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-700 font-mono">
-                    TIN: {business.taxId}
+            {/* Scrollable Content Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* Taxpayer Meta */}
+              <div className="flex items-center justify-between p-3 rounded-none bg-gray-50 border border-gray-200 text-xs text-gray-600">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-gray-500" />
+                  <span className="font-semibold text-gray-900">{business.businessName}</span>
+                  {business.taxId && (
+                    <span className="rounded-none bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-700 font-mono">
+                      TIN: {business.taxId}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 font-medium text-gray-700">
+                  <Calendar className="h-3.5 w-3.5 text-gray-600" />
+                  <span>{monthName}</span>
+                </div>
+              </div>
+
+              {/* Assessment Breakdown Table */}
+              <div className="rounded-none border border-gray-200 overflow-hidden text-xs">
+                <div className="bg-gray-100/70 px-4 py-2 border-b border-gray-200 font-semibold text-gray-700 flex justify-between uppercase tracking-wider text-[11px]">
+                  <span>Assessment Line</span>
+                  <span>Amount (NGN)</span>
+                </div>
+                <div className="divide-y divide-gray-100 px-4 py-1.5 bg-white">
+                  <div className="flex justify-between py-2 text-gray-600">
+                    <span>Total Sales Revenue</span>
+                    <span className="font-medium text-gray-900">{formatNaira(report.totalSales)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 text-gray-600">
+                    <span>Allowable Deductible Expenses</span>
+                    <span className="font-medium text-red-600">- {formatNaira(report.totalExpenses)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 text-gray-700 font-medium">
+                    <span>Net Assessable Gross Profit</span>
+                    <span className="text-gray-900">{formatNaira(report.grossProfit)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 text-gray-600">
+                    <span>Applied SME Statutory Tax Rate</span>
+                    <span className="font-mono font-medium text-gray-900">7.50%</span>
+                  </div>
+                </div>
+
+                {/* Total Due Pill */}
+                <div className="bg-emerald-50 px-4 py-3 border-t border-emerald-200 flex items-center justify-between">
+                  <div>
+                    <span className="block text-xs font-semibold text-emerald-900 uppercase tracking-wider">
+                      Total Tax Remittance Due
+                    </span>
+                    <span className="text-[11px] text-emerald-700">Directly remitted to FIRS</span>
+                  </div>
+                  <span className="text-lg font-bold text-emerald-900 font-mono">
+                    {formatNaira(report.taxPayable)}
                   </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 font-medium text-gray-700">
-                <Calendar className="h-4 w-4 text-emerald-600" />
-                <span>{monthName}</span>
-              </div>
-            </div>
-
-            {/* Assessment Breakdown Table */}
-            <div className="rounded-xl border border-gray-200 overflow-hidden text-sm">
-              <div className="bg-gray-50/80 px-4 py-2.5 border-b border-gray-200 font-semibold text-gray-700 flex justify-between text-xs tracking-wider uppercase">
-                <span>Assessment Line</span>
-                <span>Amount (NGN)</span>
-              </div>
-              <div className="divide-y divide-gray-100 px-4 py-2">
-                <div className="flex justify-between py-2 text-gray-600">
-                  <span>Total Sales Revenue</span>
-                  <span className="font-medium text-gray-900">{formatNaira(report.totalSales)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-gray-600">
-                  <span>Allowable Deductible Expenses</span>
-                  <span className="font-medium text-red-600">- {formatNaira(report.totalExpenses)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-gray-700 font-medium">
-                  <span>Net Assessable Gross Profit</span>
-                  <span className="text-gray-900">{formatNaira(report.grossProfit)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-gray-600">
-                  <span>Applied SME Statutory Tax Rate</span>
-                  <span className="font-mono font-medium text-emerald-700">7.50%</span>
                 </div>
               </div>
 
-              {/* Total Due Pill */}
-              <div className="bg-emerald-50 px-4 py-3.5 border-t border-emerald-100 flex items-center justify-between">
+              {/* Payment Channel Guarantee */}
+              <div className="flex items-start gap-3 rounded-none border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-950">
+                <CreditCard className="h-4 w-4 text-blue-700 shrink-0 mt-0.5" />
                 <div>
-                  <span className="block text-xs font-semibold text-emerald-800 uppercase tracking-wider">
-                    Total Tax Remittance Due
-                  </span>
-                  <span className="text-[11px] text-emerald-600">Directly remitted to FIRS</span>
+                  <p className="font-semibold">Paystack Secured Payment Gateway</p>
+                  <p className="text-blue-900/80 mt-0.5 text-[11px] leading-relaxed">
+                    Supports Nigerian Debit Cards (Mastercard, Visa, Verve), Direct Bank Transfer, and USSD. Official FIRS payment receipts are generated automatically.
+                  </p>
                 </div>
-                <span className="text-xl font-black text-emerald-700">
-                  {formatNaira(report.taxPayable)}
-                </span>
               </div>
             </div>
 
-            {/* Payment Channel Guarantee */}
-            <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 text-xs text-blue-900">
-              <CreditCard className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-blue-950">Paystack Secured Payment Gateway</p>
-                <p className="text-blue-800/80 mt-0.5">
-                  Supports Nigerian Debit Cards (Mastercard, Visa, Verve), Direct Bank Transfer, and USSD. Official FIRS payment receipts are generated automatically.
-                </p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-2">
+            {/* Pinned Action Footer */}
+            <div className="flex items-center justify-end gap-2.5 border-t border-gray-200 bg-gray-50/80 px-5 py-3 shrink-0">
               <Button
                 type="button"
-                variant="secondary"
-                className="flex-1"
+                variant="outline"
+                className="rounded-none text-xs"
                 onClick={onClose}
                 disabled={isLoading}
               >
@@ -198,18 +215,19 @@ export default function PaymentConfirmationModal({
               </Button>
               <Button
                 type="button"
-                className="flex-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5"
+                className="rounded-none text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
                 onClick={handleAuthorizeClick}
                 isLoading={isLoading}
               >
-                {hasPin ? <Lock className="h-4 w-4 mr-1.5" /> : null}
+                {hasPin ? <Lock className="h-3.5 w-3.5 mr-1.5" /> : null}
                 Authorize &amp; Pay {formatNaira(report.taxPayable)}
-                <ArrowRight className="h-4 w-4 ml-1.5" />
+                <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
               </Button>
             </div>
           </div>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
 
       {/* 4-Digit PIN Verification Step-Up */}
       <PinModal

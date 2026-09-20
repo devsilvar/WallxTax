@@ -12,6 +12,8 @@ const pageTitles: Record<string, string> = {
   '/sales/unverified': 'Unverified Transactions',
   '/test/transfer-simulator': 'Test Transfer Simulator',
   '/expenses': 'Expenses',
+  '/invoices': 'Invoices',
+  '/debtors': 'Debtors',
   '/tax': 'Tax Reports',
   '/payments': 'Payments',
   '/reminders': 'Reminders',

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check, Trash2, X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -36,6 +37,7 @@ const TYPE_COLOR: Record<ReminderType, string> = {
   payout_rejected: 'bg-rose-100 text-rose-700',
   payout_completed: 'bg-emerald-100 text-emerald-700',
   payout_failed: 'bg-red-100 text-red-700',
+  credit_overdue: 'bg-rose-100 text-rose-700',
 };
 
 /** Where each reminder type deep-links to. Kept as a map (not a hard-coded
@@ -58,6 +60,28 @@ const ROUTE_FOR_REMINDER: Record<ReminderType, string> = {
   payout_rejected: '/account?tab=withdrawals',
   payout_completed: '/account?tab=withdrawals',
   payout_failed: '/account?tab=withdrawals',
+  credit_overdue: '/debtors',
+};
+
+const ACTION_LABEL_FOR_REMINDER: Record<ReminderType, string> = {
+  tax_deadline: 'Go to Tax Reports',
+  unfiled_tax: 'Go to Tax Reports',
+  unfinalized_report: 'Go to Tax Reports',
+  unpaid_tax: 'Go to Tax Reports',
+  margin_warning: 'Go to Tax Reports',
+  invoice_overdue: 'View Invoices',
+  payment_successful: 'View Payments',
+  payment_refunded: 'View Payments',
+  dva_received: 'View Sales',
+  dva_validation_failed: 'View Account',
+  transaction_needs_verification: 'Verify Sale',
+  payout_change_permitted: 'View Account',
+  payout_requested: 'View Withdrawals',
+  payout_approved: 'View Withdrawals',
+  payout_rejected: 'View Withdrawals',
+  payout_completed: 'View Withdrawals',
+  payout_failed: 'View Withdrawals',
+  credit_overdue: 'View Debtors Book',
 };
 
 function typeLabel(t: ReminderType) {
@@ -208,15 +232,15 @@ export default function NotificationBell() {
           id="notification-panel"
           ref={panelRef}
           role="menu"
-          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-lg border border-gray-200 bg-white shadow-xl z-40"
+          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-none border border-gray-300 bg-white shadow-2xl z-40"
         >
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 bg-gray-50/50">
             <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close notifications"
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded-none border border-transparent p-1 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -250,21 +274,25 @@ export default function NotificationBell() {
                       type="button"
                       role="menuitem"
                       onClick={() => handleSelect(r)}
-                      className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${
+                        !r.isSent ? 'bg-primary-50/30' : ''
+                      }`}
                     >
                       <span
-                        className={`mt-0.5 inline-flex shrink-0 h-6 items-center rounded-full px-2 text-[10px] font-medium capitalize ${TYPE_COLOR[r.reminderType] ?? 'bg-gray-100 text-gray-600'}`}
+                        className={`mt-0.5 inline-flex shrink-0 items-center rounded-none px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                          TYPE_COLOR[r.reminderType] ?? 'bg-gray-100 text-gray-600'
+                        }`}
                       >
                         {typeLabel(r.reminderType)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="line-clamp-2 text-sm text-gray-700">{r.message}</p>
+                        <p className="line-clamp-2 text-xs text-gray-700">{r.message}</p>
                         <p className="mt-1 text-[11px] text-gray-400">{relativeTime(r.createdAt)}</p>
                       </div>
                       {!r.isSent && (
                         <span
                           aria-label="Unread"
-                          className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary-600"
+                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-none bg-primary-600"
                         />
                       )}
                     </button>
@@ -274,11 +302,11 @@ export default function NotificationBell() {
             )}
           </div>
 
-          <div className="border-t border-gray-100 px-4 py-2 text-center">
+          <div className="border-t border-gray-200 bg-gray-50/50 px-4 py-2 text-center">
             <button
               type="button"
               onClick={handleViewAll}
-              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+              className="text-xs font-medium text-gray-700 hover:text-gray-900"
             >
               View all reminders
             </button>
@@ -308,6 +336,14 @@ interface ReminderDetailModalProps {
 }
 
 function ReminderDetailModal({ reminder, onClose, onDismiss, onNavigate }: ReminderDetailModalProps) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const markRead = useReminderStore((s) => s.markRead);
   const firedRef = useRef(false);
@@ -323,56 +359,62 @@ function ReminderDetailModal({ reminder, onClose, onDismiss, onNavigate }: Remin
     markRead(activeBusiness.id, reminder.id);
   }, [reminder.id, reminder.isSent, activeBusiness?.id, markRead]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="reminder-detail-title"
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl"
+        className="relative z-10 w-full max-w-md max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1.5">
+        {/* Pinned Header */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-gray-50/50 shrink-0">
+          <div className="flex items-center gap-2">
             <span
               id="reminder-detail-title"
-              className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${TYPE_COLOR[reminder.reminderType] ?? 'bg-gray-100 text-gray-600'}`}
+              className={`inline-flex items-center rounded-none px-2 py-0.5 text-xs font-semibold uppercase tracking-wider ${TYPE_COLOR[reminder.reminderType] ?? 'bg-gray-100 text-gray-600'}`}
             >
               {typeLabel(reminder.reminderType)}
             </span>
-            <span className="text-xs text-gray-400">
-              Scheduled {formatScheduled(reminder.scheduledDate)}
+            <span className="text-xs text-gray-400 font-mono">
+              {formatScheduled(reminder.scheduledDate)}
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mb-6 whitespace-pre-line text-sm leading-relaxed text-gray-700">
-          {reminder.message}
-        </p>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <p className="whitespace-pre-line text-xs leading-relaxed text-gray-700">
+            {reminder.message}
+          </p>
+        </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => onDismiss(reminder)}>
-            <Trash2 className="h-4 w-4" /> Dismiss
+        {/* Pinned Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/80 px-5 py-3 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => onDismiss(reminder)} className="rounded-none text-xs">
+            <Trash2 className="h-3.5 w-3.5 mr-1" /> Dismiss
           </Button>
-          <Button variant="secondary" size="sm" onClick={onClose}>
-            <Check className="h-4 w-4" /> Close
+          <Button variant="ghost" size="sm" onClick={onClose} className="rounded-none text-xs">
+            <Check className="h-3.5 w-3.5 mr-1" /> Close
           </Button>
-          <Button variant="primary" size="sm" onClick={() => onNavigate(reminder)}>
-            Go to Tax Reports
+          <Button size="sm" onClick={() => onNavigate(reminder)} className="rounded-none text-xs">
+            {ACTION_LABEL_FOR_REMINDER[reminder.reminderType] ?? 'View Details'}
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

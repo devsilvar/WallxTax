@@ -450,14 +450,16 @@ export type ReminderType =
   | 'payout_approved'
   | 'payout_rejected'
   | 'payout_completed'
-  | 'payout_failed';
+  | 'payout_failed'
+  | 'credit_overdue';
 
 export type ReminderReferenceType =
   | 'invoice'
   | 'payment'
   | 'sales_transaction'
   | 'business'
-  | 'settlement_payout';
+  | 'settlement_payout'
+  | 'customer_credit';
 
 export interface Reminder {
   id: string;
@@ -717,5 +719,100 @@ export interface RegulatoryMeta {
   termsVersion: string;
 }
 
+// ─── Customer Credits / Debtors ───────────────────────────
+export type CreditStatus = 'unpaid' | 'partially_paid' | 'paid' | 'written_off' | 'overdue';
 
+export interface CreditPayment {
+  id: string;
+  creditId: string;
+  amount: number;
+  paymentDate: string;
+  paymentType: string;
+  isFullPayment: boolean;
+  notes?: string | null;
+  linkedSaleId?: string | null;
+  createdAt: string;
+}
 
+export interface CustomerCredit {
+  id: string;
+  businessId: string;
+  customerId?: string | null;
+  customerName: string;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  description: string;
+  totalAmount: number;
+  amountPaid: number;
+  balance: number;
+  issueDate: string;
+  dueDate: string;
+  reminderDate?: string | null;
+  lastReminderSentAt?: string | null;
+  status: CreditStatus;
+  guarantorName?: string | null;
+  guarantorPhone?: string | null;
+  notes?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  payments?: CreditPayment[];
+}
+
+export interface CreditSummary {
+  totalOutstanding: number;
+  overdueAmount: number;
+  activeDebtors: number;
+  recoveredThisMonth: number;
+}
+
+export interface CreateCreditPayload {
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  description: string;
+  totalAmount: number;
+  issueDate: string;
+  dueDate: string;
+  reminderDate?: string;
+  customerId?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  notes?: string;
+}
+
+export interface RecordCreditPaymentPayload {
+  amount: number;
+  paymentDate: string;
+  paymentType: 'cash' | 'bank_transfer' | 'pos' | 'manual' | 'online_store' | 'paycode';
+  notes?: string;
+}
+
+export interface UpdateCreditPayload {
+  description?: string;
+  dueDate?: string;
+  reminderDate?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  notes?: string;
+}
+
+export interface WriteOffCreditPayload {
+  reason: string;
+}
+
+export interface CreditListQuery {
+  page?: number;
+  limit?: number;
+  status?: CreditStatus | '';
+  search?: string;
+}
+
+export interface SendCreditWhatsAppResult {
+  waUrl: string;
+  phone: string;
+  customerName: string;
+  balance: number;
+  dueDate: string;
+  message: string;
+}

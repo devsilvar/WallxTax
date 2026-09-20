@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { X, Building2 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -18,6 +19,14 @@ const businessTypes = [
 ];
 
 export default function CreateBusinessModal({ isOpen, onClose, required }: CreateBusinessModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
   const createBusiness = useBusinessStore((s) => s.createBusiness);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
 
@@ -68,39 +77,53 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 cursor-default"
         onClick={required ? undefined : onClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Enter your business details</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {required
-                ? 'Set up your first business to get started with PayMyTax.'
-                : 'Add another business to your account.'}
-            </p>
+      {/* Modal Dialog */}
+      <div className="relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150">
+        {/* Pinned Header */}
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 shrink-0 bg-gray-50/50">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-none bg-gray-900 text-white">
+              <Building2 className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold tracking-tight text-gray-900">
+                {required ? 'Set Up Your First Business' : 'Register New Business'}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {required
+                  ? 'Enter your business details to get started with PayMyTax.'
+                  : 'Add an additional business entity to your account.'}
+              </p>
+            </div>
           </div>
           {!required && (
-            <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-              <X className="h-5 w-5" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable Form Body */}
+        <form id="create-business-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <Input
             label="Business Name *"
             value={form.businessName}
             onChange={(e) => update('businessName', e.target.value)}
             placeholder="e.g. Acme Trading Ltd"
+            className="rounded-none"
             required
           />
 
@@ -109,15 +132,16 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
             value={form.ownerName}
             onChange={(e) => update('ownerName', e.target.value)}
             placeholder="e.g. Chidi Okonkwo"
+            className="rounded-none"
             required
           />
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Business Type *</label>
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">Business Type *</label>
             <select
               value={form.businessType}
               onChange={(e) => update('businessType', e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="block w-full rounded-none border border-gray-300 px-3 py-2 text-xs shadow-sm transition-colors focus:outline-none focus:border-gray-900 focus:ring-0"
             >
               {businessTypes.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -131,6 +155,7 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
               value={form.taxId}
               onChange={(e) => update('taxId', e.target.value)}
               placeholder="Enter your TIN"
+              className="rounded-none"
             />
           )}
 
@@ -138,7 +163,8 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
             label="Address"
             value={form.address}
             onChange={(e) => update('address', e.target.value)}
-            placeholder="Optional"
+            placeholder="Optional business address"
+            className="rounded-none"
           />
 
           <div className="grid grid-cols-2 gap-3">
@@ -147,22 +173,41 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
               value={form.city}
               onChange={(e) => update('city', e.target.value)}
               placeholder="Optional"
+              className="rounded-none"
             />
             <Input
               label="State"
               value={form.state}
               onChange={(e) => update('state', e.target.value)}
               placeholder="Optional"
+              className="rounded-none"
             />
           </div>
-
-          <div className="pt-2">
-            <Button type="submit" isLoading={isLoading} className="w-full">
-              Create Business
-            </Button>
-          </div>
         </form>
+
+        {/* Pinned Footer */}
+        <div className="flex items-center justify-end gap-2.5 border-t border-gray-200 bg-gray-50/80 px-5 py-3 shrink-0">
+          {!required && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="rounded-none text-xs"
+            >
+              Cancel
+            </Button>
+          )}
+          <Button
+            type="submit"
+            form="create-business-form"
+            isLoading={isLoading}
+            className="rounded-none text-xs"
+          >
+            Create Business
+          </Button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

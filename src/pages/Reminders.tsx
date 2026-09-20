@@ -31,6 +31,7 @@ function typeBadge(t: string) {
     payout_rejected: 'bg-rose-100 text-rose-700',
     payout_completed: 'bg-emerald-100 text-emerald-700',
     payout_failed: 'bg-red-100 text-red-700',
+    credit_overdue: 'bg-rose-100 text-rose-700',
   };
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${m[t] || 'bg-gray-100 text-gray-600'}`}>{t.replace(/_/g, ' ')}</span>;
 }

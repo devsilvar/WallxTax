@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Copy,
@@ -37,6 +38,15 @@ export default function AdminTransferDetailModal({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen || !transferId) {
       setData(null);
       setError(null);
@@ -71,23 +81,27 @@ export default function AdminTransferDetailModal({
   const isInflow = data?.type === 'inflow';
   const isLoss = (data?.financials.netMargin ?? 0) < 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-100 animate-scale-up">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden">
+      {/* Backdrop */}
+      <div className="absolute inset-0 cursor-default" onClick={onClose} />
+
+      {/* Modal Dialog */}
+      <div className="relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50/50">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 bg-gray-50/50 shrink-0">
           <div className="flex items-center gap-2.5">
             {isInflow ? (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                <ArrowDownLeft className="h-5 w-5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-none bg-blue-100 text-blue-800">
+                <ArrowDownLeft className="h-4 w-4" />
               </div>
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                <ArrowUpRight className="h-5 w-5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-none bg-purple-100 text-purple-800">
+                <ArrowUpRight className="h-4 w-4" />
               </div>
             )}
             <div>
-              <h3 className="text-base font-bold text-gray-900">
+              <h3 className="text-sm font-bold text-gray-900 leading-tight">
                 {isInflow ? 'DVA Deposit Breakdown' : 'Withdrawal Payout Breakdown'}
               </h3>
               <p className="text-xs text-gray-500 font-mono">
@@ -97,9 +111,10 @@ export default function AdminTransferDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer"
+            aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -322,15 +337,16 @@ export default function AdminTransferDetailModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-100 bg-gray-50 px-6 py-3.5 flex justify-end">
+        <div className="border-t border-gray-200 bg-gray-50/80 px-5 py-3 shrink-0 flex justify-end">
           <button
             onClick={onClose}
-            className="rounded-lg bg-white border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
+            className="rounded-none bg-white border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
           >
             Close
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

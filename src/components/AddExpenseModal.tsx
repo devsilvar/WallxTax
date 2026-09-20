@@ -136,10 +136,10 @@ export default function AddExpenseModal({
       size='md'
       footer={
         <>
-          <Button type='button' variant='secondary' onClick={onClose} disabled={saving}>
+          <Button variant='secondary' onClick={onClose} disabled={saving} className='rounded-none border-gray-300'>
             Cancel
           </Button>
-          <Button type='submit' form='add-expense-form' isLoading={saving}>
+          <Button type='submit' form='add-expense-form' isLoading={saving} className='rounded-none'>
             {isEdit ? 'Update' : 'Create'}
           </Button>
         </>
@@ -158,6 +158,7 @@ export default function AddExpenseModal({
           min='0.01'
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
         <Input
@@ -168,10 +169,11 @@ export default function AddExpenseModal({
           min='0.01'
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
         {Number(quantity) > 1 && Number(amount) > 0 && (
-          <div className='sm:col-span-2 -mt-2 px-3 py-1.5 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between'>
+          <div className='sm:col-span-2 -mt-2 px-3 py-1.5 rounded-none bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between'>
             <span>Per unit breakdown:</span>
             <span className='font-medium text-primary-600 dark:text-primary-400'>
               ₦{(Math.round(((Number(amount) || 0) / (Number(quantity) || 1)) * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each × {quantity} = ₦{Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -179,12 +181,12 @@ export default function AddExpenseModal({
           </div>
         )}
         <div className='space-y-1 sm:col-span-2'>
-          <label htmlFor='expense-category' className='block text-sm font-medium text-gray-700'>Category</label>
+          <label htmlFor='expense-category' className='block text-xs font-semibold text-gray-700'>Category</label>
           <select
             id='expense-category'
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+            className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -201,6 +203,7 @@ export default function AddExpenseModal({
               value={categoryDetail}
               onChange={(e) => setCategoryDetail(e.target.value)}
               maxLength={200}
+              className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
               required
             />
             <p className='mt-0.5 text-xs text-gray-500'>
@@ -212,6 +215,7 @@ export default function AddExpenseModal({
           label='Description'
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
         <Input
@@ -219,20 +223,21 @@ export default function AddExpenseModal({
           type='date'
           value={expenseDate}
           onChange={(e) => setExpenseDate(e.target.value)}
+          className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
-        <div className='flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 sm:col-span-2'>
+        <div className='flex items-start gap-3 rounded-none border border-gray-200 bg-gray-50 p-3 sm:col-span-2'>
           <input
             id='isDeductible'
             type='checkbox'
             checked={isDeductible}
             onChange={(e) => setIsDeductible(e.target.checked)}
-            className='mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500'
+            className='mt-1 h-4 w-4 rounded-none border-gray-300 text-primary-600 focus:ring-primary-500'
           />
           <div className='flex-1'>
             <label
               htmlFor='isDeductible'
-              className='block cursor-pointer text-sm font-medium text-gray-900'
+              className='block cursor-pointer text-xs font-semibold text-gray-900'
             >
               Tax deductible
             </label>

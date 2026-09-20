@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,6 +15,7 @@ import {
   Phone,
   Receipt,
   Smartphone,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
@@ -636,7 +638,7 @@ export default function InvoiceDetail() {
       {/* ─── Mark paid modal ─────────────────────── */}
       {payOpen && (
         <Modal onClose={() => setPayOpen(false)} title='Mark invoice as paid'>
-          <p className='font-body text-sm text-gray-600'>
+          <p className='font-body text-xs text-gray-600'>
             This will record a sale for {formatNaira(Number(inv.total))} on the
             payment date. The payment month cannot be finalized or locked.
           </p>
@@ -644,7 +646,7 @@ export default function InvoiceDetail() {
             <div>
               <label
                 htmlFor='invoice-payment-method'
-                className='mb-1 block text-sm font-medium text-gray-700'
+                className='mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-700'
               >
                 Payment Method <span className='text-red-500'>*</span>
               </label>
@@ -654,7 +656,7 @@ export default function InvoiceDetail() {
                 onChange={(e) =>
                   setPayMethod(e.target.value as InvoicePaymentMethod | '')
                 }
-                className='block w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20'
+                className='block w-full rounded-none border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-0'
               >
                 <option value='' disabled>
                   Select how the customer paid
@@ -673,16 +675,18 @@ export default function InvoiceDetail() {
               onChange={(e) => setPayDate(e.target.value)}
               min={inv.issueDate.slice(0, 10)}
               max={new Date().toISOString().slice(0, 10)}
+              className='rounded-none text-xs'
             />
           </div>
-          <div className='mt-6 flex justify-end gap-2'>
-            <Button variant='secondary' onClick={() => setPayOpen(false)}>
+          <div className='mt-6 flex justify-end gap-2 border-t border-gray-200 pt-3'>
+            <Button variant='outline' onClick={() => setPayOpen(false)} className='rounded-none text-xs'>
               Cancel
             </Button>
             <Button
               onClick={handleMarkPaid}
               isLoading={actionLoading === 'pay'}
               disabled={!payMethod || actionLoading === 'pay'}
+              className='rounded-none text-xs'
             >
               Confirm payment
             </Button>
@@ -693,13 +697,13 @@ export default function InvoiceDetail() {
       {/* ─── Cancel modal ────────────────────────── */}
       {cancelOpen && (
         <Modal onClose={() => setCancelOpen(false)} title='Cancel invoice'>
-          <p className='font-body text-sm text-gray-600'>
+          <p className='font-body text-xs text-gray-600'>
             Cancelling an invoice is permanent. The record is preserved (status
             becomes "cancelled"), but you can't reopen it — create a new invoice
             instead.
           </p>
           <div className='mt-4'>
-            <label className='mb-1 block text-sm font-medium text-gray-700'>
+            <label className='mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-700'>
               Reason (optional)
             </label>
             <textarea
@@ -708,17 +712,18 @@ export default function InvoiceDetail() {
               rows={3}
               maxLength={500}
               placeholder='e.g. Customer cancelled order'
-              className='block w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20'
+              className='block w-full rounded-none border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-0'
             />
           </div>
-          <div className='mt-6 flex justify-end gap-2'>
-            <Button variant='secondary' onClick={() => setCancelOpen(false)}>
+          <div className='mt-6 flex justify-end gap-2 border-t border-gray-200 pt-3'>
+            <Button variant='outline' onClick={() => setCancelOpen(false)} className='rounded-none text-xs'>
               Keep invoice
             </Button>
             <Button
               variant='danger'
               onClick={handleCancel}
               isLoading={actionLoading === 'cancel'}
+              className='rounded-none text-xs'
             >
               Cancel invoice
             </Button>
@@ -861,18 +866,38 @@ function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  return (
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  return createPortal(
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm'
+      className='fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden'
       onClick={onClose}
     >
       <div
-        className='w-full max-w-md rounded-xl bg-white p-6 shadow-2xl'
+        className='relative z-10 w-full max-w-md max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150'
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className='mb-3 text-lg font-semibold text-gray-900'>{title}</h3>
-        {children}
+        <div className='flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-gray-50/50 shrink-0'>
+          <h3 className='text-sm font-semibold tracking-tight text-gray-900'>{title}</h3>
+          <button
+            type='button'
+            onClick={onClose}
+            className='rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors'
+          >
+            <X className='h-4 w-4' />
+          </button>
+        </div>
+        <div className='flex-1 overflow-y-auto px-5 py-4'>
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Shield, AlertCircle, ShieldCheck, X, PhoneCall } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -21,6 +22,15 @@ export default function UpdateBvnModal({
   currentBvnLast4,
   onSuccess,
 }: UpdateBvnModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   const [bvn, setBvn] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -91,21 +101,19 @@ export default function UpdateBvnModal({
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-gray-100 p-6 sm:p-7 overflow-hidden animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden">
+      {/* Backdrop */}
+      <div className="absolute inset-0 cursor-default" onClick={onClose} />
+
+      {/* Modal Dialog */}
+      <div className="relative z-10 w-full max-w-md flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 p-6 sm:p-7 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-none border border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-100 transition-colors cursor-pointer"
           title="Close"
         >
           <X className="h-4 w-4" />
@@ -113,10 +121,10 @@ export default function UpdateBvnModal({
 
         {/* Modal Header */}
         <div className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-primary-600 mb-3 shadow-xs">
-            <Shield className="h-6 w-6 text-primary-600" />
+          <div className="mx-auto w-11 h-11 rounded-none bg-gray-900 flex items-center justify-center text-white mb-3 shadow-xs">
+            <Shield className="h-5 w-5" />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 tracking-tight">
+          <h3 className="text-sm font-bold text-gray-900 tracking-tight">
             {currentBvnLast4 ? 'Update Bank Verification Number' : 'Link Bank Verification Number'}
           </h3>
           <p className="text-xs text-gray-500 mt-1 max-w-[280px] mx-auto leading-relaxed">
@@ -126,7 +134,7 @@ export default function UpdateBvnModal({
 
         {/* Currently linked indicator */}
         {currentBvnLast4 && (
-          <div className="mt-4 p-2.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between text-xs">
+          <div className="mt-4 p-2.5 rounded-none bg-gray-50 border border-gray-200 flex items-center justify-between text-xs">
             <span className="text-gray-500">Currently linked:</span>
             <span className="font-mono font-bold text-gray-800">{currentBvnLast4}</span>
           </div>
@@ -135,7 +143,7 @@ export default function UpdateBvnModal({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
               11-Digit BVN <span className="text-red-500">*</span>
             </label>
             <Input
@@ -146,7 +154,7 @@ export default function UpdateBvnModal({
               onChange={(e) => handleBvnChange(e.target.value)}
               maxLength={11}
               disabled={submitting}
-              className="font-mono text-base tracking-wider"
+              className="font-mono text-sm tracking-wider rounded-none border-gray-300 focus:border-gray-900 focus:ring-0"
               autoFocus
             />
             {error && (
@@ -158,12 +166,12 @@ export default function UpdateBvnModal({
           </div>
 
           {/* USSD Check Tip */}
-          <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100/80 flex items-start gap-2.5 text-xs text-purple-900">
-            <PhoneCall className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
+          <div className="p-3 rounded-none bg-gray-50 border border-gray-200 flex items-start gap-2.5 text-xs text-gray-700">
+            <PhoneCall className="h-4 w-4 text-gray-500 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <span className="font-semibold text-purple-950">Don't remember your BVN?</span>
-              <p className="text-purple-700 text-[11px] mt-0.5">
-                Dial <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-purple-200">*565*0#</span> from your registered phone number.
+              <span className="font-semibold text-gray-900">Don't remember your BVN?</span>
+              <p className="text-gray-600 text-[11px] mt-0.5">
+                Dial <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded-none border border-gray-300 text-gray-900">*565*0#</span> from your registered phone number.
               </p>
             </div>
           </div>
@@ -173,7 +181,7 @@ export default function UpdateBvnModal({
             type="submit"
             isLoading={submitting}
             disabled={bvn.length !== 11 || submitting}
-            className="w-full py-2.5 text-sm font-semibold rounded-xl shadow-xs"
+            className="w-full py-2.5 text-xs font-semibold rounded-none"
           >
             Save BVN
           </Button>
@@ -185,6 +193,7 @@ export default function UpdateBvnModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
