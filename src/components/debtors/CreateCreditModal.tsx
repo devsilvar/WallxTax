@@ -53,7 +53,9 @@ export default function CreateCreditModal({
   const [selectedTermDays, setSelectedTermDays] = useState<number>(14);
   const [issueDate, setIssueDate] = useState(todayStr);
   const [dueDate, setDueDate] = useState(() => getComputedDueDate(14));
-  const [reminderDate, setReminderDate] = useState(() => getComputedReminderDate(getComputedDueDate(14)));
+  const [reminderDate, setReminderDate] = useState(() =>
+    getComputedReminderDate(getComputedDueDate(14)),
+  );
   const [guarantorName, setGuarantorName] = useState('');
   const [guarantorPhone, setGuarantorPhone] = useState('');
   const [notes, setNotes] = useState('');
@@ -139,72 +141,80 @@ export default function CreateCreditModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden animate-in fade-in duration-150"
+      className='fixed inset-0 z-[9999] w-screen h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden animate-in fade-in duration-150'
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
       }}
     >
       {/* Straight-Edged, Neat Designed Modal Dialog */}
-      <div className="relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 my-auto pointer-events-auto animate-in zoom-in-95 duration-150">
+      <div className='relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 my-auto pointer-events-auto animate-in zoom-in-95 duration-150'>
         {/* Pinned Straight Header */}
-        <div className="shrink-0 flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-gray-50">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-none bg-primary-50 text-primary-600 border border-primary-200 shrink-0">
-              <Wallet className="h-4 w-4" />
+        <div className='shrink-0 flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-gray-50'>
+          <div className='flex items-center gap-2.5'>
+            <div className='flex h-8 w-8 items-center justify-center rounded-none bg-primary-50 text-primary-600 border border-primary-200 shrink-0'>
+              <Wallet className='h-4 w-4' />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-gray-900">Record Customer Debt</h2>
-                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-300">
+              <div className='flex items-center gap-2'>
+                <h2 className='text-sm sm:text-base font-bold text-gray-900'>
+                  Record Customer Debt
+                </h2>
+                <span className='text-[10px] font-semibold px-1.5 py-0.2 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-300'>
                   Cash-Basis
                 </span>
               </div>
-              <p className="text-[11px] text-gray-500">Sales tax recognized only upon collection</p>
+              <p className='text-[11px] text-gray-500'>
+                Sales tax recognized only upon collection
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={loading}
-            className="rounded-none p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors"
-            title="Close modal"
+            className='rounded-none p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors'
+            title='Close modal'
           >
-            <X className="h-4 w-4" />
+            <X className='h-4 w-4' />
           </button>
         </div>
 
         {/* Scrollable Compact Form Body */}
-        <form id="create-credit-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
+        <form
+          id='create-credit-form'
+          onSubmit={handleSubmit}
+          className='flex-1 overflow-y-auto px-5 py-4 space-y-3.5'
+        >
           {/* Row 1: Debtor Name & Phone */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Customer Name <span className="text-rose-500">*</span>
+              <label className='block text-xs font-semibold text-gray-700 mb-1'>
+                Customer Name <span className='text-rose-500'>*</span>
               </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <div className='relative'>
+                <User className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
                 <input
-                  type="text"
+                  type='text'
                   required
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Alhaji Musa"
-                  className="w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all"
+                  placeholder='e.g. Alhaji Musa'
+                  className='w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className='block text-xs font-semibold text-gray-700 mb-1'>
                 Phone (WhatsApp)
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <div className='relative'>
+                <Phone className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
                 <input
-                  type="tel"
+                  type='tel'
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="0803 000 0000"
-                  className="w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all"
+                  placeholder='0803 000 0000'
+                  className='w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
                 />
               </div>
             </div>
@@ -212,15 +222,15 @@ export default function CreateCreditModal({
 
           {/* Row 2: Amount & Quick Chips */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-gray-700">
-                Amount Owed (₦) <span className="text-rose-500">*</span>
+            <div className='flex items-center justify-between mb-1'>
+              <label className='text-xs font-semibold text-gray-700'>
+                Amount Owed (₦) <span className='text-rose-500'>*</span>
               </label>
-              <div className="flex items-center gap-1">
+              <div className='flex items-center gap-1'>
                 {[20000, 50000, 100000, 250000].map((val) => (
                   <button
                     key={val}
-                    type="button"
+                    type='button'
                     onClick={() => handleQuickAmount(val)}
                     className={`text-[10px] px-2 py-0.5 rounded-none font-medium border transition-colors ${
                       totalAmount === val
@@ -233,48 +243,57 @@ export default function CreateCreditModal({
                 ))}
               </div>
             </div>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-gray-500 text-sm">₦</span>
+            <div className='relative'>
+              <span className='absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-gray-500 text-sm'>
+                ₦
+              </span>
               <input
-                type="number"
-                min="100"
-                step="any"
+                type='number'
+                min='100'
+                step='any'
                 required
                 value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="50,000"
-                className="w-full rounded-none border border-gray-300 pl-8 pr-3 py-2 text-sm font-bold text-gray-900 focus:border-gray-900 focus:ring-0 outline-none transition-all tabular-nums"
+                onChange={(e) =>
+                  setTotalAmount(
+                    e.target.value === '' ? '' : Number(e.target.value),
+                  )
+                }
+                placeholder='50,000'
+                className='w-full rounded-none border border-gray-300 pl-8 pr-3 py-2 text-sm font-bold text-gray-900 focus:border-gray-900 focus:ring-0 outline-none transition-all tabular-nums'
               />
             </div>
           </div>
 
           {/* Row 3: Items / Goods Supplied */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Items / Goods Supplied <span className="text-rose-500">*</span>
+            <label className='block text-xs font-semibold text-gray-700 mb-1'>
+              Items / Good Supplied / Services{' '}
+              <span className='text-rose-500'>*</span>
             </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+            <div className='relative'>
+              <FileText className='absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400' />
               <textarea
                 required
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. 5 bags of rice and 2 cartons of cooking oil on credit"
-                className="w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all resize-none"
+                placeholder='e.g. 5 bags of rice and 2 cartons of cooking oil on credit'
+                className='w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all resize-none'
               />
             </div>
           </div>
 
           {/* Row 4: Timeline & Due Date */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-700">Repayment Due Date</label>
-              <div className="flex items-center gap-1">
+          <div className='space-y-1.5'>
+            <div className='flex items-center justify-between'>
+              <label className='text-xs font-semibold text-gray-700'>
+                Repayment Due Date
+              </label>
+              <div className='flex items-center gap-1'>
                 {[7, 14, 30, 60].map((days) => (
                   <button
                     key={days}
-                    type="button"
+                    type='button'
                     onClick={() => handleTermSelect(days)}
                     className={`text-[10px] px-2 py-0.5 rounded-none font-semibold transition-all border ${
                       selectedTermDays === days
@@ -288,32 +307,36 @@ export default function CreateCreditModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className='grid grid-cols-2 gap-3'>
               <div>
-                <span className="text-[10px] font-medium text-gray-400 block mb-0.5">Issue Date</span>
-                <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <span className='text-[10px] font-medium text-gray-400 block mb-0.5'>
+                  Issue Date
+                </span>
+                <div className='relative'>
+                  <Calendar className='absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
                   <input
-                    type="date"
+                    type='date'
                     value={issueDate}
                     onChange={(e) => setIssueDate(e.target.value)}
-                    className="w-full rounded-none border border-gray-300 pl-8 pr-2 py-1.5 text-xs focus:border-gray-900 outline-none"
+                    className='w-full rounded-none border border-gray-300 pl-8 pr-2 py-1.5 text-xs focus:border-gray-900 outline-none'
                   />
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] font-medium text-gray-400 block mb-0.5">Due Date</span>
-                <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <span className='text-[10px] font-medium text-gray-400 block mb-0.5'>
+                  Due Date
+                </span>
+                <div className='relative'>
+                  <Calendar className='absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
                   <input
-                    type="date"
+                    type='date'
                     value={dueDate}
                     onChange={(e) => {
                       setDueDate(e.target.value);
                       setSelectedTermDays(0);
                     }}
-                    className="w-full rounded-none border border-gray-300 pl-8 pr-2 py-1.5 text-xs focus:border-gray-900 outline-none"
+                    className='w-full rounded-none border border-gray-300 pl-8 pr-2 py-1.5 text-xs focus:border-gray-900 outline-none'
                   />
                 </div>
               </div>
@@ -321,60 +344,74 @@ export default function CreateCreditModal({
           </div>
 
           {/* Collapsible: Optional Details (Guarantor, Email, Notes) */}
-          <div className="pt-1">
+          <div className='pt-1'>
             <button
-              type="button"
+              type='button'
               onClick={() => setShowOptionalFields(!showOptionalFields)}
-              className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors"
+              className='text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors'
             >
-              {showOptionalFields ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              {showOptionalFields ? 'Hide extra details' : '+ Add guarantor, email or internal notes'}
+              {showOptionalFields ? (
+                <ChevronUp className='h-3.5 w-3.5' />
+              ) : (
+                <ChevronDown className='h-3.5 w-3.5' />
+              )}
+              {showOptionalFields
+                ? 'Hide extra details'
+                : '+ Add guarantor, email or internal notes'}
             </button>
 
             {showOptionalFields && (
-              <div className="mt-2.5 p-3 rounded-none bg-gray-50 border border-gray-200 space-y-3 animate-in fade-in duration-100">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className='mt-2.5 p-3 rounded-none bg-gray-50 border border-gray-200 space-y-3 animate-in fade-in duration-100'>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-2.5'>
                   <div>
-                    <label className="block text-[11px] font-medium text-gray-600 mb-0.5">Guarantor Name</label>
+                    <label className='block text-[11px] font-medium text-gray-600 mb-0.5'>
+                      Guarantor Name
+                    </label>
                     <input
-                      type="text"
+                      type='text'
                       value={guarantorName}
                       onChange={(e) => setGuarantorName(e.target.value)}
-                      placeholder="e.g. Chief Okafor"
-                      className="w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white"
+                      placeholder='e.g. Chief Okafor'
+                      className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white'
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-gray-600 mb-0.5">Guarantor Phone</label>
+                    <label className='block text-[11px] font-medium text-gray-600 mb-0.5'>
+                      Guarantor Phone
+                    </label>
                     <input
-                      type="tel"
+                      type='tel'
                       value={guarantorPhone}
                       onChange={(e) => setGuarantorPhone(e.target.value)}
-                      placeholder="0802 000 0000"
-                      className="w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white"
+                      placeholder='0802 000 0000'
+                      className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white'
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-gray-600 mb-0.5">Customer Email</label>
+                  <label className='block text-[11px] font-medium text-gray-600 mb-0.5'>
+                    Customer Email
+                  </label>
                   <input
-                    type="email"
+                    type='email'
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="customer@example.com"
-                    className="w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white"
+                    placeholder='customer@example.com'
+                    className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white'
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-gray-600 mb-0.5">Internal Notes</label>
+                  <label className='block text-[11px] font-medium text-gray-600 mb-0.5'>
+                    Internal Notes
+                  </label>
                   <textarea
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Agreed payment terms or collateral notes..."
-                    className="w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white resize-none"
+                    placeholder='Agreed payment terms or collateral notes...'
+                    className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white resize-none'
                   />
                 </div>
               </div>
@@ -383,36 +420,36 @@ export default function CreateCreditModal({
         </form>
 
         {/* Pinned Straight Footer — Always visible without scrolling */}
-        <div className="shrink-0 flex items-center justify-end gap-2.5 border-t border-gray-200 px-5 py-3 bg-gray-50">
+        <div className='shrink-0 flex items-center justify-end gap-2.5 border-t border-gray-200 px-5 py-3 bg-gray-50'>
           <Button
-            type="button"
-            variant="outline"
-            size="sm"
+            type='button'
+            variant='outline'
+            size='sm'
             onClick={onClose}
             disabled={loading}
-            className="rounded-none border-gray-300"
+            className='rounded-none border-gray-300'
           >
             Cancel
           </Button>
           <Button
-            type="submit"
-            form="create-credit-form"
-            variant="primary"
-            size="sm"
+            type='submit'
+            form='create-credit-form'
+            variant='primary'
+            size='sm'
             disabled={loading}
-            className="rounded-none flex items-center gap-1.5 shadow-sm"
+            className='rounded-none flex items-center gap-1.5 shadow-sm'
           >
             {loading ? (
               'Saving...'
             ) : (
               <>
-                <Plus className="h-3.5 w-3.5" /> Record Debt
+                <Plus className='h-3.5 w-3.5' /> Record Debt
               </>
             )}
           </Button>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

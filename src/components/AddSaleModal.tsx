@@ -9,11 +9,12 @@
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { TrendingUp, Package, Banknote } from 'lucide-react';
+import { TrendingUp, Package, Banknote, HandCoins } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
+import { useCreditStore } from '@/stores/credit.store.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
@@ -28,6 +29,7 @@ const SOURCES = [
   'cash',
   'invoice',
 ] as const;
+const CREDIT_SOURCE = 'credit' as const;
 
 // 'manual' is retired from the UI (migration 20260904120000_retire_manual_source
 // mapped old rows to 'cash') but the backend still accepts it — sourceOptions
@@ -53,8 +55,9 @@ type AddSaleModalProps = {
 
 /** Extracts the API error message without `any` (rules.txt). */
 function getApiErrorMessage(err: unknown, fallback: string): string {
-  const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })
-    ?.response?.data?.error;
+  const apiErr = (
+    err as { response?: { data?: { error?: { message?: string } } } }
+  )?.response?.data?.error;
   return apiErr?.message || fallback;
 }
 
@@ -78,6 +81,10 @@ export default function AddSaleModal({
   const [source, setSource] = useState<string>('cash');
   const [description, setDescription] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [guarantorName, setGuarantorName] = useState('');
+  const [guarantorPhone, setGuarantorPhone] = useState('');
   const [transactionDate, setTransactionDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -85,17 +92,23 @@ export default function AddSaleModal({
   const [originalClassification, setOriginalClassification] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const [classifications, setClassifications] = useState<TransactionClassification[]>([]);
+  const [classifications, setClassifications] = useState<
+    TransactionClassification[]
+  >([]);
   const [loadingClassifications, setLoadingClassifications] = useState(false);
 
   const isEdit = editSale !== null;
+  const isCredit = source === 'credit';
 
   // Editing a legacy 'manual' (or any retired) row: keep that value selectable
   // so a save doesn't silently rewrite history — the backend still accepts it.
+  // When creating a new sale, append 'credit' as a selectable payment type.
   const sourceOptions: string[] =
-    isEdit && editSale && !(SOURCES as readonly string[]).includes(editSale.source)
+    isEdit &&
+    editSale &&
+    !(SOURCES as readonly string[]).includes(editSale.source)
       ? [...SOURCES, editSale.source]
-      : [...SOURCES];
+      : [...SOURCES, ...(isEdit ? [] : [CREDIT_SOURCE])];
 
   // Reset-on-open + edit pre-fill (same pattern as SalesImportModal)
   useEffect(() => {
@@ -105,7 +118,13 @@ export default function AddSaleModal({
       setSource(editSale.source);
       setDescription(editSale.description || '');
       setCustomerName(editSale.customerName || '');
-      setTransactionDate(new Date(editSale.transactionDate).toISOString().slice(0, 10));
+      setCustomerPhone('');
+      setDueDate('');
+      setGuarantorName('');
+      setGuarantorPhone('');
+      setTransactionDate(
+        new Date(editSale.transactionDate).toISOString().slice(0, 10),
+      );
       const currentClass = editSale.finalClassification || '';
       setClassification(currentClass);
       setOriginalClassification(currentClass);
@@ -119,7 +138,7 @@ export default function AddSaleModal({
             unitPrice: Number(it.unitPrice),
             lineTotal: Number(it.lineTotal ?? it.quantity * it.unitPrice),
             sortOrder: it.sortOrder,
-          }))
+          })),
         );
       } else {
         setMode('single');
@@ -132,6 +151,12 @@ export default function AddSaleModal({
       setSource('cash');
       setDescription('');
       setCustomerName('');
+      setCustomerPhone('');
+      const d = new Date();
+      d.setDate(d.getDate() + 14);
+      setDueDate(d.toISOString().slice(0, 10));
+      setGuarantorName('');
+      setGuarantorPhone('');
       setTransactionDate(new Date().toISOString().slice(0, 10));
       setClassification('');
       setOriginalClassification('');
@@ -164,6 +189,66 @@ export default function AddSaleModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+
+    if (isCredit) {
+      if (!customerName.trim()) {
+        toast.error('Customer name is required for credit sales');
+        setSaving(false);
+        return;
+      }
+      if (!dueDate) {
+        toast.error('Payment due date is required for credit sales');
+        setSaving(false);
+        return;
+      }
+
+      const creditPayload: any = {
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim() || undefined,
+        issueDate: transactionDate,
+        dueDate,
+        guarantorName: guarantorName.trim() || undefined,
+        guarantorPhone: guarantorPhone.trim() || undefined,
+      };
+
+      if (mode === 'items') {
+        const validItems = items.filter((i) => i.name.trim().length > 0);
+        if (validItems.length === 0) {
+          toast.error('Please enter at least one item with a name');
+          setSaving(false);
+          return;
+        }
+        creditPayload.items = validItems.map((i) => ({
+          name: i.name.trim(),
+          quantity: Number(i.quantity || 1),
+          unitPrice: Number(i.unitPrice || 0),
+        }));
+        creditPayload.description = description || undefined;
+      } else {
+        const numAmount = Number(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+          toast.error('Amount must be greater than 0');
+          setSaving(false);
+          return;
+        }
+        creditPayload.totalAmount = numAmount;
+        creditPayload.description = description || 'Credit obligation';
+      }
+
+      try {
+        await useCreditStore.getState().createCredit(businessId, creditPayload);
+        toast.success('Credit sale recorded in Debtors Book (FIRS Cash-Basis)');
+        invalidateDashboard('sale_created');
+        onSaved('created');
+        onClose();
+      } catch (err: unknown) {
+        toast.error(getApiErrorMessage(err, 'Failed to record credit sale'));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     const basePath = `/businesses/${businessId}/sales`;
 
     const body: Record<string, any> = {
@@ -204,7 +289,9 @@ export default function AddSaleModal({
 
         // Only verify if classification changed
         if (classification && classification !== originalClassification) {
-          await api.post(`${basePath}/${editSale.id}/verify`, { classification });
+          await api.post(`${basePath}/${editSale.id}/verify`, {
+            classification,
+          });
         }
 
         toast.success('Sale updated');
@@ -230,16 +317,30 @@ export default function AddSaleModal({
       onClose={onClose}
       dismissible={!saving}
       title={isEdit ? 'Edit Sale' : 'New Sale'}
-      subtitle='Money received from selling'
+      subtitle={
+        isCredit
+          ? 'Record goods or services given on credit'
+          : 'Money received from selling'
+      }
       icon={<TrendingUp className='h-5 w-5 text-primary-600' />}
       size={mode === 'items' ? 'lg' : 'md'}
       footer={
         <>
-          <Button variant='secondary' onClick={onClose} disabled={saving} className='rounded-none border-gray-300'>
+          <Button
+            variant='secondary'
+            onClick={onClose}
+            disabled={saving}
+            className='rounded-none border-gray-300'
+          >
             Cancel
           </Button>
-          <Button type='submit' form='add-sale-form' isLoading={saving} className='rounded-none'>
-            {isEdit ? 'Update' : 'Create'}
+          <Button
+            type='submit'
+            form='add-sale-form'
+            isLoading={saving}
+            className='rounded-none'
+          >
+            {isEdit ? 'Update' : isCredit ? 'Record Credit Sale' : 'Create'}
           </Button>
         </>
       }
@@ -277,7 +378,7 @@ export default function AddSaleModal({
               }`}
             >
               <Banknote className='w-4 h-4' />
-              <span>Service / Flat Amount</span>
+              <span>Proffessional Service</span>
             </button>
           </div>
           <p className='text-[11px] text-slate-500 dark:text-slate-400 px-0.5'>
@@ -310,7 +411,12 @@ export default function AddSaleModal({
           </div>
         )}
         <div className='space-y-1'>
-          <label htmlFor='sale-source' className='block text-xs font-semibold text-gray-700'>Payment Type</label>
+          <label
+            htmlFor='sale-source'
+            className='block text-xs font-semibold text-gray-700'
+          >
+            Payment Type
+          </label>
           <select
             id='sale-source'
             value={source}
@@ -324,8 +430,60 @@ export default function AddSaleModal({
             ))}
           </select>
         </div>
+
+        {isCredit && (
+          <div className='sm:col-span-2 space-y-3 p-3.5 bg-amber-50/70 border border-amber-200'>
+            <div className='flex items-start gap-2.5'>
+              <HandCoins className='h-4 w-4 text-amber-700 shrink-0 mt-0.5' />
+              <div>
+                <p className='text-xs font-bold text-amber-900'>
+                  FIRS Cash-Basis Guarantee (Debtors Book)
+                </p>
+                <p className='text-[11px] text-amber-800 leading-relaxed mt-0.5'>
+                  This credit sale will be recorded in your Debtors Book without
+                  triggering tax liability. FIRS revenue is recognized strictly
+                  when repayment is recorded.
+                </p>
+              </div>
+            </div>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1'>
+              <Input
+                label='Debtor Phone (for WhatsApp Reminders)'
+                placeholder='e.g. 08012345678'
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+              />
+              <Input
+                label='Payment Due Date'
+                type='date'
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+                required
+              />
+              <Input
+                label='Guarantor / Surety Name (Optional)'
+                placeholder='e.g. Alhaji Ibrahim or Partner Name'
+                value={guarantorName}
+                onChange={(e) => setGuarantorName(e.target.value)}
+                className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+              />
+              <Input
+                label='Guarantor Phone (Optional)'
+                placeholder='e.g. 08098765432'
+                value={guarantorPhone}
+                onChange={(e) => setGuarantorPhone(e.target.value)}
+                className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+              />
+            </div>
+          </div>
+        )}
+
         <Input
-          label={mode === 'items' ? 'Order Note (Optional)' : 'Service Description'}
+          label={
+            mode === 'items' ? 'Order Note (Optional)' : 'Service Description'
+          }
           placeholder={
             mode === 'items'
               ? 'e.g. Delivered to shop, Balance due on Friday'
@@ -336,11 +494,12 @@ export default function AddSaleModal({
           className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
         />
         <Input
-          label='Customer Name'
+          label={isCredit ? 'Customer Name (Debtor)' : 'Customer Name'}
           placeholder='e.g. Alhaji Musa'
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
           className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+          required={isCredit}
         />
         <Input
           label='Transaction Date'
@@ -350,25 +509,30 @@ export default function AddSaleModal({
           className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
-        <div className='space-y-1'>
-          <label htmlFor='sale-classification' className='block text-xs font-semibold text-gray-700'>
-            Classification (Optional)
-          </label>
-          <select
-            id='sale-classification'
-            value={classification}
-            onChange={(e) => setClassification(e.target.value)}
-            className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
-            disabled={loadingClassifications}
-          >
-            <option value=''>Not classified</option>
-            {classifications.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!isCredit && (
+          <div className='space-y-1'>
+            <label
+              htmlFor='sale-classification'
+              className='block text-xs font-semibold text-gray-700'
+            >
+              Classification (Optional)
+            </label>
+            <select
+              id='sale-classification'
+              value={classification}
+              onChange={(e) => setClassification(e.target.value)}
+              className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
+              disabled={loadingClassifications}
+            >
+              <option value=''>Not classified</option>
+              {classifications.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </form>
     </Modal>
   );

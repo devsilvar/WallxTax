@@ -306,8 +306,8 @@ export default function TransactionDetailPanel({
             </p>
           </div>
 
-          {/* Review Banner for unverified sales */}
-          {transaction.needsVerification && (
+          {/* Review Banner for unverified sales (only after transfer is confirmed/settled) */}
+          {transaction.needsVerification && transaction.status !== 'pending' && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -348,6 +348,21 @@ export default function TransactionDetailPanel({
                       Review in Unverified Tab
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pending Transfer Notice (Awaiting Settlement) */}
+          {transaction.status === 'pending' && (
+            <div className="rounded-xl border border-amber-200/70 bg-amber-50/40 p-4">
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="text-xs font-bold text-amber-900">Transfer Pending Confirmation</h4>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    This transfer is currently awaiting settlement confirmation from the banking network. Tax revenue classification will become available once confirmed.
+                  </p>
                 </div>
               </div>
             </div>
@@ -442,13 +457,23 @@ export default function TransactionDetailPanel({
                         <span className="text-gray-500">Gross Transfer</span>
                         <span className="font-mono font-medium text-gray-800">{formatNaira(gross)}</span>
                       </div>
-                      <div className="px-4 py-3 flex items-center justify-between bg-emerald-50/40">
-                        <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
-                          <CheckCircle className="h-4 w-4 text-emerald-600 inline" />
-                          Net Added to Wallet (100%)
-                        </span>
-                        <span className="font-mono font-bold text-emerald-700">{formatNaira(gross)}</span>
-                      </div>
+                      {transaction.status === 'pending' ? (
+                        <div className="px-4 py-3 flex items-center justify-between bg-amber-50/40">
+                          <span className="font-semibold text-amber-950 flex items-center gap-1.5">
+                            <Clock className="h-4 w-4 text-amber-600 inline" />
+                            Pending Settlement Credit
+                          </span>
+                          <span className="font-mono font-bold text-amber-700">{formatNaira(gross)}</span>
+                        </div>
+                      ) : (
+                        <div className="px-4 py-3 flex items-center justify-between bg-emerald-50/40">
+                          <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                            <CheckCircle className="h-4 w-4 text-emerald-600 inline" />
+                            Net Added to Wallet (100%)
+                          </span>
+                          <span className="font-mono font-bold text-emerald-700">{formatNaira(gross)}</span>
+                        </div>
+                      )}
                     </>
                   );
                 })()}
@@ -600,6 +625,10 @@ export default function TransactionDetailPanel({
             {downloading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Generating Receipt…
+              </>
+            ) : transaction.status === 'pending' ? (
+              <>
+                <Clock className="h-4 w-4" /> Receipt Available Once Confirmed
               </>
             ) : (
               <>

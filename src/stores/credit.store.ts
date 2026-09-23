@@ -146,7 +146,10 @@ export const useCreditStore = create<CreditState>((set, get) => ({
     const updated = res.data?.data;
     set((state) => ({
       credits: patchInList(state.credits, updated),
-      activeCredit: state.activeCredit?.id === id ? updated : state.activeCredit,
+      // Merge: keep existing relations (items, payments) that the PATCH response doesn't include
+      activeCredit: state.activeCredit?.id === id
+        ? { ...state.activeCredit, ...updated }
+        : state.activeCredit,
     }));
     return updated;
   },

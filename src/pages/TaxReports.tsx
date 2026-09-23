@@ -30,6 +30,7 @@ import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PaymentConfirmationModal from '@/components/PaymentConfirmationModal.tsx';
+import FinalizeConfirmationModal from '@/components/FinalizeConfirmationModal.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api from '@/lib/axios.ts';
@@ -165,6 +166,9 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
   // Pre-Payment Confirmation Bill Modal
   const [paymentModalReport, setPaymentModalReport] = useState<TaxReport | null>(null);
 
+  // Pre-Finalize Confirmation Modal
+  const [finalizeModalReport, setFinalizeModalReport] = useState<TaxReport | null>(null);
+
   // Tax Slip download state
   const [downloadingSlipId, setDownloadingSlipId] = useState<string | null>(null);
 
@@ -267,15 +271,21 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
     }
   };
 
-  const handleFinalize = async (id: string, e?: React.MouseEvent) => {
+  const openFinalizeConfirm = (report: TaxReport, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    setFinalizeModalReport(report);
+  };
+
+  const handleFinalize = async () => {
+    if (!finalizeModalReport) return;
     try {
-      await api.post(`${taxPath}/reports/${id}/finalize`);
+      await api.post(`${taxPath}/reports/${finalizeModalReport.id}/finalize`);
       toast.success('Report finalized');
       invalidateDashboard('tax_finalized');
       fetchReports();
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Failed');
+      throw err;
     }
   };
 
@@ -553,7 +563,7 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
                           size="sm"
                           variant="secondary"
                           className="h-8 px-3 text-xs"
-                          onClick={(e) => handleFinalize(r.id, e)}
+                          onClick={(e) => openFinalizeConfirm(r, e)}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" />
                           Finalize
@@ -737,7 +747,7 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
                           <Button
                             size="sm"
                             variant="secondary"
-                            onClick={(e) => handleFinalize(r.id, e)}
+                            onClick={(e) => openFinalizeConfirm(r, e)}
                             className="text-xs"
                           >
                             <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" />
@@ -776,6 +786,14 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
         onSuccess={() => {
           fetchReports();
         }}
+      />
+
+      {/* Pre-Finalize Confirmation Modal */}
+      <FinalizeConfirmationModal
+        isOpen={Boolean(finalizeModalReport)}
+        onClose={() => setFinalizeModalReport(null)}
+        report={finalizeModalReport}
+        onConfirm={handleFinalize}
       />
 
       {pagination && pagination.totalPages > 1 && (

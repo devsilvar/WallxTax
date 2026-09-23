@@ -7,7 +7,6 @@ import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
 import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
 
-
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import {
   TrendingUp,
@@ -42,7 +41,6 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense } from '@/types/index.ts';
-
 
 // ─── Merchant ID display format ─────────────────────────────
 // Stored form (DB): `PMTW` + 7 digits, e.g. `PMTW0000001`.
@@ -113,10 +111,16 @@ function formatMonth(dateStr: string): string {
 
 function getCreditDueStatus(dueDateStr: string, status: string) {
   if (status === 'paid') {
-    return { label: 'Settled', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    return {
+      label: 'Settled',
+      color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+    };
   }
   if (status === 'written_off') {
-    return { label: 'Written Off', color: 'text-gray-600 bg-gray-100 border-gray-200' };
+    return {
+      label: 'Written Off',
+      color: 'text-gray-600 bg-gray-100 border-gray-200',
+    };
   }
 
   const now = new Date();
@@ -135,7 +139,10 @@ function getCreditDueStatus(dueDateStr: string, status: string) {
     };
   }
   if (diffDays === 0) {
-    return { label: 'Due today', color: 'text-amber-700 bg-amber-50 border-amber-200 font-semibold' };
+    return {
+      label: 'Due today',
+      color: 'text-amber-700 bg-amber-50 border-amber-200 font-semibold',
+    };
   }
   return {
     label: `Due in ${diffDays}d`,
@@ -198,7 +205,13 @@ function getTimeBucket(hour: number): TimeBucket {
   return 'night';
 }
 
-function TimeOfDayIcon({ bucket, className = 'h-7 w-7' }: { bucket: TimeBucket; className?: string }) {
+function TimeOfDayIcon({
+  bucket,
+  className = 'h-7 w-7',
+}: {
+  bucket: TimeBucket;
+  className?: string;
+}) {
   // Two-stop radial gradient that varies by bucket. The orb sits on a thin
   // horizon line for sunrise / sunset, suspended for midday and night.
   const orbStops: Record<TimeBucket, [string, string]> = {
@@ -220,38 +233,53 @@ function TimeOfDayIcon({ bucket, className = 'h-7 w-7' }: { bucket: TimeBucket; 
 
   return (
     <svg
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
+      viewBox='0 0 32 32'
+      fill='none'
+      xmlns='http://www.w3.org/2000/svg'
+      aria-hidden='true'
       className={className}
     >
       <defs>
-        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={stop1} />
-          <stop offset="100%" stopColor={stop2} />
+        <radialGradient id={gradId} cx='50%' cy='50%' r='50%'>
+          <stop offset='0%' stopColor={stop1} />
+          <stop offset='100%' stopColor={stop2} />
         </radialGradient>
         {/* Soft outer halo */}
-        <radialGradient id={`${gradId}-halo`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={stop2} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={stop2} stopOpacity="0" />
+        <radialGradient id={`${gradId}-halo`} cx='50%' cy='50%' r='50%'>
+          <stop offset='0%' stopColor={stop2} stopOpacity='0.35' />
+          <stop offset='100%' stopColor={stop2} stopOpacity='0' />
         </radialGradient>
       </defs>
 
       {/* Halo glow */}
-      <circle cx="16" cy={showHorizon ? 18 : 15} r="13" fill={`url(#${gradId}-halo)`} />
+      <circle
+        cx='16'
+        cy={showHorizon ? 18 : 15}
+        r='13'
+        fill={`url(#${gradId}-halo)`}
+      />
 
       {/* Sun rays — only for sunrise and midday */}
       {(bucket === 'sunrise' || bucket === 'midday') && (
-        <g stroke={stop2} strokeWidth="1.25" strokeLinecap="round" opacity={bucket === 'midday' ? 0.85 : 0.7}>
-          <line x1="16" y1="3" x2="16" y2="6" />
-          <line x1="16" y1={bucket === 'midday' ? '24' : '22'} x2="16" y2={bucket === 'midday' ? '27' : '24'} />
-          <line x1="3" y1="16" x2="6" y2="16" />
-          <line x1="26" y1="16" x2="29" y2="16" />
-          <line x1="6.5" y1="6.5" x2="8.5" y2="8.5" />
-          <line x1="23.5" y1="6.5" x2="25.5" y2="8.5" />
-          <line x1="6.5" y1="25.5" x2="8.5" y2="23.5" />
-          <line x1="23.5" y1="25.5" x2="25.5" y2="23.5" />
+        <g
+          stroke={stop2}
+          strokeWidth='1.25'
+          strokeLinecap='round'
+          opacity={bucket === 'midday' ? 0.85 : 0.7}
+        >
+          <line x1='16' y1='3' x2='16' y2='6' />
+          <line
+            x1='16'
+            y1={bucket === 'midday' ? '24' : '22'}
+            x2='16'
+            y2={bucket === 'midday' ? '27' : '24'}
+          />
+          <line x1='3' y1='16' x2='6' y2='16' />
+          <line x1='26' y1='16' x2='29' y2='16' />
+          <line x1='6.5' y1='6.5' x2='8.5' y2='8.5' />
+          <line x1='23.5' y1='6.5' x2='25.5' y2='8.5' />
+          <line x1='6.5' y1='25.5' x2='8.5' y2='23.5' />
+          <line x1='23.5' y1='25.5' x2='25.5' y2='23.5' />
         </g>
       )}
 
@@ -259,20 +287,20 @@ function TimeOfDayIcon({ bucket, className = 'h-7 w-7' }: { bucket: TimeBucket; 
       {isMoon ? (
         <g>
           {/* Moon body */}
-          <circle cx="16" cy="15" r="7" fill={`url(#${gradId})`} />
+          <circle cx='16' cy='15' r='7' fill={`url(#${gradId})`} />
           {/* Crescent: a smaller circle in the banner color "bites" out the right side */}
-          <circle cx="19" cy="13" r="6" fill="#1e3a8a" />
+          <circle cx='19' cy='13' r='6' fill='#1e3a8a' />
           {/* A few stars sprinkled in the corners */}
-          <g fill="#FEF9C3">
-            <circle cx="6" cy="6" r="0.9" />
-            <circle cx="26" cy="9" r="0.7" />
-            <circle cx="9" cy="11" r="0.55" />
-            <circle cx="24" cy="22" r="0.6" />
+          <g fill='#FEF9C3'>
+            <circle cx='6' cy='6' r='0.9' />
+            <circle cx='26' cy='9' r='0.7' />
+            <circle cx='9' cy='11' r='0.55' />
+            <circle cx='24' cy='22' r='0.6' />
           </g>
         </g>
       ) : (
         <circle
-          cx="16"
+          cx='16'
           cy={showHorizon ? 16 : 15}
           r={bucket === 'midday' ? 7 : 6.25}
           fill={`url(#${gradId})`}
@@ -282,26 +310,33 @@ function TimeOfDayIcon({ bucket, className = 'h-7 w-7' }: { bucket: TimeBucket; 
       {/* Horizon line for sunrise / sunset — sun is partially submerged */}
       {showHorizon && (
         <g>
-          <rect x="0" y="22" width="32" height="10" fill="#1e3a8a" opacity="0.0" />
+          <rect
+            x='0'
+            y='22'
+            width='32'
+            height='10'
+            fill='#1e3a8a'
+            opacity='0.0'
+          />
           <line
-            x1="3"
-            y1="22"
-            x2="29"
-            y2="22"
+            x1='3'
+            y1='22'
+            x2='29'
+            y2='22'
             stroke={stop2}
-            strokeOpacity="0.5"
-            strokeWidth="1"
-            strokeLinecap="round"
-            strokeDasharray="2 2"
+            strokeOpacity='0.5'
+            strokeWidth='1'
+            strokeLinecap='round'
+            strokeDasharray='2 2'
           />
         </g>
       )}
 
       {/* Stars duplicate for non-moon night case (kept above for moon) */}
       {showStars && !isMoon && (
-        <g fill="#FEF9C3">
-          <circle cx="5" cy="6" r="0.8" />
-          <circle cx="27" cy="10" r="0.6" />
+        <g fill='#FEF9C3'>
+          <circle cx='5' cy='6' r='0.8' />
+          <circle cx='27' cy='10' r='0.6' />
         </g>
       )}
     </svg>
@@ -311,7 +346,8 @@ function TimeOfDayIcon({ bucket, className = 'h-7 w-7' }: { bucket: TimeBucket; 
 function getGreetingLabel(): string {
   const hour = new Date().getHours();
   const bucket = getTimeBucket(hour);
-  if (bucket === 'sunrise' || bucket === 'midday') return hour < 12 ? 'Good morning' : 'Good afternoon';
+  if (bucket === 'sunrise' || bucket === 'midday')
+    return hour < 12 ? 'Good morning' : 'Good afternoon';
   if (bucket === 'sunset') return 'Good evening';
   return hour < 5 ? 'Working late' : 'Good evening';
 }
@@ -381,13 +417,12 @@ interface CachedBundle {
 const dashboardCache = new Map<string, CachedBundle>();
 
 async function fetchDashboardBundle(bid: string): Promise<DashboardBundle> {
-  const [dashRes, salesRes, expensesRes, reportsRes] =
-    await Promise.all([
-      api.get(`/businesses/${bid}/tax/dashboard?months=6`),
-      api.get(`/businesses/${bid}/sales?limit=5`),
-      api.get(`/businesses/${bid}/expenses?limit=5`),
-      api.get(`/businesses/${bid}/tax/reports?limit=3`),
-    ]);
+  const [dashRes, salesRes, expensesRes, reportsRes] = await Promise.all([
+    api.get(`/businesses/${bid}/tax/dashboard?months=6`),
+    api.get(`/businesses/${bid}/sales?limit=5`),
+    api.get(`/businesses/${bid}/expenses?limit=5`),
+    api.get(`/businesses/${bid}/tax/reports?limit=3`),
+  ]);
   return {
     dashboard: dashRes.data.data,
     recentSales: salesRes.data.data,
@@ -438,9 +473,12 @@ export default function Dashboard() {
   const handleRevealBvn = async (stepUpToken: string) => {
     setRevealingBvn(true);
     try {
-      const res = await api.post<{ success: boolean; data: { bvn: string } }>('/auth/reveal-bvn', {
-        stepUpToken,
-      });
+      const res = await api.post<{ success: boolean; data: { bvn: string } }>(
+        '/auth/reveal-bvn',
+        {
+          stepUpToken,
+        },
+      );
       if (res.data.success && res.data.data?.bvn) {
         setFullBvn(res.data.data.bvn);
         setBvnRevealed(true);
@@ -466,9 +504,11 @@ export default function Dashboard() {
   // Subscribe to dashboard invalidation events
 
   const invalidationCounter = useDashboardEvents((s) => s.invalidationCounter);
-  
+
   // Ref for debouncing refetch calls
-  const refetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const refetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (!activeBusiness) return;
@@ -534,13 +574,13 @@ export default function Dashboard() {
     if (refetchTimeoutRef.current) {
       clearTimeout(refetchTimeoutRef.current);
     }
-    
+
     // Schedule new refetch in 500ms
     refetchTimeoutRef.current = setTimeout(() => {
       if (import.meta.env.DEV) {
         console.log('[Dashboard] Refetching due to invalidation');
       }
-      
+
       setIsRefreshing(true);
       fetchCreditSummary(bid);
       fetchCredits(bid, { limit: 5 });
@@ -569,9 +609,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (!activeBusiness) return;
     if (invalidationCounter === 0) return; // Skip initial mount
-    
+
     debouncedRefetch(activeBusiness.id);
-    
+
     // Cleanup debounce timer on unmount
     return () => {
       if (refetchTimeoutRef.current) {
@@ -640,7 +680,7 @@ export default function Dashboard() {
     <div className='space-y-6 relative'>
       {/* DVA Diagnostics Panel - Only in development mode */}
       {/* {import.meta.env.DEV && <DVADiagnostics />} */}
-      
+
       {/* Refreshing pill — shown while a background revalidation is in flight.
           Cached data is already on screen; this just hints at "we're checking
           for updates" so the user knows not to panic if a number ticks. */}
@@ -686,7 +726,9 @@ export default function Dashboard() {
 
             <div className='min-w-0'>
               <p className='text-xs font-medium text-purple-200/90 flex items-center gap-1.5'>
-                <span>{getGreetingLabel()}, {userName}</span>
+                <span>
+                  {getGreetingLabel()}, {userName}
+                </span>
               </p>
               <h1 className='mt-0.5 text-xl sm:text-2xl font-bold text-white tracking-tight truncate'>
                 {activeBusiness.businessName}
@@ -719,11 +761,17 @@ export default function Dashboard() {
                     type='button'
                     onClick={handleToggleBvn}
                     disabled={revealingBvn}
-                    title={bvnRevealed ? 'Click to hide BVN' : 'Click to reveal BVN (PIN required)'}
+                    title={
+                      bvnRevealed
+                        ? 'Click to hide BVN'
+                        : 'Click to reveal BVN (PIN required)'
+                    }
                     className='group flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white hover:bg-white/20 transition-all cursor-pointer'
                   >
                     <Shield className='h-3.5 w-3.5 text-emerald-300' />
-                    <span className='text-purple-200 text-[11px] font-medium'>BVN:</span>
+                    <span className='text-purple-200 text-[11px] font-medium'>
+                      BVN:
+                    </span>
                     <span className='font-mono font-medium tabular-nums text-white'>
                       {maskBvn(fullBvn, bvnRevealed)}
                     </span>
@@ -740,14 +788,18 @@ export default function Dashboard() {
                     title='Verify your identity'
                   >
                     <Shield className='h-3.5 w-3.5 text-amber-300' />
-                    <span className='font-medium text-[11px]'>BVN Unverified</span>
+                    <span className='font-medium text-[11px]'>
+                      BVN Unverified
+                    </span>
                   </Link>
                 )}
 
                 {/* Tax Health chip */}
                 <div className='flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white'>
                   <Heart className='h-3.5 w-3.5 text-pink-300' />
-                  <span className='text-[11px] text-purple-200 font-medium'>Tax Health:</span>
+                  <span className='text-[11px] text-purple-200 font-medium'>
+                    Tax Health:
+                  </span>
                   <div className='w-14 h-1.5 rounded-full bg-white/20 overflow-hidden'>
                     <div
                       className={`h-full rounded-full ${health.bg} transition-all duration-1000`}
@@ -792,8 +844,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-
-
       {/* ── Alert: Unpaid Reports (Compact) ───────── */}
       {(dashboard?.unpaidCount ?? 0) > 0 && (
         <div className='animate-scale-in flex items-center justify-between rounded-xl bg-gradient-to-r from-amber-50 via-orange-50/40 to-amber-50 border border-amber-200/50 px-4 py-2.5 hover:border-amber-300/80 transition-colors duration-200'>
@@ -821,7 +871,10 @@ export default function Dashboard() {
         <div className='animate-scale-in flex items-center justify-between rounded-xl border border-rose-200/60 bg-rose-50/60 px-4 py-2.5 transition-colors duration-200'>
           <p className='text-xs text-rose-700 font-medium'>
             <span className='inline-block h-1.5 w-1.5 rounded-full bg-rose-500 mr-2 align-middle' />
-            <span className='font-bold'>{formatNaira(creditSummary!.overdueAmount)}</span> in overdue receivables
+            <span className='font-bold'>
+              {formatNaira(creditSummary!.overdueAmount)}
+            </span>{' '}
+            in overdue receivables
           </p>
           <Link
             to='/debtors?status=overdue'
@@ -837,18 +890,24 @@ export default function Dashboard() {
       <div className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 stagger-children'>
         <div className='rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs hover:border-gray-300 transition-all'>
           <div className='flex items-center justify-between'>
-            <span className='text-xs font-medium text-gray-500'>Total Tax Payable</span>
+            <span className='text-xs font-medium text-gray-500'>
+              Total Tax Payable
+            </span>
             <CircleDollarSign className='h-4 w-4 text-gray-400' />
           </div>
           <p className='mt-2 text-lg sm:text-xl font-bold text-gray-900 tabular-nums'>
             {formatNaira(lt?.totalTaxPayable ?? 0)}
           </p>
-          <p className='mt-1 text-[11px] text-gray-400 font-body'>Across all filed periods</p>
+          <p className='mt-1 text-[11px] text-gray-400 font-body'>
+            Across all filed periods
+          </p>
         </div>
 
         <div className='rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs hover:border-gray-300 transition-all'>
           <div className='flex items-center justify-between'>
-            <span className='text-xs font-medium text-gray-500'>This Month's Tax</span>
+            <span className='text-xs font-medium text-gray-500'>
+              This Month's Tax
+            </span>
             <Receipt className='h-4 w-4 text-gray-400' />
           </div>
           <p className='mt-2 text-lg sm:text-xl font-bold text-gray-900 tabular-nums'>
@@ -869,24 +928,35 @@ export default function Dashboard() {
 
         <div className='rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs hover:border-gray-300 transition-all'>
           <div className='flex items-center justify-between'>
-            <span className='text-xs font-medium text-gray-500'>Reports Filed</span>
+            <span className='text-xs font-medium text-gray-500'>
+              Reports Filed
+            </span>
             <CheckCircle2 className='h-4 w-4 text-gray-400' />
           </div>
           <p className='mt-2 text-lg sm:text-xl font-bold text-gray-900 tabular-nums'>
             {String(lt?.reportsCount ?? 0)}
           </p>
-          <p className='mt-1 text-[11px] text-gray-400 font-body'>FIRS compliant reports</p>
+          <p className='mt-1 text-[11px] text-gray-400 font-body'>
+            FIRS compliant reports
+          </p>
         </div>
 
         <div className='rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs hover:border-gray-300 transition-all'>
           <div className='flex items-center justify-between'>
-            <span className='text-xs font-medium text-gray-500'>Tax Standard</span>
+            <span className='text-xs font-medium text-gray-500'>
+              Tax Standard
+            </span>
             <Shield className='h-4 w-4 text-gray-400' />
           </div>
           <p className='mt-2 text-lg sm:text-xl font-bold text-gray-900'>
-            7.5% <span className='text-xs font-normal text-gray-500'>Gross Profit</span>
+            7.5%{' '}
+            <span className='text-xs font-normal text-gray-500'>
+              Gross Profit
+            </span>
           </p>
-          <p className='mt-1 text-[11px] text-gray-400 font-body'>FIRS VAT standard</p>
+          <p className='mt-1 text-[11px] text-gray-400 font-body'>
+            FIRS VAT standard
+          </p>
         </div>
       </div>
 
@@ -899,12 +969,16 @@ export default function Dashboard() {
             </div>
             <div>
               <div className='flex items-center gap-2'>
-                <h3 className='text-[13px] font-bold text-gray-900'>Receivables & Debtors</h3>
+                <h3 className='text-[13px] font-bold text-gray-900'>
+                  Receivables & Debtors
+                </h3>
                 <span className='inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 border border-indigo-100/80'>
                   {creditSummary?.activeDebtors ?? 0} active
                 </span>
               </div>
-              <p className='text-[11px] text-gray-400 mt-0.5'>Money owed to you by customers & credit accounts</p>
+              <p className='text-[11px] text-gray-400 mt-0.5'>
+                Money owed to you by customers & credit accounts
+              </p>
             </div>
           </div>
           <Link
@@ -920,68 +994,99 @@ export default function Dashboard() {
           {/* Outstanding */}
           <div className='rounded-xl bg-gray-50/70 p-3 border border-gray-100/80 hover:bg-gray-50 transition-colors'>
             <div className='flex items-center justify-between'>
-              <span className='text-[10px] font-medium text-gray-500 uppercase tracking-wider'>Outstanding</span>
+              <span className='text-[10px] font-medium text-gray-500 uppercase tracking-wider'>
+                Outstanding
+              </span>
               <CircleDollarSign className='h-3.5 w-3.5 text-amber-600' />
             </div>
             <p className='mt-1 text-base sm:text-lg font-bold text-gray-900 tabular-nums leading-none'>
               {formatNaira(creditSummary?.totalOutstanding ?? 0)}
             </p>
-            <span className='text-[10px] text-gray-400 block mt-1'>Unpaid balance</span>
+            <span className='text-[10px] text-gray-400 block mt-1'>
+              Unpaid balance
+            </span>
           </div>
 
           {/* Overdue */}
-          <div className={`rounded-xl p-3 border transition-colors ${
-            (creditSummary?.overdueAmount ?? 0) > 0
-              ? 'bg-rose-50/50 border-rose-200/70'
-              : 'bg-gray-50/70 border-gray-100/80'
-          }`}>
+          <div
+            className={`rounded-xl p-3 border transition-colors ${
+              (creditSummary?.overdueAmount ?? 0) > 0
+                ? 'bg-rose-50/50 border-rose-200/70'
+                : 'bg-gray-50/70 border-gray-100/80'
+            }`}
+          >
             <div className='flex items-center justify-between'>
-              <span className={`text-[10px] font-medium uppercase tracking-wider ${
-                (creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-700' : 'text-gray-500'
-              }`}>Overdue</span>
-              <Clock className={`h-3.5 w-3.5 ${(creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600' : 'text-gray-400'}`} />
+              <span
+                className={`text-[10px] font-medium uppercase tracking-wider ${
+                  (creditSummary?.overdueAmount ?? 0) > 0
+                    ? 'text-rose-700'
+                    : 'text-gray-500'
+                }`}
+              >
+                Overdue
+              </span>
+              <Clock
+                className={`h-3.5 w-3.5 ${(creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600' : 'text-gray-400'}`}
+              />
             </div>
-            <p className={`mt-1 text-base sm:text-lg font-bold tabular-nums leading-none ${
-              (creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600' : 'text-gray-900'
-            }`}>
+            <p
+              className={`mt-1 text-base sm:text-lg font-bold tabular-nums leading-none ${
+                (creditSummary?.overdueAmount ?? 0) > 0
+                  ? 'text-rose-600'
+                  : 'text-gray-900'
+              }`}
+            >
               {formatNaira(creditSummary?.overdueAmount ?? 0)}
             </p>
-            <span className={`text-[10px] block mt-1 ${
-              (creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600 font-medium' : 'text-gray-400'
-            }`}>
-              {(creditSummary?.overdueAmount ?? 0) > 0 ? 'Needs urgent collection' : 'None overdue'}
+            <span
+              className={`text-[10px] block mt-1 ${
+                (creditSummary?.overdueAmount ?? 0) > 0
+                  ? 'text-rose-600 font-medium'
+                  : 'text-gray-400'
+              }`}
+            >
+              {(creditSummary?.overdueAmount ?? 0) > 0
+                ? 'Needs urgent collection'
+                : 'None overdue'}
             </span>
           </div>
 
           {/* Recovered This Month */}
           <div className='rounded-xl bg-emerald-50/40 p-3 border border-emerald-100/70 hover:bg-emerald-50/60 transition-colors'>
             <div className='flex items-center justify-between'>
-              <span className='text-[10px] font-medium text-emerald-800 uppercase tracking-wider'>Recovered (Month)</span>
+              <span className='text-[10px] font-medium text-emerald-800 uppercase tracking-wider'>
+                Recovered (Month)
+              </span>
               <TrendingUp className='h-3.5 w-3.5 text-emerald-600' />
             </div>
             <p className='mt-1 text-base sm:text-lg font-bold text-emerald-600 tabular-nums leading-none'>
               {formatNaira(creditSummary?.recoveredThisMonth ?? 0)}
             </p>
-            <span className='text-[10px] text-emerald-700/80 block mt-1'>Tax recognized</span>
+            <span className='text-[10px] text-emerald-700/80 block mt-1'>
+              Tax recognized
+            </span>
           </div>
 
           {/* Active Debtors */}
           <div className='rounded-xl bg-indigo-50/40 p-3 border border-indigo-100/70 hover:bg-indigo-50/60 transition-colors'>
             <div className='flex items-center justify-between'>
-              <span className='text-[10px] font-medium text-indigo-800 uppercase tracking-wider'>Debtors</span>
+              <span className='text-[10px] font-medium text-indigo-800 uppercase tracking-wider'>
+                Debtors
+              </span>
               <Users className='h-3.5 w-3.5 text-indigo-600' />
             </div>
             <p className='mt-1 text-base sm:text-lg font-bold text-indigo-900 tabular-nums leading-none'>
               {creditSummary?.activeDebtors ?? 0}
             </p>
-            <span className='text-[10px] text-indigo-700/80 block mt-1'>Owing accounts</span>
+            <span className='text-[10px] text-indigo-700/80 block mt-1'>
+              Total owing customers
+            </span>
           </div>
         </div>
       </div>
 
       {/* ── Financial Overview & Cashflow Trends ─────── */}
       <SalesExpenseChart className='stagger-children' />
-
 
       {/* ── Current Month + Trends ──────────────────── */}
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-5 stagger-children'>
@@ -1003,15 +1108,21 @@ export default function Dashboard() {
                 <div className='relative h-24 w-24'>
                   <svg className='h-24 w-24 -rotate-90' viewBox='0 0 96 96'>
                     <defs>
-                      <linearGradient id='marginRingGrad' x1='0%' y1='0%' x2='100%' y2='100%'>
+                      <linearGradient
+                        id='marginRingGrad'
+                        x1='0%'
+                        y1='0%'
+                        x2='100%'
+                        y2='100%'
+                      >
                         <stop
                           offset='0%'
                           stopColor={
                             isOperatingLoss
                               ? '#f43f5e'
                               : currentMargin >= 20
-                              ? '#10b981'
-                              : '#f59e0b'
+                                ? '#10b981'
+                                : '#f59e0b'
                           }
                         />
                         <stop
@@ -1020,8 +1131,8 @@ export default function Dashboard() {
                             isOperatingLoss
                               ? '#e11d48'
                               : currentMargin >= 20
-                              ? '#059669'
-                              : '#d97706'
+                                ? '#059669'
+                                : '#d97706'
                           }
                         />
                       </linearGradient>
@@ -1046,7 +1157,9 @@ export default function Dashboard() {
                         strokeWidth='7'
                         strokeLinecap='round'
                         strokeDasharray='251.33'
-                        strokeDashoffset={251.33 - (clampedVisualMargin / 100) * 251.33}
+                        strokeDashoffset={
+                          251.33 - (clampedVisualMargin / 100) * 251.33
+                        }
                         className='transition-all duration-1000 ease-out'
                       />
                     )}
@@ -1058,7 +1171,9 @@ export default function Dashboard() {
                         isOperatingLoss ? 'text-rose-600' : 'text-gray-900'
                       }`}
                     >
-                      {currentSalesNum > 0 ? `${currentMargin.toFixed(0)}%` : '0%'}
+                      {currentSalesNum > 0
+                        ? `${currentMargin.toFixed(0)}%`
+                        : '0%'}
                     </span>
                     <span className='text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1.5 leading-none'>
                       Margin
@@ -1073,10 +1188,10 @@ export default function Dashboard() {
                       currentSalesNum === 0
                         ? 'bg-gray-50 text-gray-500 border-gray-200'
                         : isOperatingLoss
-                        ? 'bg-rose-50 text-rose-700 border-rose-200/80'
-                        : currentMargin >= 20
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                        : 'bg-amber-50 text-amber-700 border-amber-200/80'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                          : currentMargin >= 20
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                            : 'bg-amber-50 text-amber-700 border-amber-200/80'
                     }`}
                   >
                     <span
@@ -1084,19 +1199,19 @@ export default function Dashboard() {
                         currentSalesNum === 0
                           ? 'bg-gray-400'
                           : isOperatingLoss
-                          ? 'bg-rose-500'
-                          : currentMargin >= 20
-                          ? 'bg-emerald-500'
-                          : 'bg-amber-500'
+                            ? 'bg-rose-500'
+                            : currentMargin >= 20
+                              ? 'bg-emerald-500'
+                              : 'bg-amber-500'
                       }`}
                     />
                     {currentSalesNum === 0
                       ? 'No sales recorded'
                       : isOperatingLoss
-                      ? 'Operating Loss'
-                      : currentMargin >= 20
-                      ? 'Healthy Margin (≥20%)'
-                      : 'Below Target (<20%)'}
+                        ? 'Operating Loss'
+                        : currentMargin >= 20
+                          ? 'Healthy Margin (≥20%)'
+                          : 'Below Target (<20%)'}
                   </span>
                 </div>
               </div>
@@ -1105,12 +1220,16 @@ export default function Dashboard() {
                 <MetricRow
                   label='Sales'
                   value={formatNaira(Number(currentMonth.totalSales))}
-                  icon={<ArrowUpRight className='h-3.5 w-3.5 text-emerald-500' />}
+                  icon={
+                    <ArrowUpRight className='h-3.5 w-3.5 text-emerald-500' />
+                  }
                 />
                 <MetricRow
                   label='Expenses'
                   value={formatNaira(Number(currentMonth.totalExpenses))}
-                  icon={<ArrowDownRight className='h-3.5 w-3.5 text-amber-500' />}
+                  icon={
+                    <ArrowDownRight className='h-3.5 w-3.5 text-amber-500' />
+                  }
                 />
                 <MetricRow
                   label={t('kpis.gross_profit')}
@@ -1123,7 +1242,9 @@ export default function Dashboard() {
                 <MetricRow
                   label={`Tax @ ${Number(currentMonth.taxRate)}%`}
                   value={formatNaira(Number(currentMonth.taxPayable))}
-                  icon={<CircleDollarSign className='h-3.5 w-3.5 text-rose-500' />}
+                  icon={
+                    <CircleDollarSign className='h-3.5 w-3.5 text-rose-500' />
+                  }
                   bold
                 />
               </div>
@@ -1155,7 +1276,11 @@ export default function Dashboard() {
                 Calculate your tax to see live metrics here
               </p>
               <Link to='/tax' className='mt-4 inline-block'>
-                <Button size='sm' variant='secondary' className='text-xs rounded-lg'>
+                <Button
+                  size='sm'
+                  variant='secondary'
+                  className='text-xs rounded-lg'
+                >
                   Calculate Tax
                 </Button>
               </Link>
@@ -1183,10 +1308,15 @@ export default function Dashboard() {
                   <thead>
                     <tr className='text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2.5'>
                       <th className='pb-2.5 text-left font-bold'>Month</th>
-                      <th className='pb-2.5 text-left pl-3 font-bold' style={{ width: '32%' }}>
+                      <th
+                        className='pb-2.5 text-left pl-3 font-bold'
+                        style={{ width: '32%' }}
+                      >
                         Sales Volume
                       </th>
-                      <th className='pb-2.5 text-right font-bold'>Tax Payable</th>
+                      <th className='pb-2.5 text-right font-bold'>
+                        Tax Payable
+                      </th>
                       <th className='pb-2.5 text-right font-bold'>Margin</th>
                       <th className='pb-2.5 text-right font-bold'>Status</th>
                     </tr>
@@ -1231,8 +1361,8 @@ export default function Dashboard() {
                                   marginNum >= 20
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                                     : marginNum > 0
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200/80'
-                                    : 'bg-rose-50 text-rose-700 border-rose-200/80'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                                      : 'bg-rose-50 text-rose-700 border-rose-200/80'
                                 }`}
                               >
                                 <span
@@ -1240,8 +1370,8 @@ export default function Dashboard() {
                                     marginNum >= 20
                                       ? 'bg-emerald-500'
                                       : marginNum > 0
-                                      ? 'bg-amber-500'
-                                      : 'bg-rose-500'
+                                        ? 'bg-amber-500'
+                                        : 'bg-rose-500'
                                   }`}
                                 />
                                 {marginNum.toFixed(1)}%
@@ -1260,7 +1390,9 @@ export default function Dashboard() {
           ) : (
             <div className='px-5 py-8 text-center'>
               <Activity className='mx-auto h-6 w-6 text-gray-300' />
-              <p className='mt-2 text-sm font-medium text-gray-600'>No trend data yet</p>
+              <p className='mt-2 text-sm font-medium text-gray-600'>
+                No trend data yet
+              </p>
               <p className='text-xs text-gray-400 mt-1 font-body'>
                 Your monthly overview will appear here
               </p>
@@ -1404,7 +1536,9 @@ export default function Dashboard() {
               <Users className='h-3.5 w-3.5' />
             </div>
             <div>
-              <h2 className='text-[13px] font-semibold text-gray-900'>Recent Debtors</h2>
+              <h2 className='text-[13px] font-semibold text-gray-900'>
+                Recent Debtors
+              </h2>
             </div>
           </div>
           <Link
@@ -1418,7 +1552,10 @@ export default function Dashboard() {
         {recentCredits.length > 0 ? (
           <div className='divide-y divide-gray-50'>
             {recentCredits.slice(0, 5).map((credit) => {
-              const dueStatus = getCreditDueStatus(credit.dueDate, credit.status);
+              const dueStatus = getCreditDueStatus(
+                credit.dueDate,
+                credit.status,
+              );
               const initials =
                 credit.customerName
                   .split(' ')
@@ -1443,10 +1580,16 @@ export default function Dashboard() {
                       </p>
                       <div className='flex items-center gap-1.5 mt-0.5'>
                         {credit.customerPhone && (
-                          <span className='text-[11px] text-gray-400'>{credit.customerPhone}</span>
+                          <span className='text-[11px] text-gray-400'>
+                            {credit.customerPhone}
+                          </span>
                         )}
-                        {credit.customerPhone && <span className='h-0.5 w-0.5 rounded-full bg-gray-300' />}
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.2 rounded border ${dueStatus.color}`}>
+                        {credit.customerPhone && (
+                          <span className='h-0.5 w-0.5 rounded-full bg-gray-300' />
+                        )}
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.2 rounded border ${dueStatus.color}`}
+                        >
                           <Clock className='h-2.5 w-2.5' />
                           {dueStatus.label}
                         </span>
@@ -1459,8 +1602,8 @@ export default function Dashboard() {
                         credit.status === 'paid'
                           ? 'text-gray-400 line-through'
                           : credit.status === 'overdue'
-                          ? 'text-rose-600'
-                          : 'text-gray-900'
+                            ? 'text-rose-600'
+                            : 'text-gray-900'
                       }`}
                     >
                       {formatNaira(Number(credit.balance))}
@@ -1527,7 +1670,10 @@ export default function Dashboard() {
                         <div className='flex items-center gap-2'>
                           <span>{formatMonth(report.taxMonth)}</span>
                           {report.isFinalized && (
-                            <span title='Finalized report' className='inline-flex'>
+                            <span
+                              title='Finalized report'
+                              className='inline-flex'
+                            >
                               <CheckCircle2 className='h-3.5 w-3.5 text-emerald-500' />
                             </span>
                           )}
@@ -1569,7 +1715,9 @@ export default function Dashboard() {
           <div className='flex items-center gap-1.5 text-gray-400'>
             <Zap className='h-3 w-3 text-gray-300' />
             <p className='text-[11px] font-medium whitespace-nowrap'>
-              {dashboard.taxConfig.authority} · {dashboard.taxConfig.currentRate}% · {dashboard.taxConfig.currency}
+              {dashboard.taxConfig.authority} ·{' '}
+              {dashboard.taxConfig.currentRate}% ·{' '}
+              {dashboard.taxConfig.currency}
             </p>
           </div>
           <div className='h-px flex-1 bg-gray-100' />
@@ -1581,18 +1729,16 @@ export default function Dashboard() {
         isOpen={showPinModal}
         onClose={() => setShowPinModal(false)}
         onSuccess={handleRevealBvn}
-        title="Reveal BVN"
-        subtitle="Enter your 4-digit transaction PIN to view your full BVN."
+        title='Reveal BVN'
+        subtitle='Enter your 4-digit transaction PIN to view your full BVN.'
       />
     </div>
   );
 }
 
-
 // ─── Sub-components ─────────────────────────────────────────
 
 function MetricRow({
-
   label,
   value,
   icon,

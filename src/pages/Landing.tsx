@@ -747,10 +747,10 @@ export default function Landing() {
             {/* Headline with Animated Gradient Flow */}
             <ScrollReveal delay={100}>
               <h1 className='relative text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15] sm:leading-[1.1]'>
-                Stop stressing about{' '}
+                The Toolkit for African{' '}
                 <span className='relative inline-block mt-1 sm:mt-0 group'>
                   <span className='bg-gradient-to-r from-primary-700 via-primary-500 to-purple-500 bg-clip-text text-transparent animate-gradient'>
-                    business taxes
+                    Business Owners
                   </span>
                   <svg
                     className='absolute -bottom-2 left-0 w-full'

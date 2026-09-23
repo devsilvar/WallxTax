@@ -734,6 +734,17 @@ export interface CreditPayment {
   createdAt: string;
 }
 
+export interface CreditLineItem {
+  id?: string;
+  creditId?: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal?: number;
+  sortOrder?: number;
+  createdAt?: string;
+}
+
 export interface CustomerCredit {
   id: string;
   businessId: string;
@@ -757,6 +768,7 @@ export interface CustomerCredit {
   createdAt: string;
   updatedAt: string;
   payments?: CreditPayment[];
+  items?: CreditLineItem[];
 }
 
 export interface CreditSummary {
@@ -770,8 +782,9 @@ export interface CreateCreditPayload {
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;
-  description: string;
-  totalAmount: number;
+  description?: string;
+  totalAmount?: number;
+  items?: Array<{ name: string; quantity: number; unitPrice: number }>;
   issueDate: string;
   dueDate: string;
   reminderDate?: string;
@@ -789,6 +802,9 @@ export interface RecordCreditPaymentPayload {
 }
 
 export interface UpdateCreditPayload {
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
   description?: string;
   dueDate?: string;
   reminderDate?: string;
