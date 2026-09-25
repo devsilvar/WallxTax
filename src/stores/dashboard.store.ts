@@ -24,6 +24,7 @@ export type InvalidationReason =
   | 'expense_updated' 
   | 'expense_deleted'
   | 'invoice_paid'
+  | 'invoice_dva_reconciled'
   | 'sales_imported'
   | 'tax_calculated'
   | 'tax_finalized'

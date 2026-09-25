@@ -25,6 +25,7 @@ import {
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CustomerCredit, CreditStatus } from '@/types/index.ts';
@@ -157,6 +158,7 @@ export default function Debtors() {
   const summary = useCreditStore((s) => s.summary);
   const pagination = useCreditStore((s) => s.pagination);
   const listLoading = useCreditStore((s) => s.listLoading);
+  const listError = useCreditStore((s) => s.listError);
   const fetchCredits = useCreditStore((s) => s.fetchCredits);
   const fetchSummary = useCreditStore((s) => s.fetchSummary);
   const sendWhatsApp = useCreditStore((s) => s.sendWhatsApp);
@@ -188,7 +190,7 @@ export default function Debtors() {
   }, [search]);
 
   // Load list & summary
-  useEffect(() => {
+  const loadCredits = () => {
     if (!biz) return;
     fetchCredits(biz.id, {
       page,
@@ -197,6 +199,11 @@ export default function Debtors() {
       search: debouncedSearch || undefined,
     });
     fetchSummary(biz.id);
+  };
+
+  useEffect(() => {
+    loadCredits();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [biz, page, statusFilter, debouncedSearch, fetchCredits, fetchSummary]);
 
   const handleWhatsAppClick = async (credit: CustomerCredit) => {
@@ -432,7 +439,9 @@ export default function Debtors() {
 
       {/* ── Debtors Ledger Table ─────────────────────────────── */}
       <Card className="overflow-hidden border border-gray-200/80 shadow-xs bg-white">
-        {listLoading ? (
+        {listError ? (
+          <ErrorState message={listError} onRetry={loadCredits} className="border-0 shadow-none" />
+        ) : listLoading ? (
           <div className="p-8 space-y-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="animate-pulse flex items-center justify-between py-3 border-b border-gray-100 last:border-0">

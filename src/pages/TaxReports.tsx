@@ -29,11 +29,13 @@ import {
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
+import EmptyState from '@/components/ui/EmptyState.tsx';
 import PaymentConfirmationModal from '@/components/PaymentConfirmationModal.tsx';
 import FinalizeConfirmationModal from '@/components/FinalizeConfirmationModal.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
-import api from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxReport, Pagination } from '@/types/index.ts';
 
@@ -139,12 +141,14 @@ function ChartSkeleton() {
 // ─── Reports List (previously the whole page) ───────────────
 
 function TaxReportsList({ highlightedReportId }: { highlightedReportId: string | null }) {
+  const fetchReportsSeqRef = useRef(0);
   const biz = useBusinessStore((s) => s.activeBusiness);
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
   const [reports, setReports] = useState<TaxReport[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -223,17 +227,26 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
 
   const fetchReports = () => {
     if (!biz) return;
+    const seq = ++fetchReportsSeqRef.current;
     setIsLoading(true);
+    setError(null);
     const params: Record<string, any> = { page, limit: 12 };
     if (filterStatus && filterStatus !== 'all') params.status = filterStatus;
     if (filterYear && filterYear !== 'all') params.year = Number(filterYear);
 
     api.get(`${taxPath}/reports`, { params })
       .then((r) => {
+        if (seq !== fetchReportsSeqRef.current) return; // a newer fetchReports call superseded this one
         setReports(r.data.data);
         setPagination(r.data.pagination);
       })
-      .finally(() => setIsLoading(false));
+      .catch((e) => {
+        if (seq !== fetchReportsSeqRef.current) return;
+        setError(getErrorMessage(e, 'Failed to load tax reports.'));
+      })
+      .finally(() => {
+        if (seq === fetchReportsSeqRef.current) setIsLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -422,13 +435,12 @@ function TaxReportsList({ highlightedReportId }: { highlightedReportId: string |
         </div>
       )}
 
-      {isLoading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={fetchReports} />
+      ) : isLoading ? (
         <div className="py-16 text-center text-gray-400">Loading tax reports...</div>
       ) : reports.length === 0 ? (
-        <Card className="py-12 text-center">
-          <Calculator className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">No tax reports found. Calculate your first tax report above.</p>
-        </Card>
+        <EmptyState icon={Calculator} message="No tax reports found. Calculate your first tax report above." />
       ) : (
         <div className="space-y-2.5">
           {reports.map((r) => {

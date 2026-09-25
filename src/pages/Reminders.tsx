@@ -3,8 +3,10 @@ import { Bell, Trash2, Check, ChevronLeft, ChevronRight, RefreshCw } from 'lucid
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import { CardListSkeleton } from '@/components/ui/Skeleton.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
+import EmptyState from '@/components/ui/EmptyState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
-import api from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { Pagination, Reminder } from '@/types/index.ts';
 
@@ -42,6 +44,7 @@ export default function Reminders() {
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
   const basePath = biz ? `/businesses/${biz.id}/reminders` : '';
@@ -49,8 +52,10 @@ export default function Reminders() {
   const fetchReminders = () => {
     if (!biz) return;
     setIsLoading(true);
+    setError(null);
     api.get(basePath, { params: { page, limit: 15 } })
       .then((r) => { setReminders(r.data.data); setPagination(r.data.pagination); })
+      .catch((e) => setError(getErrorMessage(e, 'Failed to load reminders.')))
       .finally(() => setIsLoading(false));
   };
 
@@ -117,13 +122,12 @@ export default function Reminders() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={fetchReminders} />
+      ) : isLoading ? (
         <CardListSkeleton rows={5} />
       ) : reminders.length === 0 ? (
-        <Card className="py-12 text-center">
-          <Bell className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">No reminders. You're all caught up!</p>
-        </Card>
+        <EmptyState icon={Bell} message="No reminders. You're all caught up!" />
       ) : (
         <div className="space-y-3">
           {reminders.map((r) => (

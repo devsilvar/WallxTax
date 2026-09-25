@@ -15,12 +15,14 @@ import {
   Phone,
   Receipt,
   Smartphone,
+  Landmark,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import LinkDvaInvoiceModal from '@/components/invoices/LinkDvaInvoiceModal.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { InvoiceStatus, InvoicePaymentMethod } from '@/types/index.ts';
@@ -93,6 +95,7 @@ export default function InvoiceDetail() {
   const [payOpen, setPayOpen] = useState(false);
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
   const [payMethod, setPayMethod] = useState<InvoicePaymentMethod | ''>('');
+  const [dvaMatchOpen, setDvaMatchOpen] = useState(false);
 
   // Cancel modal state
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -381,9 +384,19 @@ export default function InvoiceDetail() {
               </Button>
             )}
             {canMarkPaid && (
-              <Button size='sm' onClick={() => setPayOpen(true)}>
-                <CheckCircle2 className='h-4 w-4' /> Mark as paid
-              </Button>
+              <>
+                <Button size='sm' onClick={() => setPayOpen(true)}>
+                  <CheckCircle2 className='h-4 w-4' /> Mark as paid
+                </Button>
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  onClick={() => setDvaMatchOpen(true)}
+                  title='Match an incoming wallet (DVA) bank transfer directly to this invoice'
+                >
+                  <Landmark className='h-4 w-4' /> Match bank transfer
+                </Button>
+              </>
             )}
             {canCancel && !canSend && (
               <Button
@@ -730,6 +743,18 @@ export default function InvoiceDetail() {
           </div>
         </Modal>
       )}
+
+      {/* ─── Match DVA bank transfer modal ─────────── */}
+      <LinkDvaInvoiceModal
+        businessId={biz.id}
+        invoice={inv}
+        isOpen={dvaMatchOpen}
+        onClose={() => setDvaMatchOpen(false)}
+        onSuccess={() => {
+          setDvaMatchOpen(false);
+          fetchInvoice(biz.id, inv.id);
+        }}
+      />
     </div>
   );
 }

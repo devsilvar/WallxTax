@@ -93,24 +93,21 @@ export function useAccountData(
         customerHint: t.customerHint ?? undefined,
       }));
       setTransactions(dvaTxns);
-      const now = new Date();
-      const thisMonth = now.getMonth();
-      const thisYear = now.getFullYear();
-      const totalBalance = dvaTxns
-        .filter((t) => t.status === 'completed')
-        .reduce((sum, t) => sum + t.amount, 0);
-      const receivedThisMonth = dvaTxns
-        .filter((t) => t.status === 'completed')
-        .filter((t) => {
-          const d = new Date(t.date);
-          return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-        })
-        .reduce((sum, t) => sum + t.amount, 0);
-      setMoneyIn({ totalBalance, receivedThisMonth });
     } catch (err) {
       console.error('DVA transaction fetch error:', err);
     } finally {
       setLoadingTransactions(false);
+    }
+  }, [bizId]);
+
+  const fetchAccountSummary = useCallback(async () => {
+    if (!bizId) return;
+    try {
+      const res = await api.get(`/businesses/${bizId}/dva/account-summary`);
+      const { ledgerBalance, receivedThisMonth } = res.data.data;
+      setMoneyIn({ totalBalance: Number(ledgerBalance), receivedThisMonth: Number(receivedThisMonth) });
+    } catch (err) {
+      console.error('Account summary fetch error:', err);
     }
   }, [bizId]);
 
@@ -119,7 +116,7 @@ export function useAccountData(
       if (!bizId) return;
       setIsRefreshing(true);
       try {
-        const tasks: Promise<any>[] = [fetchDVA(), fetchTransactions()];
+        const tasks: Promise<any>[] = [fetchDVA(), fetchTransactions(), fetchAccountSummary()];
         if (fetchSettlementPreview) tasks.push(fetchSettlementPreview(bizId));
         if (fetchPayoutHistory) {
           tasks.push(
@@ -138,7 +135,7 @@ export function useAccountData(
         setIsRefreshing(false);
       }
     },
-    [bizId, fetchBusinesses, fetchDVA, fetchTransactions, fetchSettlementPreview, fetchPayoutHistory, payoutStatusFilter, payoutSearch]
+    [bizId, fetchBusinesses, fetchDVA, fetchTransactions, fetchAccountSummary, fetchSettlementPreview, fetchPayoutHistory, payoutStatusFilter, payoutSearch]
   );
 
   useEffect(() => {

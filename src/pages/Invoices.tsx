@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
@@ -14,6 +14,8 @@ import {
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
+import EmptyState from '@/components/ui/EmptyState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { InvoiceStatus } from '@/types/index.ts';
@@ -99,17 +101,22 @@ export default function Invoices() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  useEffect(() => {
-    if (!biz) return;
-    fetchInvoices(biz.id, {
+  const currentQuery = useMemo(
+    () => ({
       page,
       limit: 15,
       status: filterStatus || undefined,
       search: debouncedSearch || undefined,
       startDate: filterStartDate || undefined,
       endDate: filterEndDate || undefined,
-    });
-  }, [biz, page, filterStatus, filterStartDate, filterEndDate, debouncedSearch, fetchInvoices]);
+    }),
+    [page, filterStatus, debouncedSearch, filterStartDate, filterEndDate]
+  );
+
+  useEffect(() => {
+    if (!biz) return;
+    fetchInvoices(biz.id, currentQuery);
+  }, [biz, currentQuery, fetchInvoices]);
 
   const clearFilters = () => {
     setFilterStatus('');
@@ -248,7 +255,13 @@ export default function Invoices() {
 
       {/* Error state */}
       {listError && (
-        <Card className="border-red-200 bg-red-50 py-4 text-sm text-red-700">{listError}</Card>
+        <ErrorState
+          message={listError}
+          onRetry={() => {
+            if (biz) fetchInvoices(biz.id, currentQuery, true);
+          }}
+          className="border-0 shadow-none"
+        />
       )}
 
       {/* Loading */}
@@ -257,12 +270,11 @@ export default function Invoices() {
       )}
 
       {/* Empty */}
-      {!listLoading && invoices.length === 0 && (
-        <Card className="py-12 text-center">
-          <FileText className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">
-            {hasActiveFilters ? 'No invoices match your filters.' : 'No invoices yet.'}
-          </p>
+      {!listError && !listLoading && invoices.length === 0 && (
+        <EmptyState
+          icon={FileText}
+          message={hasActiveFilters ? 'No invoices match your filters.' : 'No invoices yet.'}
+        >
           {!hasActiveFilters && (
             <Button
               variant="secondary"
@@ -273,7 +285,7 @@ export default function Invoices() {
               <Plus className="h-4 w-4" /> Create your first invoice
             </Button>
           )}
-        </Card>
+        </EmptyState>
       )}
 
       {/* Table (desktop) */}

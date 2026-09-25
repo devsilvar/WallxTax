@@ -86,7 +86,7 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
       />
 
       {/* Modal Dialog */}
-      <div className="relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150">
+      <form onSubmit={handleSubmit} className="relative z-10 w-full max-w-lg max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150">
         {/* Pinned Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 shrink-0 bg-gray-50/50">
           <div className="flex items-center gap-2.5">
@@ -117,7 +117,7 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
         </div>
 
         {/* Scrollable Form Body */}
-        <form id="create-business-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <Input
             label="Business Name *"
             value={form.businessName}
@@ -142,6 +142,7 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
               value={form.businessType}
               onChange={(e) => update('businessType', e.target.value)}
               className="block w-full rounded-none border border-gray-300 px-3 py-2 text-xs shadow-sm transition-colors focus:outline-none focus:border-gray-900 focus:ring-0"
+              required
             >
               {businessTypes.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -183,7 +184,7 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
               className="rounded-none"
             />
           </div>
-        </form>
+        </div>
 
         {/* Pinned Footer */}
         <div className="flex items-center justify-end gap-2.5 border-t border-gray-200 bg-gray-50/80 px-5 py-3 shrink-0">
@@ -199,14 +200,13 @@ export default function CreateBusinessModal({ isOpen, onClose, required }: Creat
           )}
           <Button
             type="submit"
-            form="create-business-form"
             isLoading={isLoading}
             className="rounded-none text-xs"
           >
             Create Business
           </Button>
         </div>
-      </div>
+      </form>
     </div>,
     document.body
   );

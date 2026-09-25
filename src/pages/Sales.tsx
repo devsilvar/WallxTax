@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Receipt,
-  Trash2,
+  // Trash2 removed — delete buttons disabled per business rule
   Pencil,
   ChevronLeft,
   ChevronRight,
@@ -14,18 +14,20 @@ import {
   Upload,
   CalendarDays,
   FileText,
+  Download,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
 import AddSaleModal from '@/components/AddSaleModal.tsx';
-import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
+import ReportExportModal from '@/components/ReportExportModal.tsx';
 import Card from '@/components/ui/Card.tsx';
 import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel.tsx';
 
 import Button from '@/components/ui/Button.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
+import EmptyState from '@/components/ui/EmptyState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
-import { useDashboardEvents } from '@/stores/dashboard.store.ts';
-import api from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination } from '@/types/index.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
@@ -137,7 +139,9 @@ const SOURCE_COLORS: Record<string, string> = {
 
 export default function Sales() {
   const biz = useBusinessStore((s) => s.activeBusiness);
-  const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
+  const fetchSalesSeqRef = useRef(0);
+  const fetchSummarySeqRef = useRef(0);
+  const fetchDailySeqRef = useRef(0);
   const [sales, setSales] = useState<SalesTransaction[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
@@ -147,10 +151,11 @@ export default function Sales() {
   const [filterEndDate, setFilterEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [editSale, setEditSale] = useState<SalesTransaction | null>(null);
-  const [showOverview, setShowOverview] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetailData | null>(null);
 
   // Summary state
@@ -186,7 +191,9 @@ export default function Sales() {
 
   const fetchSales = () => {
     if (!biz) return;
+    const seq = ++fetchSalesSeqRef.current;
     setIsLoading(true);
+    setError(null);
     const params: Record<string, string | number> = { page, limit: 15 };
     if (filterSource) params.source = filterSource;
     if (filterStatus) params.status = filterStatus;
@@ -195,22 +202,38 @@ export default function Sales() {
     api
       .get(basePath, { params })
       .then((r) => {
+        if (seq !== fetchSalesSeqRef.current) return; // a newer fetchSales call superseded this one
         setSales(r.data.data);
         setPagination(r.data.pagination);
       })
-      .finally(() => setIsLoading(false));
+      .catch((e) => {
+        if (seq !== fetchSalesSeqRef.current) return;
+        setError(getErrorMessage(e, 'Failed to load sales.'));
+      })
+      .finally(() => {
+        if (seq === fetchSalesSeqRef.current) setIsLoading(false);
+      });
   };
 
   const fetchSummary = () => {
     if (!biz) return;
+    const seq = ++fetchSummarySeqRef.current;
     setSummaryLoading(true);
     api
       .get(`${basePath}/summary`, {
         params: { month: summaryMonth, year: summaryYear },
       })
-      .then((r) => setSummary(r.data.data))
-      .catch(() => setSummary(null))
-      .finally(() => setSummaryLoading(false));
+      .then((r) => {
+        if (seq !== fetchSummarySeqRef.current) return;
+        setSummary(r.data.data);
+      })
+      .catch(() => {
+        if (seq !== fetchSummarySeqRef.current) return;
+        setSummary(null);
+      })
+      .finally(() => {
+        if (seq === fetchSummarySeqRef.current) setSummaryLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -229,12 +252,21 @@ export default function Sales() {
 
   const fetchDaily = () => {
     if (!biz) return;
+    const seq = ++fetchDailySeqRef.current;
     setDailyLoading(true);
     api
       .get(`${basePath}/daily`, { params: { date: dailyDate } })
-      .then((r) => setDaily(r.data.data))
-      .catch(() => setDaily(null))
-      .finally(() => setDailyLoading(false));
+      .then((r) => {
+        if (seq !== fetchDailySeqRef.current) return;
+        setDaily(r.data.data);
+      })
+      .catch(() => {
+        if (seq !== fetchDailySeqRef.current) return;
+        setDaily(null);
+      })
+      .finally(() => {
+        if (seq === fetchDailySeqRef.current) setDailyLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -278,20 +310,21 @@ export default function Sales() {
     fetchDaily();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this sale?')) return;
-    try {
-      await api.delete(`${basePath}/${id}`);
-      toast.success('Sale deleted');
-      invalidateDashboard('sale_deleted');
-      fetchSales();
-      fetchSummary();
-      fetchDaily();
-    } catch (err: unknown) {
-      const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
-      toast.error(apiErr?.message || 'Failed');
-    }
-  };
+  // handleDelete disabled — sales entries are permanent per business rule
+  // const handleDelete = async (id: string) => {
+  //   if (!confirm('Delete this sale?')) return;
+  //   try {
+  //     await api.delete(`${basePath}/${id}`);
+  //     toast.success('Sale deleted');
+  //     invalidateDashboard('sale_deleted');
+  //     fetchSales();
+  //     fetchSummary();
+  //     fetchDaily();
+  //   } catch (err: unknown) {
+  //     const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
+  //     toast.error(apiErr?.message || 'Failed');
+  //   }
+  // };
 
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
 
@@ -380,11 +413,8 @@ export default function Sales() {
           </p>
         </div>
         <div className='flex flex-wrap gap-2 self-start sm:self-auto'>
-          <Button
-            variant={showOverview ? 'primary' : 'secondary'}
-            onClick={() => setShowOverview(!showOverview)}
-          >
-            <TrendingUp className='h-4 w-4' /> {showOverview ? 'Hide Trends' : 'Trends & Insights'}
+          <Button variant='secondary' onClick={() => setShowReportModal(true)}>
+            <Download className='h-4 w-4' /> PDF Report
           </Button>
           <Button variant='secondary' onClick={() => setShowImport(true)}>
             <Upload className='h-4 w-4' /> Import from Excel
@@ -399,11 +429,6 @@ export default function Sales() {
           </Button>
         </div>
       </div>
-
-      {/* Financial Overview & Cashflow Trends (Collapsible) */}
-      {showOverview && (
-        <SalesExpenseChart className='animate-scale-in' />
-      )}
 
       {/* Daily / Monthly tabs — default is Daily (no URL param) */}
       <div className='flex w-fit gap-1 rounded-lg bg-gray-100 p-1'>
@@ -647,18 +672,15 @@ export default function Sales() {
       </div>
 
       {/* Table */}
-      {isLoading && <TableSkeleton rows={6} columns={6} />}
+      {error && <ErrorState message={error} onRetry={fetchSales} />}
 
-      {!isLoading && sales.length === 0 && (
-        <Card className='py-12 text-center'>
-          <Receipt className='mx-auto h-10 w-10 text-gray-300' />
-          <p className='mt-3 font-body text-sm text-gray-400'>
-            No sales found.
-          </p>
-        </Card>
+      {!error && isLoading && <TableSkeleton rows={6} columns={6} />}
+
+      {!error && !isLoading && sales.length === 0 && (
+        <EmptyState icon={Receipt} message='No sales found.' />
       )}
 
-      {!isLoading && sales.length > 0 && (
+      {!error && !isLoading && sales.length > 0 && (
         <>
           {/* Desktop table */}
           <div className='hidden md:block rounded-md border border-gray-200 bg-white shadow-sm overflow-x-auto'>
@@ -717,6 +739,7 @@ export default function Sales() {
                         >
                           <Pencil className='h-4 w-4' />
                         </button>
+                        {/* Delete button disabled — sales entries are permanent
                         <button
                           onClick={() => handleDelete(s.id)}
                           className='rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500'
@@ -724,6 +747,7 @@ export default function Sales() {
                         >
                           <Trash2 className='h-4 w-4' />
                         </button>
+                        */}
                       </div>
                     </td>
                   </tr>
@@ -779,6 +803,7 @@ export default function Sales() {
                     >
                       <Pencil className='h-4 w-4' />
                     </button>
+                    {/* Delete button disabled — sales entries are permanent
                     <button
                       onClick={() => handleDelete(s.id)}
                       className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500'
@@ -786,6 +811,7 @@ export default function Sales() {
                     >
                       <Trash2 className='h-4 w-4' />
                     </button>
+                    */}
                   </div>
                 </div>
               </Card>
@@ -965,6 +991,7 @@ export default function Sales() {
                               >
                                 <Pencil className='h-4 w-4' />
                               </button>
+                              {/* Delete button disabled — sales entries are permanent
                               <button
                                 onClick={() => handleDelete(t.id)}
                                 className='rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500'
@@ -972,6 +999,7 @@ export default function Sales() {
                               >
                                 <Trash2 className='h-4 w-4' />
                               </button>
+                              */}
                             </div>
                           </td>
                         </tr>
@@ -1031,6 +1059,17 @@ export default function Sales() {
           fetchDaily();
         }}
       />
+
+      {/* Sales PDF Report Export Modal */}
+      {biz && (
+        <ReportExportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          type="sales"
+          businessId={biz.id}
+          businessName={biz.businessName}
+        />
+      )}
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (

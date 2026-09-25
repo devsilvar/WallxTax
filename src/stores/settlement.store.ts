@@ -120,6 +120,9 @@ interface SettlementStore {
   }) => Promise<{ accountName: string; accountNumber: string; bankCode: string } | null>;
 }
 
+let fetchPreviewSeq = 0;
+let fetchHistorySeq = 0;
+
 export const useSettlementStore = create<SettlementStore>((set, get) => ({
   preview: null,
   regulatory: null,
@@ -137,21 +140,29 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
   },
 
   fetchPreview: async (businessId: string) => {
+    const seq = ++fetchPreviewSeq;
     set({ loadingPreview: true });
     try {
       const res = await api.get(`/businesses/${businessId}/settlement/preview`);
+      if (seq !== fetchPreviewSeq) return; // a newer fetchPreview call superseded this one
       set({
         preview: res.data.data,
         regulatory: res.data.meta?.regulatory ?? null,
       });
     } catch (err) {
+      if (seq !== fetchPreviewSeq) return;
       toast.error(getErrorMessage(err, 'Failed to fetch settlement details'));
     } finally {
-      set({ loadingPreview: false });
+      // loadingPreview must always drop to false for the CURRENT request,
+      // even if this call was superseded — otherwise a stale in-flight
+      // request that finishes after being superseded could leave loading
+      // stuck true forever. Only skip if a newer call already flipped it.
+      if (seq === fetchPreviewSeq) set({ loadingPreview: false });
     }
   },
 
   fetchHistory: async (businessId: string, page = 1, status?: string, search?: string) => {
+    const seq = ++fetchHistorySeq;
     set({ loadingHistory: true });
     try {
       const res = await api.get(`/businesses/${businessId}/settlement/history`, {
@@ -162,14 +173,16 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
           ...(search && search.trim() ? { search: search.trim() } : {}),
         },
       });
+      if (seq !== fetchHistorySeq) return; // a newer fetchHistory call superseded this one
       set({
         history: res.data.data,
         pagination: res.data.pagination || { page, limit: 10, total: res.data.data.length, totalPages: 1 },
       });
     } catch (err) {
+      if (seq !== fetchHistorySeq) return;
       toast.error(getErrorMessage(err, 'Failed to fetch payout history'));
     } finally {
-      set({ loadingHistory: false });
+      if (seq === fetchHistorySeq) set({ loadingHistory: false });
     }
   },
 

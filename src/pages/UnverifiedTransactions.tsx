@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2, BookOpen } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2, BookOpen, FileText, Search, RefreshCw, ShieldCheck } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
+import { useInvoiceStore } from '@/stores/invoice.store';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
-import type { SalesTransaction, Pagination } from '@/types';
+import type { SalesTransaction, Pagination, Invoice } from '@/types';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt';
 
 interface TransactionClassification {
@@ -19,8 +20,8 @@ interface TransactionClassification {
   description: string | null;
 }
 
-type WizardStep = 'primary' | 'revenue' | 'non_revenue' | 'all';
-type PrimaryChoice = 'business_sale' | 'not_sale' | 'not_sure';
+type WizardStep = 'primary' | 'revenue' | 'non_revenue' | 'all' | 'match_invoice';
+type PrimaryChoice = 'business_sale' | 'not_sale' | 'not_sure' | 'invoice_payment';
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -53,6 +54,12 @@ export default function UnverifiedTransactions() {
   const [selectedClassification, setSelectedClassification] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
   const [description, setDescription] = useState('');
+
+  // Invoice matching state
+  const [outstandingInvoices, setOutstandingInvoices] = useState<Invoice[]>([]);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
   
   const [classifications, setClassifications] = useState<TransactionClassification[]>([]);
   const [loadingClassifications, setLoadingClassifications] = useState(false);
@@ -156,12 +163,69 @@ export default function UnverifiedTransactions() {
     }
   }
 
+  async function fetchOutstandingInvoices() {
+    if (!biz) return;
+    setLoadingInvoices(true);
+    try {
+      const [sentRes, overdueRes] = await Promise.all([
+        api.get(`/businesses/${biz.id}/invoices`, { params: { status: 'sent', limit: 50 } }),
+        api.get(`/businesses/${biz.id}/invoices`, { params: { status: 'overdue', limit: 50 } }),
+      ]);
+      const combined = [
+        ...(sentRes.data?.data ?? []),
+        ...(overdueRes.data?.data ?? []),
+      ];
+      setOutstandingInvoices(combined);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load outstanding invoices');
+    } finally {
+      setLoadingInvoices(false);
+    }
+  }
+
+  async function handleInvoiceReconcile() {
+    if (!biz || !verifyModal || !selectedInvoiceId) {
+      toast.error('Please select an invoice to match');
+      return;
+    }
+
+    const targetInvoice = outstandingInvoices.find((i) => i.id === selectedInvoiceId);
+    const transferAmount = Number(verifyModal.transaction.amount);
+    const invoiceTotal = targetInvoice ? Number(targetInvoice.total) : 0;
+
+    if (Math.abs(transferAmount - invoiceTotal) > 0.01) {
+      toast.error(
+        `Transfer amount (${formatNaira(transferAmount)}) does not match invoice total (${formatNaira(invoiceTotal)})`,
+      );
+      return;
+    }
+
+    setActioningId(verifyModal.transaction.id);
+    try {
+      const reconcileDva = useInvoiceStore.getState().reconcileDva;
+      await reconcileDva(biz.id, selectedInvoiceId, verifyModal.transaction.id);
+      toast.success(
+        `Transfer matched to invoice ${targetInvoice?.invoiceNumber || ''} — invoice marked as paid`,
+      );
+      closeModal();
+      invalidateDashboard('invoice_dva_reconciled');
+      fetchUnverified();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to match transfer to invoice');
+    } finally {
+      setActioningId(null);
+    }
+  }
+
   function openVerifyModal(transaction: SalesTransaction) {
     setVerifyModal({ transaction });
     setTargetBusinessId(biz?.id || '');
     setWizardStep('primary');
     setPrimaryChoice(null);
     setSelectedClassification('');
+    setSelectedInvoiceId(null);
+    setInvoiceSearch('');
+    setOutstandingInvoices([]);
     setCustomerName(transaction.customerName || '');
     setDescription('');
   }
@@ -172,13 +236,21 @@ export default function UnverifiedTransactions() {
     setWizardStep('primary');
     setPrimaryChoice(null);
     setSelectedClassification('');
+    setSelectedInvoiceId(null);
+    setInvoiceSearch('');
+    setOutstandingInvoices([]);
     setCustomerName('');
     setDescription('');
   }
 
   function handlePrimaryChoice(choice: PrimaryChoice) {
     setPrimaryChoice(choice);
-    if (choice === 'business_sale') {
+    if (choice === 'invoice_payment') {
+      setWizardStep('match_invoice');
+      setSelectedInvoiceId(null);
+      setInvoiceSearch('');
+      fetchOutstandingInvoices();
+    } else if (choice === 'business_sale') {
       setWizardStep('revenue');
       // Default to the first revenue classification from the API — radio
       // values are real DB names ("Product Sale"), never hardcoded slugs.
@@ -195,6 +267,8 @@ export default function UnverifiedTransactions() {
     setWizardStep('primary');
     setPrimaryChoice(null);
     setSelectedClassification('');
+    setSelectedInvoiceId(null);
+    setInvoiceSearch('');
   }
 
   if (!biz) return <NoBusinessPrompt />;
@@ -477,6 +551,31 @@ export default function UnverifiedTransactions() {
                         </span>
                       </div>
                       <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-900 transition-colors shrink-0 mt-1" />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePrimaryChoice('invoice_payment')}
+                    className="w-full text-left p-4 rounded-none border border-gray-300 hover:border-blue-600 bg-white hover:bg-blue-50/40 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-none bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+                        <FileText className="h-5 w-5 text-blue-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-semibold text-gray-900 text-sm mb-0.5 flex items-center gap-1.5">
+                          Invoice Payment
+                          <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
+                        </h5>
+                        <p className="text-xs text-gray-600 mb-1.5">
+                          Customer transferred money to settle an outstanding invoice
+                        </p>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[10px] bg-blue-100 text-blue-800 border border-blue-300 font-medium">
+                          ✓ Matches Invoice + Taxable
+                        </span>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-900 transition-colors shrink-0 mt-1" />
                     </div>
                   </button>
 
@@ -767,6 +866,194 @@ export default function UnverifiedTransactions() {
                   )}
                 </div>
               )}
+
+              {/* Step: Match Invoice */}
+              {wizardStep === 'match_invoice' && (
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={goBackToPrimary}
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back
+                  </button>
+
+                  {/* Transfer Summary Card */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-none p-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-semibold text-blue-950 block">Incoming Transfer Amount</span>
+                      <p className="text-[11px] text-blue-700 mt-0.5">
+                        {formatDate(verifyModal.transaction.transactionDate)} • {verifyModal.transaction.customerName || 'Direct bank deposit'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-base text-blue-900 tabular-nums">
+                        {formatNaira(Number(verifyModal.transaction.amount))}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Select open invoice to match
+                    </h4>
+                    <span className="text-[11px] text-gray-500">
+                      Must match exact amount
+                    </span>
+                  </div>
+
+                  {/* Search and Refresh */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search invoices by number or customer..."
+                        value={invoiceSearch}
+                        onChange={(e) => setInvoiceSearch(e.target.value)}
+                        className="w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs outline-none focus:border-gray-900 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchOutstandingInvoices}
+                      disabled={loadingInvoices}
+                      className="p-2 rounded-none border border-gray-300 hover:bg-gray-50 text-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
+                      title="Refresh invoices"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loadingInvoices ? 'animate-spin text-blue-600' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Invoice List */}
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {loadingInvoices ? (
+                      <div className="py-10 text-center space-y-2">
+                        <RefreshCw className="h-5 w-5 animate-spin text-blue-600 mx-auto" />
+                        <p className="text-xs text-gray-400">Loading open invoices...</p>
+                      </div>
+                    ) : outstandingInvoices.length === 0 ? (
+                      <div className="py-8 text-center rounded-none border border-dashed border-gray-300 bg-gray-50 p-4">
+                        <FileText className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-xs font-bold text-gray-700">No sent or overdue invoices found</p>
+                        <p className="text-[11px] text-gray-500 max-w-xs mx-auto mt-1">
+                          Create and send an invoice first, or verify this transaction as a regular business sale.
+                        </p>
+                      </div>
+                    ) : (
+                      outstandingInvoices
+                        .filter((inv) => {
+                          if (!invoiceSearch.trim()) return true;
+                          const term = invoiceSearch.toLowerCase();
+                          return (
+                            inv.invoiceNumber.toLowerCase().includes(term) ||
+                            inv.customerName.toLowerCase().includes(term) ||
+                            String(inv.total).includes(term)
+                          );
+                        })
+                        .sort((a, b) => {
+                          const transferAmt = Number(verifyModal.transaction.amount);
+                          const aExact = Math.abs(Number(a.total) - transferAmt) < 0.01 ? 1 : 0;
+                          const bExact = Math.abs(Number(b.total) - transferAmt) < 0.01 ? 1 : 0;
+                          return bExact - aExact;
+                        })
+                        .map((inv) => {
+                          const isSelected = selectedInvoiceId === inv.id;
+                          const invTotal = Number(inv.total);
+                          const transferAmt = Number(verifyModal.transaction.amount);
+                          const isExact = Math.abs(invTotal - transferAmt) < 0.01;
+
+                          return (
+                            <div
+                              key={inv.id}
+                              onClick={() => setSelectedInvoiceId(inv.id)}
+                              className={`cursor-pointer rounded-none p-3 border transition-all flex items-center justify-between ${
+                                isSelected
+                                  ? isExact
+                                    ? 'border-blue-600 bg-blue-50/60 ring-1 ring-blue-600'
+                                    : 'border-amber-500 bg-amber-50/60 ring-1 ring-amber-500'
+                                  : isExact
+                                    ? 'border-emerald-300 bg-emerald-50/30 hover:border-emerald-400'
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`h-4 w-4 rounded-none border flex items-center justify-center shrink-0 ${
+                                    isSelected
+                                      ? isExact
+                                        ? 'border-blue-600 bg-blue-600 text-white'
+                                        : 'border-amber-500 bg-amber-500 text-white'
+                                      : 'border-gray-300'
+                                  }`}
+                                >
+                                  {isSelected && <div className="h-1.5 w-1.5 rounded-none bg-white" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-900">
+                                      {inv.invoiceNumber}
+                                    </span>
+                                    <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                                      {formatNaira(invTotal)}
+                                    </span>
+                                    {isExact && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-semibold rounded-none border border-emerald-300">
+                                        <ShieldCheck className="h-3 w-3" /> Exact match
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                    {inv.customerName} • Due {formatDate(inv.dueDate)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <span className={`text-xs font-bold flex items-center gap-1 shrink-0 ml-2 ${
+                                  isExact ? 'text-blue-700' : 'text-amber-700'
+                                }`}>
+                                  Selected <CheckCircle2 className="h-4 w-4" />
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+
+                  {/* Warning on amount mismatch if an invoice is selected */}
+                  {selectedInvoiceId &&
+                    outstandingInvoices.find((i) => i.id === selectedInvoiceId) &&
+                    Math.abs(
+                      Number(outstandingInvoices.find((i) => i.id === selectedInvoiceId)!.total) -
+                        Number(verifyModal.transaction.amount),
+                    ) > 0.01 && (
+                      <div className="rounded-none bg-amber-50 p-3 border border-amber-300 flex items-start gap-2.5">
+                        <AlertCircle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                        <div className="text-[11px] text-amber-900 leading-relaxed">
+                          <span className="font-bold">Amount Mismatch:</span> Selected invoice total is{' '}
+                          <span className="font-semibold">
+                            {formatNaira(Number(outstandingInvoices.find((i) => i.id === selectedInvoiceId)!.total))}
+                          </span>
+                          , but transfer is{' '}
+                          <span className="font-semibold">
+                            {formatNaira(Number(verifyModal.transaction.amount))}
+                          </span>
+                          . Matching requires an exact amount.
+                        </div>
+                      </div>
+                    )}
+
+                  <div className="rounded-none bg-blue-50/60 p-3 border border-blue-200 flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-blue-900 leading-relaxed">
+                      Matching this transfer will mark the invoice as paid, verify the incoming deposit, and reuse the existing sale transaction to prevent double-counting.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Pinned Footer */}
@@ -781,15 +1068,21 @@ export default function UnverifiedTransactions() {
               </Button>
               {wizardStep !== 'primary' && (
                 <Button
-                  onClick={handleVerify}
+                  onClick={wizardStep === 'match_invoice' ? handleInvoiceReconcile : handleVerify}
                   disabled={
-                    !selectedClassification ||
-                    actioningId === verifyModal.transaction.id
+                    wizardStep === 'match_invoice'
+                      ? !selectedInvoiceId ||
+                        actioningId === verifyModal.transaction.id ||
+                        Math.abs(
+                          Number(outstandingInvoices.find((i) => i.id === selectedInvoiceId)?.total || 0) -
+                            Number(verifyModal.transaction.amount),
+                        ) > 0.01
+                      : !selectedClassification || actioningId === verifyModal.transaction.id
                   }
                   isLoading={actioningId === verifyModal.transaction.id}
                   className="rounded-none text-xs min-w-[120px]"
                 >
-                  Confirm
+                  {wizardStep === 'match_invoice' ? 'Match to Invoice' : 'Confirm'}
                 </Button>
               )}
             </div>

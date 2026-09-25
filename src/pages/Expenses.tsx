@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Wallet,
-  Trash2,
+  // Trash2 removed — delete buttons disabled per business rule
   Pencil,
   ChevronLeft,
   ChevronRight,
@@ -12,15 +12,17 @@ import {
   Filter,
   XCircle,
   CalendarDays,
+  Download,
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import AddExpenseModal from '@/components/AddExpenseModal.tsx';
+import ReportExportModal from '@/components/ReportExportModal.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
+import EmptyState from '@/components/ui/EmptyState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
-import { useDashboardEvents } from '@/stores/dashboard.store.ts';
-import api from '@/lib/axios.ts';
-import toast from 'react-hot-toast';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import type { Expense, Pagination } from '@/types/index.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
@@ -110,7 +112,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function Expenses() {
   const biz = useBusinessStore((s) => s.activeBusiness);
-  const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
+  const fetchExpensesSeqRef = useRef(0);
+  const fetchSummarySeqRef = useRef(0);
+  const fetchDailySeqRef = useRef(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
@@ -119,7 +123,9 @@ export default function Expenses() {
   const [filterEndDate, setFilterEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
 
   // Summary state
@@ -146,23 +152,44 @@ export default function Expenses() {
 
   const fetchExpenses = () => {
     if (!biz) return;
+    const seq = ++fetchExpensesSeqRef.current;
     setIsLoading(true);
+    setError(null);
     const params: Record<string, string | number> = { page, limit: 15 };
     if (filterCat) params.category = filterCat;
     if (filterStartDate) params.startDate = filterStartDate;
     if (filterEndDate) params.endDate = filterEndDate;
     api.get(basePath, { params })
-      .then((r) => { setExpenses(r.data.data); setPagination(r.data.pagination); })
-      .finally(() => setIsLoading(false));
+      .then((r) => {
+        if (seq !== fetchExpensesSeqRef.current) return;
+        setExpenses(r.data.data);
+        setPagination(r.data.pagination);
+      })
+      .catch((e) => {
+        if (seq !== fetchExpensesSeqRef.current) return;
+        setError(getErrorMessage(e, 'Failed to load expenses.'));
+      })
+      .finally(() => {
+        if (seq === fetchExpensesSeqRef.current) setIsLoading(false);
+      });
   };
 
   const fetchSummary = () => {
     if (!biz) return;
+    const seq = ++fetchSummarySeqRef.current;
     setSummaryLoading(true);
     api.get(`${basePath}/summary`, { params: { month: summaryMonth, year: summaryYear } })
-      .then((r) => setSummary(r.data.data))
-      .catch(() => setSummary(null))
-      .finally(() => setSummaryLoading(false));
+      .then((r) => {
+        if (seq !== fetchSummarySeqRef.current) return;
+        setSummary(r.data.data);
+      })
+      .catch(() => {
+        if (seq !== fetchSummarySeqRef.current) return;
+        setSummary(null);
+      })
+      .finally(() => {
+        if (seq === fetchSummarySeqRef.current) setSummaryLoading(false);
+      });
   };
 
   useEffect(() => { fetchExpenses(); }, [biz, page, filterCat, filterStartDate, filterEndDate]);
@@ -177,12 +204,21 @@ export default function Expenses() {
 
   const fetchDaily = () => {
     if (!biz) return;
+    const seq = ++fetchDailySeqRef.current;
     setDailyLoading(true);
     api
       .get(`${basePath}/daily`, { params: { date: dailyDate } })
-      .then((r) => setDaily(r.data.data))
-      .catch(() => setDaily(null))
-      .finally(() => setDailyLoading(false));
+      .then((r) => {
+        if (seq !== fetchDailySeqRef.current) return;
+        setDaily(r.data.data);
+      })
+      .catch(() => {
+        if (seq !== fetchDailySeqRef.current) return;
+        setDaily(null);
+      })
+      .finally(() => {
+        if (seq === fetchDailySeqRef.current) setDailyLoading(false);
+      });
   };
 
   useEffect(() => { fetchDaily(); }, [biz, dailyDate]);
@@ -213,20 +249,21 @@ export default function Expenses() {
     fetchDaily();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this expense?')) return;
-    try {
-      await api.delete(`${basePath}/${id}`);
-      toast.success('Expense deleted');
-      invalidateDashboard('expense_deleted');
-      fetchExpenses();
-      fetchSummary();
-      fetchDaily();
-    } catch (err: unknown) {
-      const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
-      toast.error(apiErr?.message || 'Failed');
-    }
-  };
+  // handleDelete disabled — expense entries are permanent per business rule
+  // const handleDelete = async (id: string) => {
+  //   if (!confirm('Delete this expense?')) return;
+  //   try {
+  //     await api.delete(`${basePath}/${id}`);
+  //     toast.success('Expense deleted');
+  //     invalidateDashboard('expense_deleted');
+  //     fetchExpenses();
+  //     fetchSummary();
+  //     fetchDaily();
+  //   } catch (err: unknown) {
+  //     const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
+  //     toast.error(apiErr?.message || 'Failed');
+  //   }
+  // };
 
   // Month navigation
   const prevMonth = () => {
@@ -248,7 +285,14 @@ export default function Expenses() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Expenses</h1>
           <p className="mt-1 font-body text-sm text-gray-500">Track your business expenses.</p>
         </div>
-        <Button onClick={() => { setEditExpense(null); setShowAddModal(true); }} className="self-start sm:self-auto"><Plus className="h-4 w-4" /> Add Expense</Button>
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+          <Button variant="secondary" onClick={() => setShowReportModal(true)}>
+            <Download className="h-4 w-4" /> PDF Report
+          </Button>
+          <Button onClick={() => { setEditExpense(null); setShowAddModal(true); }}>
+            <Plus className="h-4 w-4" /> Add Expense
+          </Button>
+        </div>
       </div>
 
       {/* Daily / Monthly tabs — default is Daily (no URL param) */}
@@ -412,16 +456,15 @@ export default function Expenses() {
       </div>
 
       {/* Table */}
-      {isLoading && <TableSkeleton rows={6} columns={6} />}
+      {error && <ErrorState message={error} onRetry={fetchExpenses} />}
 
-      {!isLoading && expenses.length === 0 && (
-        <Card className="py-12 text-center">
-          <Wallet className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">No expenses found.</p>
-        </Card>
+      {!error && isLoading && <TableSkeleton rows={6} columns={6} />}
+
+      {!error && !isLoading && expenses.length === 0 && (
+        <EmptyState icon={Wallet} message="No expenses found." />
       )}
 
-      {!isLoading && expenses.length > 0 && (
+      {!error && !isLoading && expenses.length > 0 && (
         <>
           {/* Desktop table */}
           <div className="hidden md:block rounded-md border border-gray-200 bg-white shadow-sm overflow-x-auto">
@@ -459,7 +502,7 @@ export default function Expenses() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(exp)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => handleDelete(exp.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                      {/* <button onClick={() => handleDelete(exp.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */}
                     </div>
                   </td>
                 </tr>
@@ -493,7 +536,7 @@ export default function Expenses() {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openEdit(exp)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><Pencil className="h-4 w-4" /></button>
-                  <button onClick={() => handleDelete(exp.id)} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
+                  {/* <button onClick={() => handleDelete(exp.id)} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */}
                 </div>
               </div>
             </Card>
@@ -658,6 +701,7 @@ export default function Expenses() {
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
+                              {/* Delete button disabled — expense entries are permanent
                               <button
                                 onClick={() => handleDelete(t.id)}
                                 className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
@@ -665,6 +709,7 @@ export default function Expenses() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
+                              */}
                             </div>
                           </td>
                         </tr>
@@ -686,6 +731,17 @@ export default function Expenses() {
           editExpense={editExpense}
           onClose={() => setShowAddModal(false)}
           onSaved={handleSaveComplete}
+        />
+      )}
+
+      {/* Expense PDF Report Export Modal */}
+      {biz && (
+        <ReportExportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          type="expense"
+          businessId={biz.id}
+          businessName={biz.businessName}
         />
       )}
     </div>

@@ -1,19 +1,26 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader2, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useAuthStore } from '@/stores/auth.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { CreateInvoicePayload } from '@/types/index.ts';
-import { getErrorMessage } from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 
 interface LineRow {
   description: string;
   quantity: string; // keep as string while user is typing; coerce on submit
   unitPrice: string;
+}
+
+interface WalletAccountInfo {
+  accountNumber: string;
+  bankName: string;
+  accountName: string;
 }
 
 function todayStr() {
@@ -34,10 +41,27 @@ function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function buildPaymentTerms(
+  account: WalletAccountInfo,
+  totalAmount?: number
+): string {
+  const parts = [
+    `Please make payment to:`,
+    `Bank: ${account.bankName}`,
+    `Account Number: ${account.accountNumber}`,
+    `Account Name: ${account.accountName}`,
+  ];
+  if (totalAmount !== undefined && totalAmount > 0) {
+    parts.push(`Amount Due: ${formatNaira(totalAmount)}`);
+  }
+  return parts.join('\n');
+}
+
 const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '' });
 
 export default function InvoiceForm() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
@@ -45,6 +69,54 @@ export default function InvoiceForm() {
   const fetchInvoice = useInvoiceStore((s) => s.fetchInvoice);
   const createInvoice = useInvoiceStore((s) => s.createInvoice);
   const updateInvoice = useInvoiceStore((s) => s.updateInvoice);
+
+  // Dedicated virtual account (wallet) detection & resolution
+  const initialWalletAccount = useMemo<WalletAccountInfo | null>(() => {
+    const acct = biz?.virtualAccountNumber || user?.virtualAccountNumber;
+    if (!acct) return null;
+    return {
+      accountNumber: acct,
+      bankName: biz?.virtualAccountBank || user?.virtualAccountBank || 'Wema Bank',
+      accountName: biz?.businessName || biz?.ownerName || user?.settlementAccountName || 'Business Account',
+    };
+  }, [biz, user]);
+
+  const [walletAccount, setWalletAccount] = useState<WalletAccountInfo | null>(initialWalletAccount);
+  const isUserEditedTermsRef = useRef(false);
+
+  // Sync initialWalletAccount if biz or user updates
+  useEffect(() => {
+    if (initialWalletAccount) {
+      setWalletAccount(initialWalletAccount);
+    }
+  }, [initialWalletAccount]);
+
+  // If wallet details not yet in store and in create mode, query DVA status asynchronously
+  useEffect(() => {
+    if (isEdit || !biz?.id || walletAccount) return;
+    let isCancelled = false;
+
+    api
+      .get(`/businesses/${biz.id}/dva/virtual-account`)
+      .then((res) => {
+        if (isCancelled) return;
+        const data = res.data?.data;
+        if (data?.status === 'active' && data.accountNumber) {
+          setWalletAccount({
+            accountNumber: data.accountNumber,
+            bankName: data.bankName || 'Wema Bank',
+            accountName: data.businessName || data.accountName || biz.businessName || 'Business Account',
+          });
+        }
+      })
+      .catch(() => {
+        // DVA not active or error - ignore
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isEdit, biz?.id, walletAccount]);
 
   // Form state
   const [customerName, setCustomerName] = useState('');
@@ -120,6 +192,17 @@ export default function InvoiceForm() {
     const total = money(taxable + vatAmount);
     return { subtotal, discount: discountN, vatRate: rateN, vatAmount, total };
   }, [lines, vatRate, discount]);
+
+  // Pre-fill and synchronize payment terms with wallet account and totals (create mode only)
+  useEffect(() => {
+    if (isEdit) {
+      isUserEditedTermsRef.current = true;
+      return;
+    }
+    if (!walletAccount || isUserEditedTermsRef.current) return;
+
+    setPaymentTerms(buildPaymentTerms(walletAccount, totals.total));
+  }, [isEdit, walletAccount, totals.total]);
 
   const updateLine = (idx: number, patch: Partial<LineRow>) => {
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -435,11 +518,32 @@ export default function InvoiceForm() {
           <h2 className="mb-4 text-base font-semibold text-gray-900">Notes & Terms</h2>
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Payment Terms</label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">Payment Terms</label>
+                {walletAccount && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      isUserEditedTermsRef.current = false;
+                      const terms = buildPaymentTerms(walletAccount, totals.total);
+                      setPaymentTerms(terms);
+                      toast.success('Updated with wallet account details');
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                    title="Fill with your dedicated virtual account details"
+                  >
+                    <Wallet className="h-3.5 w-3.5" />
+                    <span>Use wallet details</span>
+                  </button>
+                )}
+              </div>
               <textarea
                 value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                rows={2}
+                onChange={(e) => {
+                  isUserEditedTermsRef.current = true;
+                  setPaymentTerms(e.target.value);
+                }}
+                rows={4}
                 maxLength={500}
                 placeholder="e.g. Net 14. Pay to Access Bank acc 0123456789."
                 className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"

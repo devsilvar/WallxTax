@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import api from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import type {
   CustomerCredit,
@@ -13,6 +13,9 @@ import type {
   WriteOffCreditPayload,
   SendCreditWhatsAppResult,
 } from '@/types/index.ts';
+
+let fetchCreditsSeq = 0;
+let fetchSummarySeq = 0;
 
 interface CreditState {
   // List & Summary
@@ -73,6 +76,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   detailError: null,
 
   fetchCredits: async (businessId, query) => {
+    const seq = ++fetchCreditsSeq;
     set({ listLoading: true, listError: null });
     try {
       const params: Record<string, any> = {
@@ -83,6 +87,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
       if (query.search) params.search = query.search;
 
       const res = await api.get(basePath(businessId), { params });
+      if (seq !== fetchCreditsSeq) return; // a newer fetchCredits call superseded this one
       const rawData = res.data?.data;
       const data = Array.isArray(rawData) ? rawData : (rawData?.data ?? []);
       const summary = res.data?.summary ?? rawData?.summary ?? null;
@@ -95,16 +100,19 @@ export const useCreditStore = create<CreditState>((set, get) => ({
         listLoading: false,
       });
     } catch (err: any) {
+      if (seq !== fetchCreditsSeq) return;
       set({
         listLoading: false,
-        listError: err.response?.data?.message || err.message || 'Failed to fetch credits',
+        listError: getErrorMessage(err, 'Failed to fetch credits'),
       });
     }
   },
 
   fetchSummary: async (businessId) => {
+    const seq = ++fetchSummarySeq;
     try {
       const res = await api.get(`${basePath(businessId)}/summary`);
+      if (seq !== fetchSummarySeq) return null; // a newer fetchSummary call superseded this one
       const summary = res.data?.data ?? null;
       if (summary) {
         set({ summary });

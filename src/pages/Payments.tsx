@@ -4,8 +4,10 @@ import { CreditCard, ChevronLeft, ChevronRight, RefreshCw, FileText, RotateCcw }
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
+import ErrorState from '@/components/ui/ErrorState.tsx';
+import EmptyState from '@/components/ui/EmptyState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
-import api from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxPayment, Pagination } from '@/types/index.ts';
 import { mapPaystackError } from '@/lib/paystack-errors';
@@ -62,6 +64,7 @@ export default function Payments() {
   const [page, setPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [abandoning, setAbandoning] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<TransactionDetailData | null>(null);
@@ -71,10 +74,12 @@ export default function Payments() {
   const fetchPayments = () => {
     if (!biz) return;
     setIsLoading(true);
+    setError(null);
     const params: Record<string, any> = { page, limit: 15 };
     if (filterStatus) params.status = filterStatus;
     api.get(`${taxPath}/payments`, { params })
       .then((r) => { setPayments(r.data.data); setPagination(r.data.pagination); })
+      .catch((e) => setError(getErrorMessage(e, 'Failed to load payments.')))
       .finally(() => setIsLoading(false));
   };
 
@@ -125,16 +130,15 @@ export default function Payments() {
         {pagination && <span className="font-body text-xs text-gray-400">{pagination.total} total</span>}
       </div>
 
-      {isLoading && <TableSkeleton rows={5} columns={5} />}
+      {error && <ErrorState message={error} onRetry={fetchPayments} />}
 
-      {!isLoading && payments.length === 0 && (
-        <Card className="py-12 text-center">
-          <CreditCard className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-body text-sm text-gray-400">No payments found.</p>
-        </Card>
+      {!error && isLoading && <TableSkeleton rows={5} columns={5} />}
+
+      {!error && !isLoading && payments.length === 0 && (
+        <EmptyState icon={CreditCard} message="No payments found." />
       )}
 
-      {!isLoading && payments.length > 0 && (
+      {!error && !isLoading && payments.length > 0 && (
         <>
           {/* Desktop table */}
           <div className="hidden md:block rounded-md border border-gray-200 bg-white shadow-sm overflow-x-auto">

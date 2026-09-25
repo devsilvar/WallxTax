@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import api from '@/lib/axios.ts';
+import api, { getErrorMessage } from '@/lib/axios.ts';
 import { STALE, isFresh } from '@/lib/cache.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import type {
@@ -57,6 +57,7 @@ interface InvoiceState {
   sendInvoice: (businessId: string, id: string) => Promise<Invoice>;
   sendInvoiceByWhatsApp: (businessId: string, id: string) => Promise<SendInvoiceWhatsAppResult>;
   markInvoicePaid: (businessId: string, id: string, payload: MarkInvoicePaidPayload) => Promise<Invoice>;
+  reconcileDva: (businessId: string, id: string, saleId: string) => Promise<Invoice>;
   cancelInvoice: (businessId: string, id: string, reason?: string) => Promise<Invoice>;
   downloadInvoicePdf: (businessId: string, id: string, invoiceNumber: string) => Promise<void>;
   clearActive: () => void;
@@ -137,7 +138,7 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
         listFetchedAt: Date.now(),
       });
     } catch (err: any) {
-      set({ listError: err?.response?.data?.error?.message || 'Failed to load invoices' });
+      set({ listError: getErrorMessage(err, 'Failed to load invoices') });
     } finally {
       set({ listLoading: false });
     }
@@ -227,6 +228,17 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     }));
     // Marking invoice paid creates a SalesTransaction, so invalidate dashboard
     useDashboardEvents.getState().invalidateDashboard('invoice_paid');
+    return updated;
+  },
+
+  reconcileDva: async (businessId, id, saleId) => {
+    const { data } = await api.post(`${basePath(businessId)}/${id}/reconcile-dva/${saleId}`);
+    const updated = data.data as Invoice;
+    set((s) => ({
+      activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
+      invoices: patchInList(s.invoices, updated),
+    }));
+    useDashboardEvents.getState().invalidateDashboard('invoice_dva_reconciled');
     return updated;
   },
 
