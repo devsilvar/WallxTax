@@ -9,7 +9,7 @@
   "tax_reports": "Tax Reports",
   "payments": "Payments",
   "transaction_history": "Transaction History",
-  "bank_account": "Bank Account",
+  "bank_account": "Banking & Wallet",
   "reminders": "Reminders",
   "settings": "Settings",
   "logout": "Log out",
@@ -27,9 +27,9 @@
     "record_sale": "Record sale",
     "calculate_tax": "Calculate tax",
     "create_business": "Create Business",
-    "new_business": "New Business"
+    "new_business": "New Business / Branch"
   },
   "business": {
-    "active_workspace": "Active workspace"
+    "active_workspace": "workspace"
   }
 }

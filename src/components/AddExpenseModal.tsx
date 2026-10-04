@@ -5,9 +5,17 @@
  *
  * Footer contract: the submit button lives in the Modal footer (outside the
  * <form> element) and targets the form via `form="add-expense-form"`.
+ *
+ * ── Tax Deductibility Logic (NRS / CITA / PITA) ──
+ * Core expense categories (rent, inventory, salary, utility, fuel, logistics,
+ * marketing) are **always tax-deductible** under Nigerian law — they represent
+ * standard operating expenses incurred wholly and exclusively for the business.
+ * Only "other" is ambiguous (could be bank charges = deductible, or a LASTMA
+ * fine = non-deductible), so only "other" shows the interactive checkbox.
+ * Backend enforces the same rule as a guardrail.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { PieChart } from 'lucide-react';
+import { PieChart, CheckCircle2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -29,6 +37,26 @@ const CATEGORIES = [
 // 'gift' and 'subscription' removed — they were never in the backend enum
 // (schema.prisma ExpenseCategory) and submitting them got a guaranteed 400.
 
+/**
+ * Per-category educational hints — tells the SME owner what belongs in this
+ * category AND confirms it's automatically tax-deductible. Builds trust and
+ * prevents misclassification.
+ */
+const CATEGORY_TAX_HINTS: Record<string, string> = {
+  rent: 'Shop rent, warehouse lease, office space — business premises costs are fully tax-deductible.',
+  inventory:
+    'Raw materials, goods for resale, stock purchases — cost of goods sold reduces your taxable profit.',
+  salary:
+    'Staff wages, employee compensation, casual workers — payroll expenses are fully tax-deductible.',
+  utility:
+    'Electricity (NEPA/EKEDC), water, business internet, phone bills — operating utilities are fully deductible.',
+  fuel: 'Generator diesel, delivery vehicle petrol, business transport fuel — fully deductible as operating costs.',
+  logistics:
+    'Shipping, freight, dispatch riders, haulage, courier — delivery and transport costs are fully deductible.',
+  marketing:
+    'Advertising, social media promotion, signage, flyers, branding — business development costs are deductible.',
+};
+
 type AddExpenseModalProps = {
   isOpen: boolean;
   businessId: string;
@@ -42,8 +70,9 @@ type AddExpenseModalProps = {
 
 /** Extracts the API error message without `any` (rules.txt). */
 function getApiErrorMessage(err: unknown, fallback: string): string {
-  const apiErr = (err as { response?: { data?: { error?: { message?: string } } } })
-    ?.response?.data?.error;
+  const apiErr = (
+    err as { response?: { data?: { error?: { message?: string } } } }
+  )?.response?.data?.error;
   return apiErr?.message || fallback;
 }
 
@@ -62,22 +91,38 @@ export default function AddExpenseModal({
   const [category, setCategory] = useState<string>('rent');
   const [categoryDetail, setCategoryDetail] = useState('');
   const [description, setDescription] = useState('');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [expenseDate, setExpenseDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
   const [isDeductible, setIsDeductible] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const isEdit = editExpense !== null;
+  const isCoreCategory = category !== 'other';
+
+  // ── Sync deductibility when category changes ───────────────
+  // Core categories are always deductible; switching back to 'other' restores
+  // the user's last choice (or defaults to true for new expenses).
+  useEffect(() => {
+    if (isCoreCategory) {
+      setIsDeductible(true);
+    }
+  }, [category, isCoreCategory]);
 
   // Reset-on-open + edit pre-fill (same pattern as SalesImportModal)
   useEffect(() => {
     if (!isOpen) return;
     if (editExpense) {
       setAmount(String(Number(editExpense.amount)));
-      setQuantity(String(editExpense.quantity ? Number(editExpense.quantity) : 1));
+      setQuantity(
+        String(editExpense.quantity ? Number(editExpense.quantity) : 1),
+      );
       setCategory(editExpense.category);
       setCategoryDetail(editExpense.categoryDetail || '');
       setDescription(editExpense.description || '');
-      setExpenseDate(new Date(editExpense.expenseDate).toISOString().slice(0, 10));
+      setExpenseDate(
+        new Date(editExpense.expenseDate).toISOString().slice(0, 10),
+      );
       setIsDeductible(editExpense.isDeductible ?? true);
     } else {
       setAmount('');
@@ -103,7 +148,8 @@ export default function AddExpenseModal({
       categoryDetail: category === 'other' ? categoryDetail.trim() : null,
       description,
       expenseDate,
-      isDeductible,
+      // Core categories are always deductible; only 'other' respects user choice.
+      isDeductible: isCoreCategory ? true : isDeductible,
     };
     try {
       if (editExpense) {
@@ -136,10 +182,20 @@ export default function AddExpenseModal({
       size='md'
       footer={
         <>
-          <Button variant='secondary' onClick={onClose} disabled={saving} className='rounded-none border-gray-300'>
+          <Button
+            variant='secondary'
+            onClick={onClose}
+            disabled={saving}
+            className='rounded-none border-gray-300'
+          >
             Cancel
           </Button>
-          <Button type='submit' form='add-expense-form' isLoading={saving} className='rounded-none'>
+          <Button
+            type='submit'
+            form='add-expense-form'
+            isLoading={saving}
+            className='rounded-none'
+          >
             {isEdit ? 'Update' : 'Create'}
           </Button>
         </>
@@ -173,15 +229,33 @@ export default function AddExpenseModal({
           required
         />
         {Number(quantity) > 1 && Number(amount) > 0 && (
-          <div className='sm:col-span-2 -mt-2 px-3 py-1.5 rounded-none bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between'>
+          <div className='sm:col-span-2 -mt-2 px-3 py-1.5 rounded-none bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between'>
             <span>Per unit breakdown:</span>
-            <span className='font-medium text-primary-600 dark:text-primary-400'>
-              ₦{(Math.round(((Number(amount) || 0) / (Number(quantity) || 1)) * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each × {quantity} = ₦{Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className='font-medium text-primary-600'>
+              ₦
+              {(
+                Math.round(
+                  ((Number(amount) || 0) / (Number(quantity) || 1)) * 100,
+                ) / 100
+              ).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{' '}
+              each × {quantity} = ₦
+              {Number(amount).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
         )}
         <div className='space-y-1 sm:col-span-2'>
-          <label htmlFor='expense-category' className='block text-xs font-semibold text-gray-700'>Category</label>
+          <label
+            htmlFor='expense-category'
+            className='block text-xs font-semibold text-gray-700'
+          >
+            Category
+          </label>
           <select
             id='expense-category'
             value={category}
@@ -207,7 +281,8 @@ export default function AddExpenseModal({
               required
             />
             <p className='mt-0.5 text-xs text-gray-500'>
-              Help us understand what &quot;Other&quot; means so your records stay accurate for tax filing.
+              Help us understand what &quot;Other&quot; means so your records
+              stay accurate for tax filing.
             </p>
           </div>
         )}
@@ -226,26 +301,48 @@ export default function AddExpenseModal({
           className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required
         />
-        <div className='flex items-start gap-3 rounded-none border border-gray-200 bg-gray-50 p-3 sm:col-span-2'>
-          <input
-            id='isDeductible'
-            type='checkbox'
-            checked={isDeductible}
-            onChange={(e) => setIsDeductible(e.target.checked)}
-            className='mt-1 h-4 w-4 rounded-none border-gray-300 text-primary-600 focus:ring-primary-500'
-          />
-          <div className='flex-1'>
-            <label
-              htmlFor='isDeductible'
-              className='block cursor-pointer text-xs font-semibold text-gray-900'
-            >
-              Tax deductible
-            </label>
-            <p className='mt-0.5 text-xs text-gray-500'>
-              Uncheck if this is a personal expense or not allowable for tax purposes
+
+        {/* ── Tax Deductibility Section ─────────────────────────────
+             Core categories: read-only badge with educational hint.
+             "Other": interactive checkbox with clear guidance.        */}
+        {isCoreCategory ? (
+          <div className='rounded-none border border-emerald-200 bg-emerald-50/60 p-3 sm:col-span-2'>
+            <div className='flex items-center gap-2'>
+              <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' />
+              <span className='text-xs font-semibold text-emerald-800'>
+                Tax Deductible — NRS Allowable
+              </span>
+            </div>
+            <p className='mt-1 text-[11px] text-emerald-700 leading-relaxed'>
+              {CATEGORY_TAX_HINTS[category]}
             </p>
           </div>
-        </div>
+        ) : (
+          <div className='rounded-none border border-gray-200 bg-gray-50 p-3 sm:col-span-2 space-y-2'>
+            <div className='flex items-start gap-3'>
+              <input
+                id='isDeductible'
+                type='checkbox'
+                checked={isDeductible}
+                onChange={(e) => setIsDeductible(e.target.checked)}
+                className='mt-0.5 h-4 w-4 rounded-none border-gray-300 text-primary-600 focus:ring-primary-500'
+              />
+              <div className='flex-1'>
+                <label
+                  htmlFor='isDeductible'
+                  className='block cursor-pointer text-xs font-semibold text-gray-900'
+                >
+                  Tax deductible
+                </label>
+                <p className='mt-0.5 text-[11px] text-gray-500 leading-relaxed'>
+                  {isDeductible
+                    ? 'This expense will reduce your taxable profit. Appropriate for legitimate business costs like bank charges, software subscriptions, repairs, professional fees.'
+                    : 'This expense will NOT reduce your taxable profit. Appropriate for government fines & penalties, personal/domestic expenses, owner drawings, or non-approved donations.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </Modal>
   );

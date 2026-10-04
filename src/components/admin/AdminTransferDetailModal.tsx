@@ -11,8 +11,10 @@ import {
   TrendingDown,
   TrendingUp,
   Loader2,
+  FolderSync,
 } from 'lucide-react';
-import api from '@/lib/axios';
+import api, { getErrorMessage } from '@/lib/axios';
+import toast from 'react-hot-toast';
 import type { TransferDetailBreakdown } from '@/types/index.ts';
 
 interface AdminTransferDetailModalProps {
@@ -36,6 +38,8 @@ export default function AdminTransferDetailModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [selectedSiblingId, setSelectedSiblingId] = useState('');
+  const [reallocating, setReallocating] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -50,6 +54,7 @@ export default function AdminTransferDetailModal({
     if (!isOpen || !transferId) {
       setData(null);
       setError(null);
+      setSelectedSiblingId('');
       return;
     }
 
@@ -60,6 +65,9 @@ export default function AdminTransferDetailModal({
     api.get(`/admin/treasury/transactions/${transferId}${query}`)
       .then((res) => {
         setData(res.data.data);
+        if (res.data.data?.siblingBusinesses?.[0]) {
+          setSelectedSiblingId(res.data.data.siblingBusinesses[0].id);
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.error?.message || 'Failed to load transaction details.');
@@ -68,6 +76,32 @@ export default function AdminTransferDetailModal({
         setLoading(false);
       });
   }, [isOpen, transferId, transferType]);
+
+  const handleReassign = async () => {
+    const targetId = selectedSiblingId || data?.siblingBusinesses?.[0]?.id;
+    if (!data || !targetId) return;
+
+    try {
+      setReallocating(true);
+      const res = await api.patch(`/admin/sales/${data.id}/reassign`, {
+        targetBusinessId: targetId,
+      });
+
+      toast.success(res.data?.message || 'Transaction successfully reallocated');
+
+      // Refresh the modal payload to reflect new assigned business
+      const query = transferType ? `?type=${transferType}` : '';
+      const refreshed = await api.get(`/admin/treasury/transactions/${data.id}${query}`);
+      setData(refreshed.data.data);
+      if (refreshed.data.data?.siblingBusinesses?.[0]) {
+        setSelectedSiblingId(refreshed.data.data.siblingBusinesses[0].id);
+      }
+    } catch (err: any) {
+      toast.error(getErrorMessage(err, 'Failed to reallocate transaction'));
+    } finally {
+      setReallocating(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -274,6 +308,88 @@ export default function AdminTransferDetailModal({
                   </div>
                 </div>
               </div>
+
+              {/* Visually Distinct "Assigned to" Card for Inflows */}
+              {data.type === 'inflow' && (
+                <div className="rounded-xl border border-primary-200 bg-primary-50/50 p-4 space-y-3 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-primary-100">
+                    <div className="flex items-center gap-1.5 font-semibold text-primary-900">
+                      <Building2 className="h-4 w-4 text-primary-600" />
+                      <span>Assigned to</span>
+                    </div>
+                    <span className="font-semibold text-primary-950">
+                      {data.assignedBusiness?.businessName || data.business.name}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-primary-800">
+                    <span>Merchant ID:</span>
+                    <span className="font-mono font-medium">
+                      {data.assignedBusiness?.merchantId || 'N/A'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-primary-800">
+                    <span>Owner / Email:</span>
+                    <span className="font-medium">
+                      {data.business.owner} ({data.business.email})
+                    </span>
+                  </div>
+
+                  {/* Reallocation Control for Inflows with Siblings */}
+                  {data.siblingBusinesses && data.siblingBusinesses.length > 0 && (
+                    <div className="pt-2 border-t border-primary-100 space-y-2.5">
+                      <div className="font-semibold text-primary-900">
+                        Reallocate Inflow to Sibling Business
+                      </div>
+                      {data.accrualLinked ? (
+                        <p className="text-[11px] leading-relaxed text-primary-700">
+                          Revenue for this inflow was recognised when the invoice or credit was
+                          issued, so it cannot be moved. Cancel and re-issue the invoice against the
+                          correct business instead.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="flex gap-2 items-center">
+                            <select
+                              value={selectedSiblingId || data.siblingBusinesses[0]?.id}
+                              onChange={(e) => setSelectedSiblingId(e.target.value)}
+                              className="flex-1 rounded border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-900 focus:border-primary-500 focus:outline-none"
+                            >
+                              {data.siblingBusinesses.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                  {b.businessName} ({b.merchantId})
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={handleReassign}
+                              disabled={reallocating || (!selectedSiblingId && !data.siblingBusinesses[0]?.id)}
+                              className="flex items-center gap-1 rounded bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                              {reallocating ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Moving...
+                                </>
+                              ) : (
+                                <>
+                                  <FolderSync className="h-3.5 w-3.5" />
+                                  Reallocate
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-[11px] leading-relaxed text-primary-700">
+                            <strong>Note:</strong> Reallocating changes which business this inflow
+                            counts toward, including in periods already reported.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Merchant & Routing Info */}
               <div className="rounded-xl border border-gray-200 bg-gray-50/40 p-4 space-y-2.5 text-xs">

@@ -4,6 +4,8 @@ import PayoutWithdrawalModal from '@/components/PayoutWithdrawalModal.tsx';
 import PinModal from '@/components/PinModal.tsx';
 import StatementExportModal from '@/components/StatementExportModal.tsx';
 import AccountQrModal from './AccountQrModal.tsx';
+import PayoutDetailPanel from './PayoutDetailPanel.tsx';
+import type { PayoutItem } from './WithdrawalsTable.tsx';
 
 export interface AccountModalsProps {
   businessId?: string;
@@ -20,12 +22,22 @@ export interface AccountModalsProps {
     onClose: () => void;
     onVerifySuccess: () => void;
   };
+  payoutDetailPanel?: {
+    payout: PayoutItem | null;
+    onClose: () => void;
+  };
   payoutModal: {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
   };
   pinModal: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: (token: string) => Promise<void>;
+    enabled: boolean;
+  };
+  autoPayoutPinModal?: {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: (token: string) => Promise<void>;
@@ -42,8 +54,10 @@ export const AccountModals: React.FC<AccountModalsProps> = ({
   businessName = '',
   qrModal,
   detailPanel,
+  payoutDetailPanel,
   payoutModal,
   pinModal,
+  autoPayoutPinModal,
   exportModal,
 }) => {
   return (
@@ -66,6 +80,15 @@ export const AccountModals: React.FC<AccountModalsProps> = ({
         onVerifySuccess={detailPanel.onVerifySuccess}
       />
 
+      {/* Withdrawal Detail Slide-Over */}
+      {payoutDetailPanel && (
+        <PayoutDetailPanel
+          isOpen={Boolean(payoutDetailPanel.payout)}
+          onClose={payoutDetailPanel.onClose}
+          payout={payoutDetailPanel.payout}
+        />
+      )}
+
       {/* Instant Payout Modal */}
       {businessId && (
         <PayoutWithdrawalModal
@@ -86,6 +109,21 @@ export const AccountModals: React.FC<AccountModalsProps> = ({
           description={`Enter your 4-digit transaction PIN to ${
             pinModal.enabled ? 'disable' : 'enable'
           } 7.5% tax auto-split.`}
+        />
+      )}
+
+      {/* Auto-Payout Mode Step-Up PIN Modal */}
+      {businessId && autoPayoutPinModal && (
+        <PinModal
+          isOpen={autoPayoutPinModal.isOpen}
+          onClose={autoPayoutPinModal.onClose}
+          onSuccess={autoPayoutPinModal.onSuccess}
+          title={autoPayoutPinModal.enabled ? 'Switch to Manual Payouts' : 'Enable Instant Auto-Payouts'}
+          description={
+            autoPayoutPinModal.enabled
+              ? 'Enter your 4-digit transaction PIN to disable instant payouts. Future withdrawals will require admin approval.'
+              : 'Enter your 4-digit transaction PIN to enable instant automatic payouts directly to your connected bank.'
+          }
         />
       )}
 

@@ -65,6 +65,7 @@ export interface PayoutPreviewData {
   fees?: PaystackFeeSchedule;
   settlementAccount: SettlementAccountInfo;
   autoSplit: AutoSplitInfo;
+  autoPayoutEnabled?: boolean;
   security: SecurityInfo;
 }
 
@@ -91,8 +92,8 @@ interface SettlementStore {
   loadingPreview: boolean;
   loadingHistory: boolean;
   withdrawing: boolean;
-  connectingBank: boolean;
   updatingAutoSplit: boolean;
+  updatingAutoPayout: boolean;
   pagination: {
     page: number;
     limit: number;
@@ -110,9 +111,9 @@ interface SettlementStore {
     businessId: string,
     input: { enabled: boolean; taxSplitPercentage?: number; pin?: string; stepUpToken?: string }
   ) => Promise<boolean>;
-  connectBank: (
+  toggleAutoPayout: (
     businessId: string,
-    input: { bankCode: string; bankName: string; accountNumber: string; pin?: string; stepUpToken?: string }
+    input: { enabled: boolean; pin?: string; stepUpToken?: string }
   ) => Promise<boolean>;
   resolveAccount: (input: {
     bankCode: string;
@@ -130,8 +131,8 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
   loadingPreview: false,
   loadingHistory: false,
   withdrawing: false,
-  connectingBank: false,
   updatingAutoSplit: false,
+  updatingAutoPayout: false,
   pagination: {
     page: 1,
     limit: 10,
@@ -244,20 +245,29 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     }
   },
 
-  connectBank: async (businessId, input) => {
-    set({ connectingBank: true });
-    const toastId = toast.loading('Connecting settlement bank account…');
+  // Note: businessId is a route parameter segment; the setting is persisted at user-account scope
+  toggleAutoPayout: async (businessId, input) => {
+    set({ updatingAutoPayout: true });
+    const toastId = toast.loading(
+      input.enabled ? 'Enabling instant payouts…' : 'Switching to manual payouts…'
+    );
     try {
-      const res = await api.post(`/businesses/${businessId}/settlement/connect`, input);
-      toast.success(res.data.message || 'Settlement bank connected successfully', { id: toastId });
+      const res = await api.patch(`/businesses/${businessId}/settlement/auto-payout`, input);
+      toast.success(res.data.message || 'Payout mode updated successfully', { id: toastId });
       get().fetchPreview(businessId);
       return true;
     } catch (err: any) {
+      const code = err?.response?.data?.error?.code;
       const errorMessage = err?.response?.data?.error?.message;
-      toast.error(errorMessage || getErrorMessage(err, 'Failed to connect settlement bank'), { id: toastId });
+      if (code === 'SETTLEMENT_ACCOUNT_REQUIRED') {
+        toast.error('Connect your settlement bank account first before enabling instant payouts', { id: toastId });
+      } else {
+        toast.error(errorMessage || getErrorMessage(err, 'Failed to update payout mode'), { id: toastId });
+      }
+      get().fetchPreview(businessId);
       return false;
     } finally {
-      set({ connectingBank: false });
+      set({ updatingAutoPayout: false });
     }
   },
 

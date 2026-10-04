@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Loader2, Wallet } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Lock, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -277,60 +277,88 @@ export default function InvoiceForm() {
     }
   };
 
-  if (!biz) return <p className="py-20 text-center text-gray-400">Select a business first.</p>;
+if (!biz) return <p className="py-20 text-center text-gray-400">Select a business first.</p>;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading invoice...
+      <div className="mx-auto max-w-4xl space-y-5">
+        <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+        <div className="h-7 w-48 animate-pulse rounded bg-gray-200" />
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="space-y-4 rounded-xl bg-white p-5 ring-1 ring-gray-200"
+          >
+            <div className="h-3.5 w-32 animate-pulse rounded bg-gray-200" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {[0, 1].map((j) => (
+                <div key={j} className="h-9 animate-pulse rounded-lg bg-gray-100" />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (notEditable) {
     return (
-      <Card className="py-12 text-center">
-        <p className="text-sm text-gray-600">
-          This invoice is not in draft status and cannot be edited.
-        </p>
-        <Link
-          to={`/invoices/${id}`}
-          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to invoice
-        </Link>
-      </Card>
+      <div className="mx-auto max-w-2xl">
+        <Card noPadding className="overflow-hidden ring-1 ring-gray-200">
+          <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+              <Lock className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium text-gray-900">
+              This invoice is locked for editing
+            </p>
+            <p className="max-w-sm text-sm text-gray-500">
+              Only draft invoices can be edited. Once an invoice has been sent,
+              cancel it and raise a new one instead &mdash; that keeps your
+              records consistent for tax.
+            </p>
+            <Link
+              to={`/invoices/${id}`}
+              className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to invoice
+            </Link>
+          </div>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link
-            to={isEdit ? `/invoices/${id}` : '/invoices'}
-            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Link>
-          <h1 className="mt-1 text-xl sm:text-2xl font-bold text-gray-900">
-            {isEdit ? 'Edit Invoice' : 'New Invoice'}
-          </h1>
-          <p className="mt-1 font-body text-sm text-gray-500">
-            Totals are computed automatically. Saved as a draft — you can send it from the invoice page.
-          </p>
-        </div>
+    <div className="mx-auto max-w-4xl space-y-5">
+      <div>
+        <Link
+          to={isEdit ? `/invoices/${id}` : '/invoices'}
+          className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {isEdit ? 'Back to invoice' : 'All invoices'}
+        </Link>
+        <h1 className="mt-2 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+          {isEdit ? 'Edit invoice' : 'New invoice'}
+        </h1>
+        <p className="mt-1 font-body text-sm text-gray-500">
+          {isEdit
+            ? 'Changes apply immediately to this draft.'
+            : 'Saved as a draft — you can send it from the invoice page.'}
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Customer */}
-        <Card>
-          <h2 className="mb-1 text-base font-semibold text-gray-900">Bill To</h2>
-          <p className="mb-4 font-body text-xs text-gray-500">
-            Add a WhatsApp number to send the invoice to your customer via WhatsApp.
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Card noPadding className="overflow-hidden ring-1 ring-gray-200">
+          <div className="px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-semibold text-gray-900">Bill to</h2>
+            <p className="mt-0.5 font-body text-xs text-gray-500">
+              Add a WhatsApp number or an email address so you can send this
+              invoice straight from the invoice page.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 border-t border-gray-100 px-4 py-4 sm:grid-cols-2 sm:px-5">
             <Input
               label="Customer Name *"
               value={customerName}
@@ -351,7 +379,7 @@ export default function InvoiceForm() {
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               maxLength={30}
-              placeholder="e.g. 08031234567 or +2348031234567"
+              placeholder="08031234567"
             />
             <Input
               label="TIN"
@@ -371,10 +399,11 @@ export default function InvoiceForm() {
           </div>
         </Card>
 
-        {/* Dates + VAT */}
-        <Card>
-          <h2 className="mb-4 text-base font-semibold text-gray-900">Dates & Tax</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <Card noPadding className="overflow-hidden ring-1 ring-gray-200">
+          <div className="px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-semibold text-gray-900">Dates &amp; tax</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 border-t border-gray-100 px-4 py-4 sm:grid-cols-4 sm:px-5">
             <Input
               label="Issue Date *"
               type="date"
@@ -410,16 +439,20 @@ export default function InvoiceForm() {
           </div>
         </Card>
 
-        {/* Line items */}
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Line Items</h2>
+        <Card noPadding className="overflow-hidden ring-1 ring-gray-200">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-semibold text-gray-900">
+              Line items
+              <span className="ml-2 text-xs font-normal tabular-nums text-gray-400">
+                {lines.length} {lines.length === 1 ? 'item' : 'items'}
+              </span>
+            </h2>
             <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4" /> Add line
+              <Plus className="h-3.5 w-3.5" /> Add line
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5 border-t border-gray-100 px-4 py-4 sm:px-5">
             {lines.map((line, idx) => {
               const q = Number(line.quantity) || 0;
               const u = Number(line.unitPrice) || 0;
@@ -427,7 +460,7 @@ export default function InvoiceForm() {
               return (
                 <div
                   key={idx}
-                  className="grid grid-cols-12 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:gap-3"
+                  className="grid grid-cols-12 items-end gap-2 rounded-lg border border-gray-100 bg-gray-50/60 p-3 sm:gap-3"
                 >
                   <div className="col-span-12 sm:col-span-6">
                     <label className="mb-1 block text-xs font-medium text-gray-500">
@@ -438,7 +471,7 @@ export default function InvoiceForm() {
                       value={line.description}
                       onChange={(e) => updateLine(idx, { description: e.target.value })}
                       placeholder="e.g. Consulting services, hours 1-10"
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                       maxLength={500}
                     />
                   </div>
@@ -450,7 +483,7 @@ export default function InvoiceForm() {
                       min="0"
                       value={line.quantity}
                       onChange={(e) => updateLine(idx, { quantity: e.target.value })}
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-right text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                     />
                   </div>
                   <div className="col-span-4 sm:col-span-2">
@@ -463,20 +496,25 @@ export default function InvoiceForm() {
                       min="0"
                       value={line.unitPrice}
                       onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-right text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                     />
                   </div>
-                  <div className="col-span-4 sm:col-span-2 flex flex-col justify-end">
-                    <label className="mb-1 block text-xs font-medium text-gray-500 text-right">
+                  <div className="col-span-4 flex flex-col justify-end sm:col-span-2">
+                    <label className="mb-1 block text-right text-xs font-medium text-gray-500">
                       Amount
                     </label>
-                    <div className="flex items-center justify-end gap-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900">
+                    <div className="flex items-center justify-end gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold tabular-nums text-gray-900">
                       <span className="truncate">{formatNaira(lineTotal)}</span>
                       <button
                         type="button"
                         onClick={() => removeLine(idx)}
                         disabled={lines.length === 1}
-                        className="shrink-0 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                        title={
+                          lines.length === 1
+                            ? 'An invoice needs at least one line'
+                            : 'Remove line'
+                        }
+                        className="shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400"
                         aria-label="Remove line"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -488,38 +526,54 @@ export default function InvoiceForm() {
             })}
           </div>
 
-          {/* Totals */}
-          <div className="mt-6 flex justify-end">
-            <div className="w-full max-w-sm space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
-                <span>{formatNaira(totals.subtotal)}</span>
+          <div className="flex justify-end border-t border-gray-100 bg-gray-50/60 px-4 py-4 sm:px-5">
+            <dl className="w-full max-w-xs space-y-1.5 text-sm">
+              <div className="flex justify-between gap-6">
+                <dt className="text-gray-500">Subtotal</dt>
+                <dd className="tabular-nums text-gray-700">
+                  {formatNaira(totals.subtotal)}
+                </dd>
               </div>
               {totals.discount > 0 && (
-                <div className="flex justify-between text-gray-600">
-                  <span>Discount</span>
-                  <span>-{formatNaira(totals.discount)}</span>
+                <div className="flex justify-between gap-6">
+                  <dt className="text-gray-500">Discount</dt>
+                  <dd className="tabular-nums text-gray-700">
+                    -{formatNaira(totals.discount)}
+                  </dd>
                 </div>
               )}
-              <div className="flex justify-between text-gray-600">
-                <span>VAT ({totals.vatRate}%)</span>
-                <span>{formatNaira(totals.vatAmount)}</span>
+              <div className="flex justify-between gap-6">
+                <dt className="text-gray-500">VAT ({totals.vatRate}%)</dt>
+                <dd className="tabular-nums text-gray-700">
+                  {formatNaira(totals.vatAmount)}
+                </dd>
               </div>
-              <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-bold text-gray-900">
-                <span>Total</span>
-                <span>{formatNaira(totals.total)}</span>
+              <div className="flex items-baseline justify-between gap-6 border-t border-gray-200 pt-2">
+                <dt className="font-semibold text-gray-900">Total</dt>
+                <dd className="text-xl font-bold tabular-nums tracking-tight text-gray-900">
+                  {formatNaira(totals.total)}
+                </dd>
               </div>
-            </div>
+            </dl>
           </div>
         </Card>
 
-        {/* Notes + terms */}
-        <Card>
-          <h2 className="mb-4 text-base font-semibold text-gray-900">Notes & Terms</h2>
-          <div className="space-y-4">
+        <Card noPadding className="overflow-hidden ring-1 ring-gray-200">
+          <div className="px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-semibold text-gray-900">Notes &amp; terms</h2>
+            <p className="mt-0.5 font-body text-xs text-gray-500">
+              Appears at the bottom of the printed invoice.
+            </p>
+          </div>
+          <div className="space-y-4 border-t border-gray-100 px-4 py-4 sm:px-5">
             <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="block text-sm font-medium text-gray-700">Payment Terms</label>
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <label
+                  htmlFor="invoice-terms"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Payment terms
+                </label>
                 {walletAccount && (
                   <button
                     type="button"
@@ -529,7 +583,7 @@ export default function InvoiceForm() {
                       setPaymentTerms(terms);
                       toast.success('Updated with wallet account details');
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 transition-colors hover:text-primary-700"
                     title="Fill with your dedicated virtual account details"
                   >
                     <Wallet className="h-3.5 w-3.5" />
@@ -538,6 +592,7 @@ export default function InvoiceForm() {
                 )}
               </div>
               <textarea
+                id="invoice-terms"
                 value={paymentTerms}
                 onChange={(e) => {
                   isUserEditedTermsRef.current = true;
@@ -546,35 +601,50 @@ export default function InvoiceForm() {
                 rows={4}
                 maxLength={500}
                 placeholder="e.g. Net 14. Pay to Access Bank acc 0123456789."
-                className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                className="block w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+              <label
+                htmlFor="invoice-notes"
+                className="mb-1.5 block text-sm font-medium text-gray-700"
+              >
+                Notes
+              </label>
               <textarea
+                id="invoice-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 maxLength={2000}
                 placeholder="Thank you for your business."
-                className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                className="block w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               />
             </div>
           </div>
         </Card>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate(isEdit ? `/invoices/${id}` : '/invoices')}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={saving}>
-            {isEdit ? 'Save changes' : 'Create as draft'}
-          </Button>
+        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Total
+            </p>
+            <p className="truncate text-xl font-bold tabular-nums tracking-tight text-gray-900">
+              {formatNaira(totals.total)}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate(isEdit ? `/invoices/${id}` : '/invoices')}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={saving}>
+              {isEdit ? 'Save changes' : 'Create as draft'}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

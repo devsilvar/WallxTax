@@ -9,7 +9,7 @@
   "tax_reports": "Tax Report",
   "payments": "Payment",
   "transaction_history": "All your money movement",
-  "bank_account": "Bank Account",
+  "bank_account": "Bank & Wallet",
   "reminders": "Reminder",
   "settings": "Settings",
   "logout": "Comot",
@@ -27,7 +27,7 @@
     "record_sale": "Enter sale",
     "calculate_tax": "Count tax",
     "create_business": "Create Business",
-    "new_business": "New Business"
+    "new_business": "New Business / Branch"
   },
   "business": {
     "active_workspace": "Na dis one you dey use"

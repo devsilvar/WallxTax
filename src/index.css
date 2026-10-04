@@ -1,14 +1,13 @@
 @import "tailwindcss";
 
-/* ─── Essential Typography Subsets ────────────────────────── */
-/* Montserrat: 400 (Regular) for base, 600 (SemiBold) for headers & KPIs */
-@import "@fontsource/montserrat/400.css";
-@import "@fontsource/montserrat/600.css";
+/* ─── Latin-only font subsets (removes Cyrillic/Greek/Vietnamese = 50% fewer files) ─── */
+/* Montserrat: 600 (SemiBold) for headers & KPIs */
+@import "@fontsource/montserrat/latin-600.css";
 
-/* Inter: 400 (Regular) for body/tables, 500 (Medium) for numbers/badges, 600 (SemiBold) for table headers */
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
+/* Inter: 400 (Regular), 500 (Medium), 600 (SemiBold) - core UI weights */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
 
 @theme {
   --font-sans: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -26,16 +25,56 @@
   --color-primary-900: #4c1d95;
 
   --color-success-50: #f0fdf4;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-300: #6ee7b7;
+  --color-success-400: #34d399;
   --color-success-500: #22c55e;
   --color-success-600: #16a34a;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
 
   --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
   --color-warning-500: #f59e0b;
   --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
 
   --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-300: #fca5a5;
+  --color-danger-400: #f87171;
   --color-danger-500: #ef4444;
   --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
+
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-200: #bfdbfe;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+
+  /* Neutral surface ramp — the admin "dense ops console" layer. Panels sit on
+     the canvas and separate via hairlines rather than shadows. */
+  --color-canvas: #f7f8fa;
+  --color-panel: #ffffff;
+  --color-panel-subtle: #fafbfc;
+  --color-hairline: #e6e8ec;
+  --color-hairline-strong: #d4d7dd;
+  --color-ink: #0f1115;
+  --color-ink-muted: #5b6472;
+  --color-ink-subtle: #6b7480;
+
+  --radius-panel: 6px;
 
   --animate-fade-in: fade-in 0.5s ease-out both;
   --animate-slide-up: slide-up 0.5s ease-out both;
@@ -187,6 +226,10 @@ p, td, th, li, label, input, textarea, select {
   body.sidebar-open { overflow: hidden; }
 }
 
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af #f3f4f6;
+}
 .overflow-y-auto::-webkit-scrollbar { width: 6px; }
 .overflow-y-auto::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 100px; }
 .overflow-y-auto::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 100px; }

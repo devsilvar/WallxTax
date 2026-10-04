@@ -85,8 +85,8 @@ export default function RecordCreditPaymentModal({
 
       toast.success(
         numAmount >= credit.balance
-          ? 'Debt fully settled! Taxable sales transaction recognized.'
-          : 'Partial payment recorded! Taxable sales transaction recognized.'
+          ? 'Debt fully settled! Balance cleared.'
+          : 'Partial payment recorded — debt balance updated.'
       );
       onSuccess?.();
       onClose();
@@ -249,11 +249,11 @@ export default function RecordCreditPaymentModal({
             </div>
           </div>
 
-          {/* FIRS Cash-Basis Revenue Booking Notification */}
-          <div className="rounded-none bg-emerald-50/70 border border-emerald-200 p-3 flex items-start gap-2.5">
-            <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-emerald-900 leading-relaxed">
-              <strong>FIRS Tax Invariant:</strong> Recording this {formatNaira(Number(amount) || 0)} payment immediately creates a confirmed Sales Transaction. Revenue is recognized in the <strong>{new Date(paymentDate).toLocaleString('default', { month: 'short', year: 'numeric' })}</strong> tax report.
+          {/* Debt Payment Info */}
+          <div className="rounded-none bg-slate-50/70 border border-slate-200 p-3 flex items-start gap-2.5">
+            <ShieldCheck className="h-4 w-4 text-slate-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-slate-700 leading-relaxed">
+              This payment reduces the outstanding debt. Revenue was already counted when the credit sale was recorded.
             </p>
           </div>
         </form>

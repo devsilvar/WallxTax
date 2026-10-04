@@ -6,9 +6,10 @@ import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
 import { useInvoiceStore } from '@/stores/invoice.store';
+import { useCreditStore } from '@/stores/credit.store';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
-import type { SalesTransaction, Pagination, Invoice } from '@/types';
+import type { SalesTransaction, Pagination, Invoice, CustomerCredit } from '@/types';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt';
 
 interface TransactionClassification {
@@ -20,8 +21,8 @@ interface TransactionClassification {
   description: string | null;
 }
 
-type WizardStep = 'primary' | 'revenue' | 'non_revenue' | 'all' | 'match_invoice';
-type PrimaryChoice = 'business_sale' | 'not_sale' | 'not_sure' | 'invoice_payment';
+type WizardStep = 'primary' | 'revenue' | 'non_revenue' | 'all' | 'match_invoice' | 'match_credit';
+type PrimaryChoice = 'business_sale' | 'not_sale' | 'not_sure' | 'invoice_payment' | 'credit_payment';
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -35,7 +36,11 @@ function formatDate(d: string) {
   });
 }
 
-export default function UnverifiedTransactions() {
+interface UnverifiedTransactionsProps {
+  embedded?: boolean;
+}
+
+export default function UnverifiedTransactions({ embedded = false }: UnverifiedTransactionsProps = {}) {
   const biz = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
@@ -60,6 +65,12 @@ export default function UnverifiedTransactions() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState('');
+
+  // Credit/debtor matching state
+  const [outstandingCredits, setOutstandingCredits] = useState<CustomerCredit[]>([]);
+  const [selectedCreditId, setSelectedCreditId] = useState<string | null>(null);
+  const [loadingCredits, setLoadingCredits] = useState(false);
+  const [creditSearch, setCreditSearch] = useState('');
   
   const [classifications, setClassifications] = useState<TransactionClassification[]>([]);
   const [loadingClassifications, setLoadingClassifications] = useState(false);
@@ -128,7 +139,10 @@ export default function UnverifiedTransactions() {
         ? selected.isRevenue
         : ['sales_revenue', 'service_revenue'].includes(selectedClassification);
       
-      const isReassigning = targetBusinessId && targetBusinessId !== biz.id;
+      const isReassigning =
+        !verifyModal.transaction.accrualLinked &&
+        Boolean(targetBusinessId) &&
+        targetBusinessId !== biz.id;
       const targetBizName = businesses.find((b) => b.id === targetBusinessId)?.businessName || 'target business';
 
       const payload = {
@@ -217,6 +231,62 @@ export default function UnverifiedTransactions() {
     }
   }
 
+  async function fetchOutstandingCredits() {
+    if (!biz) return;
+    setLoadingCredits(true);
+    try {
+      const [unpaidRes, partialRes, overdueRes] = await Promise.all([
+        api.get(`/businesses/${biz.id}/credits`, { params: { status: 'unpaid', limit: 50 } }),
+        api.get(`/businesses/${biz.id}/credits`, { params: { status: 'partially_paid', limit: 50 } }),
+        api.get(`/businesses/${biz.id}/credits`, { params: { status: 'overdue', limit: 50 } }),
+      ]);
+      const combined = [
+        ...(unpaidRes.data?.data ?? []),
+        ...(partialRes.data?.data ?? []),
+        ...(overdueRes.data?.data ?? []),
+      ];
+      setOutstandingCredits(combined);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load outstanding debts');
+    } finally {
+      setLoadingCredits(false);
+    }
+  }
+
+  async function handleCreditReconcile() {
+    if (!biz || !verifyModal || !selectedCreditId) {
+      toast.error('Please select a debtor to match');
+      return;
+    }
+
+    const targetCredit = outstandingCredits.find((c) => c.id === selectedCreditId);
+    const transferAmount = Number(verifyModal.transaction.amount);
+    const creditBalance = targetCredit ? Number(targetCredit.balance) : 0;
+
+    if (Math.abs(transferAmount - creditBalance) > 0.01) {
+      toast.error(
+        `Transfer amount (${formatNaira(transferAmount)}) does not match debtor balance (${formatNaira(creditBalance)})`,
+      );
+      return;
+    }
+
+    setActioningId(verifyModal.transaction.id);
+    try {
+      const reconcileDva = useCreditStore.getState().reconcileDva;
+      await reconcileDva(biz.id, selectedCreditId, verifyModal.transaction.id);
+      toast.success(
+        `Transfer matched to ${targetCredit?.customerName || 'debtor'} — debt ${creditBalance <= transferAmount ? 'settled in full' : 'partially settled'}`,
+      );
+      closeModal();
+      invalidateDashboard('debt_reconciled');
+      fetchUnverified();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to match transfer to debtor');
+    } finally {
+      setActioningId(null);
+    }
+  }
+
   function openVerifyModal(transaction: SalesTransaction) {
     setVerifyModal({ transaction });
     setTargetBusinessId(biz?.id || '');
@@ -226,6 +296,9 @@ export default function UnverifiedTransactions() {
     setSelectedInvoiceId(null);
     setInvoiceSearch('');
     setOutstandingInvoices([]);
+    setSelectedCreditId(null);
+    setCreditSearch('');
+    setOutstandingCredits([]);
     setCustomerName(transaction.customerName || '');
     setDescription('');
   }
@@ -239,6 +312,9 @@ export default function UnverifiedTransactions() {
     setSelectedInvoiceId(null);
     setInvoiceSearch('');
     setOutstandingInvoices([]);
+    setSelectedCreditId(null);
+    setCreditSearch('');
+    setOutstandingCredits([]);
     setCustomerName('');
     setDescription('');
   }
@@ -250,6 +326,11 @@ export default function UnverifiedTransactions() {
       setSelectedInvoiceId(null);
       setInvoiceSearch('');
       fetchOutstandingInvoices();
+    } else if (choice === 'credit_payment') {
+      setWizardStep('match_credit');
+      setSelectedCreditId(null);
+      setCreditSearch('');
+      fetchOutstandingCredits();
     } else if (choice === 'business_sale') {
       setWizardStep('revenue');
       // Default to the first revenue classification from the API — radio
@@ -269,6 +350,8 @@ export default function UnverifiedTransactions() {
     setSelectedClassification('');
     setSelectedInvoiceId(null);
     setInvoiceSearch('');
+    setSelectedCreditId(null);
+    setCreditSearch('');
   }
 
   if (!biz) return <NoBusinessPrompt />;
@@ -280,15 +363,17 @@ export default function UnverifiedTransactions() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <AlertCircle className="h-6 w-6 text-amber-500" />
-          Unverified Transactions
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Review and classify incoming payments to ensure accurate tax reporting
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <AlertCircle className="h-6 w-6 text-amber-500" />
+            Unverified Transactions
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Review and classify incoming payments to ensure accurate tax reporting
+          </p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -498,22 +583,32 @@ export default function UnverifiedTransactions() {
                     <Building2 className="h-3.5 w-3.5 text-gray-700" />
                     <span>Business Paid Into</span>
                   </div>
-                  <select
-                    value={targetBusinessId}
-                    onChange={(e) => setTargetBusinessId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-none text-xs font-medium text-gray-900 bg-white focus:outline-none focus:border-gray-900 focus:ring-0"
-                  >
-                    {businesses.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.businessName} {b.id === biz.id ? '(Current Active Business)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1.5 text-[11px] text-gray-500">
-                    {targetBusinessId === biz.id
-                      ? 'This revenue will be credited to this business’s sales and tax reports.'
-                      : `This revenue will be moved and credited to ${businesses.find((b) => b.id === targetBusinessId)?.businessName || 'the selected business'}.`}
-                  </p>
+                  {verifyModal.transaction.accrualLinked ? (
+                    <p className="text-[11px] text-gray-500 leading-relaxed">
+                      This revenue was recognised when the invoice or credit was issued, so it stays
+                      with <span className="font-semibold text-gray-700">{biz?.businessName}</span>.
+                      Cancel and re-issue the invoice against the correct business instead.
+                    </p>
+                  ) : (
+                    <>
+                      <select
+                        value={targetBusinessId}
+                        onChange={(e) => setTargetBusinessId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-none text-xs font-medium text-gray-900 bg-white focus:outline-none focus:border-gray-900 focus:ring-0"
+                      >
+                        {businesses.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.businessName} {b.id === biz.id ? '(Current Active Business)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 text-[11px] text-gray-500">
+                        {targetBusinessId === biz.id
+                          ? 'This revenue will be credited to this business’s sales and tax reports.'
+                          : `This revenue will be moved and credited to ${businesses.find((b) => b.id === targetBusinessId)?.businessName || 'the selected business'}.`}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -576,6 +671,31 @@ export default function UnverifiedTransactions() {
                         </span>
                       </div>
                       <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-900 transition-colors shrink-0 mt-1" />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePrimaryChoice('credit_payment')}
+                    className="w-full text-left p-4 rounded-none border border-gray-300 hover:border-violet-600 bg-white hover:bg-violet-50/40 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-none bg-violet-50 border border-violet-200 flex items-center justify-center shrink-0">
+                        <BookOpen className="h-5 w-5 text-violet-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-semibold text-gray-900 text-sm mb-0.5 flex items-center gap-1.5">
+                          Customer Debt Payment
+                          <CheckCircle2 className="h-3.5 w-3.5 text-violet-600" />
+                        </h5>
+                        <p className="text-xs text-gray-600 mb-1.5">
+                          Customer transferred money to settle an outstanding credit/debt
+                        </p>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[10px] bg-violet-100 text-violet-800 border border-violet-300 font-medium">
+                          ✓ Matches Debtor + Taxable
+                        </span>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-violet-900 transition-colors shrink-0 mt-1" />
                     </div>
                   </button>
 
@@ -1054,6 +1174,195 @@ export default function UnverifiedTransactions() {
                   </div>
                 </div>
               )}
+
+              {/* Step: Match Debtor Credit */}
+              {wizardStep === 'match_credit' && (
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={goBackToPrimary}
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back
+                  </button>
+
+                  {/* Transfer Summary Card */}
+                  <div className="bg-violet-50 border border-violet-200 rounded-none p-3.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-semibold text-violet-950 block">Incoming Transfer Amount</span>
+                      <p className="text-[11px] text-violet-700 mt-0.5">
+                        {formatDate(verifyModal.transaction.transactionDate)} • {verifyModal.transaction.customerName || 'Direct bank deposit'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-base text-violet-900 tabular-nums">
+                        {formatNaira(Number(verifyModal.transaction.amount))}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                      Select debtor to match
+                    </h4>
+                    <span className="text-[11px] text-gray-500">
+                      Must match exact balance
+                    </span>
+                  </div>
+
+                  {/* Search and Refresh */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search debtors by name, phone, or description..."
+                        value={creditSearch}
+                        onChange={(e) => setCreditSearch(e.target.value)}
+                        className="w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs outline-none focus:border-gray-900 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={fetchOutstandingCredits}
+                      disabled={loadingCredits}
+                      className="p-2 rounded-none border border-gray-300 hover:bg-gray-50 text-gray-600 transition-colors disabled:opacity-50 cursor-pointer"
+                      title="Refresh debts"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loadingCredits ? 'animate-spin text-violet-600' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Debtor List */}
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {loadingCredits ? (
+                      <div className="py-10 text-center space-y-2">
+                        <RefreshCw className="h-5 w-5 animate-spin text-violet-600 mx-auto" />
+                        <p className="text-xs text-gray-400">Loading open debtor records...</p>
+                      </div>
+                    ) : outstandingCredits.length === 0 ? (
+                      <div className="py-8 text-center rounded-none border border-dashed border-gray-300 bg-gray-50 p-4">
+                        <BookOpen className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-xs font-bold text-gray-700">No open debtor records found</p>
+                        <p className="text-[11px] text-gray-500 max-w-xs mx-auto mt-1">
+                          No unpaid or partially paid debts found for this business.
+                        </p>
+                      </div>
+                    ) : (
+                      outstandingCredits
+                        .filter((credit) => {
+                          if (!creditSearch.trim()) return true;
+                          const term = creditSearch.toLowerCase();
+                          return (
+                            credit.customerName.toLowerCase().includes(term) ||
+                            (credit.customerPhone && credit.customerPhone.toLowerCase().includes(term)) ||
+                            (credit.description && credit.description.toLowerCase().includes(term)) ||
+                            String(credit.balance).includes(term)
+                          );
+                        })
+                        .sort((a, b) => {
+                          const transferAmt = Number(verifyModal.transaction.amount);
+                          const aExact = Math.abs(Number(a.balance) - transferAmt) < 0.01 ? 1 : 0;
+                          const bExact = Math.abs(Number(b.balance) - transferAmt) < 0.01 ? 1 : 0;
+                          return bExact - aExact;
+                        })
+                        .map((credit) => {
+                          const isSelected = selectedCreditId === credit.id;
+                          const creditBal = Number(credit.balance);
+                          const transferAmt = Number(verifyModal.transaction.amount);
+                          const isExact = Math.abs(creditBal - transferAmt) < 0.01;
+
+                          return (
+                            <div
+                              key={credit.id}
+                              onClick={() => setSelectedCreditId(credit.id)}
+                              className={`cursor-pointer rounded-none p-3 border transition-all flex items-center justify-between ${
+                                isSelected
+                                  ? isExact
+                                    ? 'border-violet-600 bg-violet-50/60 ring-1 ring-violet-600'
+                                    : 'border-amber-500 bg-amber-50/60 ring-1 ring-amber-500'
+                                  : isExact
+                                    ? 'border-emerald-300 bg-emerald-50/30 hover:border-emerald-400'
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`h-4 w-4 rounded-none border flex items-center justify-center shrink-0 ${
+                                    isSelected
+                                      ? isExact
+                                        ? 'border-violet-600 bg-violet-600 text-white'
+                                        : 'border-amber-500 bg-amber-500 text-white'
+                                      : 'border-gray-300'
+                                  }`}
+                                >
+                                  {isSelected && <div className="h-1.5 w-1.5 rounded-none bg-white" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-900">
+                                      {credit.customerName}
+                                    </span>
+                                    <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                                      {formatNaira(creditBal)}
+                                    </span>
+                                    {isExact && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-semibold rounded-none border border-emerald-300">
+                                        <ShieldCheck className="h-3 w-3" /> Exact match
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                    {credit.description || 'Credit debt'} • Due {formatDate(credit.dueDate)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <span className={`text-xs font-bold flex items-center gap-1 shrink-0 ml-2 ${
+                                  isExact ? 'text-violet-700' : 'text-amber-700'
+                                }`}>
+                                  Selected <CheckCircle2 className="h-4 w-4" />
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+
+                  {/* Warning on amount mismatch if a debtor is selected */}
+                  {selectedCreditId &&
+                    outstandingCredits.find((c) => c.id === selectedCreditId) &&
+                    Math.abs(
+                      Number(outstandingCredits.find((c) => c.id === selectedCreditId)!.balance) -
+                        Number(verifyModal.transaction.amount),
+                    ) > 0.01 && (
+                      <div className="rounded-none bg-amber-50 p-3 border border-amber-300 flex items-start gap-2.5">
+                        <AlertCircle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                        <div className="text-[11px] text-amber-900 leading-relaxed">
+                          <span className="font-bold">Amount Mismatch:</span> Selected debt balance is{' '}
+                          <span className="font-semibold">
+                            {formatNaira(Number(outstandingCredits.find((c) => c.id === selectedCreditId)!.balance))}
+                          </span>
+                          , but transfer is{' '}
+                          <span className="font-semibold">
+                            {formatNaira(Number(verifyModal.transaction.amount))}
+                          </span>
+                          . Matching requires an exact amount.
+                        </div>
+                      </div>
+                    )}
+
+                  <div className="rounded-none bg-violet-50/60 p-3 border border-violet-200 flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-violet-900 leading-relaxed">
+                      Matching this transfer will record a credit settlement payment, update the debtor's balance, verify the incoming deposit, and mark it as confirmed taxable revenue.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Pinned Footer */}
@@ -1068,7 +1377,13 @@ export default function UnverifiedTransactions() {
               </Button>
               {wizardStep !== 'primary' && (
                 <Button
-                  onClick={wizardStep === 'match_invoice' ? handleInvoiceReconcile : handleVerify}
+                  onClick={
+                    wizardStep === 'match_invoice'
+                      ? handleInvoiceReconcile
+                      : wizardStep === 'match_credit'
+                      ? handleCreditReconcile
+                      : handleVerify
+                  }
                   disabled={
                     wizardStep === 'match_invoice'
                       ? !selectedInvoiceId ||
@@ -1077,12 +1392,23 @@ export default function UnverifiedTransactions() {
                           Number(outstandingInvoices.find((i) => i.id === selectedInvoiceId)?.total || 0) -
                             Number(verifyModal.transaction.amount),
                         ) > 0.01
+                      : wizardStep === 'match_credit'
+                      ? !selectedCreditId ||
+                        actioningId === verifyModal.transaction.id ||
+                        Math.abs(
+                          Number(outstandingCredits.find((c) => c.id === selectedCreditId)?.balance || 0) -
+                            Number(verifyModal.transaction.amount),
+                        ) > 0.01
                       : !selectedClassification || actioningId === verifyModal.transaction.id
                   }
                   isLoading={actioningId === verifyModal.transaction.id}
                   className="rounded-none text-xs min-w-[120px]"
                 >
-                  {wizardStep === 'match_invoice' ? 'Match to Invoice' : 'Confirm'}
+                  {wizardStep === 'match_invoice'
+                    ? 'Match to Invoice'
+                    : wizardStep === 'match_credit'
+                    ? 'Match to Debtor'
+                    : 'Confirm'}
                 </Button>
               )}
             </div>

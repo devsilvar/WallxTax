@@ -1,134 +1,156 @@
-import { useEffect, useState } from 'react';
-import { ScrollText, ChevronLeft, ChevronRight } from 'lucide-react';
-import Card from '@/components/ui/Card.tsx';
-import Button from '@/components/ui/Button.tsx';
+import { useEffect, useMemo, useState } from 'react';
+import { ScrollText, Search, X } from 'lucide-react';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
+import toast from 'react-hot-toast';
 import type { AuditLog, Pagination } from '@/types/index.ts';
+import PageHeader from './shared/PageHeader';
+import PaginationBar from './shared/Pagination';
+import { Panel, PanelEmpty } from './shared/Panel';
+import StatusPill, { type Tone } from './shared/StatusPill';
+import { formatStamp } from './shared/format';
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
+/**
+ * Only two outcomes are worth colour in an audit trail: something was created
+ * and something was destroyed. Updates and logins are routine, so they stay
+ * neutral rather than borrowing amber for attention they don't warrant.
+ */
+const TONE_BY_PREFIX: Record<string, Tone> = {
+  create: 'success',
+  delete: 'danger',
+};
 
-function actionBadge(a: string) {
-  const colors: Record<string, string> = {
-    create: 'bg-green-100 text-green-700',
-    update: 'bg-blue-100 text-blue-700',
-    delete: 'bg-red-100 text-red-700',
-    login: 'bg-purple-100 text-purple-700',
-  };
-  const prefix = a.split('_')[0];
-  const cls = colors[prefix] || 'bg-gray-100 text-gray-600';
-  return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>{a}</span>;
-}
+const toneFor = (action: string): Tone => TONE_BY_PREFIX[action.split('_')[0]] ?? 'neutral';
 
 export default function AdminAuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
+  const [actionInput, setActionInput] = useState('');
   const [filterAction, setFilterAction] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  // The input used to sit in the fetch effect's deps directly, so every
+  // keystroke fired a request. Debounced to match the Invoices list.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilterAction(actionInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [actionInput]);
 
   useEffect(() => {
-    setIsLoading(true);
     const params: Record<string, unknown> = { page, limit: 20 };
     if (filterAction) params.action = filterAction;
     api.get('/admin/audit-logs', { params })
       .then((r) => { setLogs(r.data.data); setPagination(r.data.pagination); })
-      .finally(() => setIsLoading(false));
+      .catch((err: any) => toast.error(err?.response?.data?.error?.message || 'Failed to load audit logs'))
+      .finally(() => setHasLoadedOnce(true));
   }, [page, filterAction]);
 
+  const rows = useMemo(
+    () =>
+      logs.map((l) => ({
+        ...l,
+        stamp: formatStamp(l.createdAt),
+        tone: toneFor(l.action),
+        entityLabel: l.entityId ? `${l.entity} #${l.entityId.slice(0, 8)}` : l.entity,
+      })),
+    [logs]
+  );
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 font-sans">Audit & Compliance Trail</h1>
-        <p className="mt-1 font-body text-sm text-gray-500">Immutable security logs tracking all administrative and system mutations.</p>
-      </div>
+    <div className='space-y-4'>
+      <PageHeader
+        title='Audit & Compliance Trail'
+        hint='Immutable record of every administrative and system mutation.'
+        actions={
+          pagination && (
+            <span className='text-[11px] text-ink-muted'>
+              {pagination.total} {pagination.total === 1 ? 'event' : 'events'} recorded
+            </span>
+          )
+        }
+      />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input
-          type="text"
-          placeholder="Filter by action..."
-          value={filterAction}
-          onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
-          className="w-full sm:w-auto rounded-xl border border-gray-300 px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 font-body shadow-2xs"
-        />
-        {pagination && <span className="font-body text-xs text-gray-400">{pagination.total} total logs recorded</span>}
-      </div>
+      <Panel className='px-3 py-2'>
+        <div className='flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center'>
+          <div className='relative w-full sm:w-72'>
+            <Search
+              className='absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-subtle'
+              aria-hidden='true'
+            />
+            <input
+              type='search'
+              placeholder='Filter by action...'
+              aria-label='Filter audit logs by action'
+              value={actionInput}
+              onChange={(e) => setActionInput(e.target.value)}
+              className='h-8 w-full rounded border border-hairline-strong bg-panel pl-8 pr-8 font-mono text-xs text-ink placeholder:text-ink-subtle focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 focus:outline-none'
+            />
+            {actionInput && (
+              <button
+                type='button'
+                onClick={() => setActionInput('')}
+                aria-label='Clear action filter'
+                className='absolute right-2 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
+              >
+                <X className='h-3.5 w-3.5' />
+              </button>
+            )}
+          </div>
+          {filterAction && (
+            <span className='text-[11px] text-ink-muted'>
+              Showing action <span className='font-mono text-ink'>{filterAction}</span>
+            </span>
+          )}
+        </div>
+      </Panel>
 
-      {isLoading && (
+      {!hasLoadedOnce ? (
         <TableSkeleton rows={8} columns={5} />
-      )}
-
-      {!isLoading && logs.length === 0 && (
-        <Card className="py-16 text-center border border-gray-200/80 shadow-xs">
-          <ScrollText className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-          <p className="text-base font-semibold text-gray-800">No audit logs found</p>
-          <p className="mt-1 text-xs text-gray-400">No events found matching the specified filter.</p>
-        </Card>
-      )}
-
-      {!isLoading && logs.length > 0 && (
-        <>
-          {/* Desktop table */}
-          <div className="hidden md:block rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
-            <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
-                <th className="px-4 py-3">Timestamp</th>
-                <th className="px-4 py-3">User</th>
-                <th className="px-4 py-3">Action</th>
-                <th className="px-4 py-3">Entity</th>
-                <th className="px-4 py-3 hidden lg:table-cell">IP</th>
-              </tr>
-            </thead>
-            <tbody className="font-body text-sm">
-              {logs.map((l) => (
-                <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(l.createdAt)}</td>
-                  <td className="px-4 py-3 text-gray-600">{l.user?.email || '—'}</td>
-                  <td className="px-4 py-3">{actionBadge(l.action)}</td>
-                  <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
-                    {l.entity}
-                    {l.entityId && <span className="ml-1 font-mono text-xs text-gray-400">#{l.entityId.slice(0, 8)}</span>}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400 hidden lg:table-cell">{l.ipAddress || '—'}</td>
+      ) : rows.length === 0 ? (
+        <Panel>
+          <PanelEmpty
+            icon={ScrollText}
+            title='No audit logs found'
+            hint={filterAction ? 'No events match that action filter.' : 'No events have been recorded yet.'}
+          />
+        </Panel>
+      ) : (
+        <Panel className='overflow-hidden'>
+          <div className='overflow-x-auto'>
+            <table className='w-full min-w-[720px] text-left text-xs'>
+              <thead className='border-b border-hairline-strong bg-panel-subtle text-[10px] font-semibold uppercase tracking-wider text-ink-muted'>
+                <tr>
+                  <th scope='col' className='px-3 py-1.5'>Timestamp</th>
+                  <th scope='col' className='px-3 py-1.5'>User</th>
+                  <th scope='col' className='px-3 py-1.5'>Action</th>
+                  <th scope='col' className='px-3 py-1.5'>Entity</th>
+                  <th scope='col' className='px-3 py-1.5'>IP</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className='divide-y divide-hairline'>
+                {rows.map((l) => (
+                  <tr key={l.id} className='transition-colors hover:bg-panel-subtle'>
+                    <td className='whitespace-nowrap px-3 py-1.5 font-mono text-ink-muted'>{l.stamp}</td>
+                    <td className='px-3 py-1.5 text-ink'>{l.user?.email || '—'}</td>
+                    <td className='px-3 py-1.5'>
+                      <StatusPill tone={l.tone}>{l.action}</StatusPill>
+                    </td>
+                    <td className='max-w-[220px] truncate px-3 py-1.5 font-mono text-ink-muted'>
+                      {l.entityLabel}
+                    </td>
+                    <td className='px-3 py-1.5 font-mono text-ink-subtle'>{l.ipAddress || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-        {/* Mobile card list */}
-        <div className="md:hidden space-y-3">
-          {logs.map((l) => (
-            <Card key={l.id} className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {actionBadge(l.action)}
-                    <span className="text-xs text-gray-400">{formatDate(l.createdAt)}</span>
-                  </div>
-                  <p className="mt-1.5 text-sm text-gray-600 truncate">{l.user?.email || '—'}</p>
-                  <p className="mt-0.5 text-xs text-gray-400 truncate">
-                    {l.entity}{l.entityId && ` #${l.entityId.slice(0, 8)}`}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-        </>
-      )}
-
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="font-body text-xs text-gray-400">Page {pagination.page} of {pagination.totalPages}</span>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" disabled={!pagination.hasPrev} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="secondary" size="sm" disabled={!pagination.hasNext} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
-        </div>
+          {pagination && <PaginationBar pagination={pagination} onPageChange={setPage} noun='logs' />}
+        </Panel>
       )}
     </div>
   );

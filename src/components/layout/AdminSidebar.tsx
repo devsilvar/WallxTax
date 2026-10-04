@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -7,23 +7,28 @@ import {
   Wallet,
   ScrollText,
   ArrowLeft,
+  ArrowDownLeft,
   LogOut,
   X,
   ShieldCheck,
   Bot,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
-import api from '@/lib/axios.ts';
+import { useAdminStatsStore } from '@/stores/admin.stats.store.ts';
 
 interface AdminSidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarProps) {
+export default function AdminSidebar({
+  isOpen = false,
+  onClose,
+}: AdminSidebarProps) {
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
-  const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
+  const pendingWithdrawals = useAdminStatsStore((s) => s.stats?.withdrawalSla?.pendingCount ?? 0);
+  const unverifiedInflows = useAdminStatsStore((s) => s.stats?.unverifiedInflows?.count ?? 0);
 
   useEffect(() => {
     if (isOpen) {
@@ -35,16 +40,17 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
   }, [isOpen]);
 
   useEffect(() => {
-    api.get('/admin/dashboard')
-      .then((res) => {
-        const pending = res.data?.data?.withdrawalSla?.pendingCount || 0;
-        setPendingWithdrawals(pending);
-      })
-      .catch(() => {});
+    // Shared with the dashboard + withdrawals list — one request, not three.
+    useAdminStatsStore.getState().fetchStats();
   }, []);
 
   const handleNavClick = () => {
     onClose?.();
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      mainEl.scrollTop = 0;
+    }
   };
 
   const navItems = [
@@ -57,41 +63,47 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       icon: Wallet,
       badge: pendingWithdrawals > 0 ? pendingWithdrawals : undefined,
     },
+    {
+      to: '/admin/unverified-inflows',
+      label: 'Unverified Inflows',
+      icon: ArrowDownLeft,
+      badge: unverifiedInflows > 0 ? unverifiedInflows : undefined,
+    },
     { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
     { to: '/admin/ai-settings', label: 'AI Settings', icon: Bot },
   ];
 
   const sidebarContent = (
     <>
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4.5 bg-white">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 text-white font-bold text-base shadow-sm shadow-primary-500/20">
+      <div className='flex items-center justify-between border-b border-hairline bg-panel px-4 py-3'>
+        <div className='flex min-w-0 items-center gap-2.5'>
+          <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary-600 text-[11px] font-semibold text-white'>
             PMT
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-gray-900 tracking-tight">PayMyTax</span>
-              <span className="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-700">
+          </span>
+          <div className='min-w-0'>
+            <div className='flex items-center gap-1.5'>
+              <span className='text-[13px] font-semibold text-ink'>WallXERP</span>
+              <span className='rounded border border-hairline bg-panel-subtle px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ink-muted'>
                 Admin
               </span>
             </div>
-            <p className="text-[11px] text-gray-500 font-medium">Platform Management</p>
+            <p className='truncate text-[10px] text-ink-subtle'>Platform Management</p>
           </div>
         </div>
         <button
           onClick={onClose}
-          aria-label="Close sidebar"
-          className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label='Close sidebar'
+          className='flex h-7 w-7 shrink-0 items-center justify-center rounded text-ink-subtle transition-colors hover:bg-panel-subtle hover:text-ink focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none md:hidden'
         >
-          <X className="h-4 w-4" />
+          <X className='h-4 w-4' />
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-1">
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+      <nav className='flex-1 overflow-y-auto px-2.5 py-3'>
+        <div className='px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle'>
           Core Controls
         </div>
-        <ul className="space-y-1">
+        <ul className='space-y-0.5'>
           {navItems.map(({ to, label, icon: Icon, end, badge }) => (
             <li key={to}>
               <NavLink
@@ -99,29 +111,21 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
                 end={end}
                 onClick={handleNavClick}
                 className={({ isActive }) =>
-                  `group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                  `flex items-center justify-between rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none ${
                     isActive
-                      ? 'bg-primary-50 text-primary-700 font-semibold shadow-xs'
-                      : 'text-gray-600 hover:bg-gray-100/70 hover:text-gray-900'
+                      ? 'bg-ink font-semibold text-panel'
+                      : 'text-ink-muted hover:bg-panel-subtle hover:text-ink'
                   }`
                 }
               >
-                {({ isActive }) => (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <Icon
-                        className={`h-4.5 w-4.5 transition-colors ${
-                          isActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600'
-                        }`}
-                      />
-                      <span>{label}</span>
-                    </div>
-                    {badge !== undefined && (
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                        {badge}
-                      </span>
-                    )}
-                  </>
+                <span className='flex min-w-0 items-center gap-2.5'>
+                  <Icon className='h-4 w-4 shrink-0' aria-hidden='true' />
+                  <span className='truncate'>{label}</span>
+                </span>
+                {badge !== undefined && (
+                  <span className='ml-2 shrink-0 rounded-full border border-warning-200 bg-warning-50 px-1.5 text-[10px] font-semibold tabular-nums text-warning-700'>
+                    {badge}
+                  </span>
                 )}
               </NavLink>
             </li>
@@ -129,36 +133,35 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
         </ul>
       </nav>
 
-      {/* Admin User Info & Footer */}
-      <div className="border-t border-gray-100 p-3 bg-gray-50/50 space-y-2">
-        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-white border border-gray-200/60 shadow-2xs">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 font-bold text-xs">
+      <div className='border-t border-hairline bg-panel p-2.5'>
+        <div className='mb-2 flex items-center gap-2.5 rounded border border-hairline bg-panel-subtle px-2 py-1.5'>
+          <span className='flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-50 text-[11px] font-semibold text-primary-700'>
             {user?.email?.charAt(0).toUpperCase() || 'A'}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-gray-900">
+          </span>
+          <div className='min-w-0 flex-1'>
+            <p className='truncate text-[11px] font-semibold text-ink'>
               {user?.email || 'admin@paymytax.com'}
             </p>
-            <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
-              <ShieldCheck className="h-3 w-3" /> Super Admin
-            </div>
+            <p className='flex items-center gap-1 text-[10px] text-ink-subtle'>
+              <ShieldCheck className='h-3 w-3' aria-hidden='true' /> Super Admin
+            </p>
           </div>
         </div>
 
-        <div className="space-y-0.5">
+        <div className='space-y-0.5'>
           <NavLink
-            to="/dashboard"
+            to='/dashboard'
             onClick={handleNavClick}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-white hover:text-gray-900 hover:shadow-2xs"
+            className='flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-panel-subtle hover:text-ink focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
           >
-            <ArrowLeft className="h-3.5 w-3.5 text-gray-400" />
+            <ArrowLeft className='h-3.5 w-3.5 shrink-0 text-ink-subtle' aria-hidden='true' />
             Switch to SME Portal
           </NavLink>
           <button
             onClick={logout}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+            className='flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium text-danger-600 transition-colors hover:bg-danger-50 hover:text-danger-700 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:outline-none'
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className='h-3.5 w-3.5 shrink-0' aria-hidden='true' />
             Sign out
           </button>
         </div>
@@ -168,21 +171,19 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex h-screen w-64 flex-col border-r border-gray-200/80 bg-white shrink-0 shadow-xs z-20">
+      <aside className='z-20 hidden h-screen w-64 shrink-0 flex-col border-r border-hairline bg-panel md:flex'>
         {sidebarContent}
       </aside>
 
-      {/* Mobile sidebar — overlay drawer */}
-      <div className="md:hidden">
+      <div className='md:hidden'>
         <div
-          className={`fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-xs transition-opacity duration-300 ${
-            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          className={`fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-xs transition-opacity duration-300 ${
+            isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           onClick={onClose}
         />
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-[280px] flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-panel shadow-2xl transition-transform duration-300 ease-out ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >

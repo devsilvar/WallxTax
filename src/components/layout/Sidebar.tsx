@@ -7,8 +7,6 @@ import {
   Wallet,
   FileText,
   Calculator,
-  CreditCard,
-  Bell,
   Landmark,
   Settings,
   Shield,
@@ -17,13 +15,15 @@ import {
   Check,
   X,
   Zap,
-  AlertCircle,
   Bot,
   BookOpen,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
+import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
+import { hasPerm } from '@/components/auth/PermissionGate.tsx';
+import type { PermissionKey } from '@/types/index.ts';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -40,36 +40,65 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const navSections = [
+  // An account is an owner account if:
+  // 1. It owns at least one business (myRole === 'owner' or b.userId === user.id)
+  // 2. OR user has no businesses yet and is not marked as non-owner (user.isOwnerAccount !== false)
+  const isOwnerAccount = businesses.length > 0
+    ? businesses.some((b) => b.myRole === 'owner' || b.userId === user?.id)
+    : user?.isOwnerAccount !== false;
+
+  const checkPermission = (perm?: PermissionKey): boolean => {
+    if (!perm) return true;
+    return hasPerm(perm, activeBusiness, user?.id);
+  };
+
+  const navSections: Array<{
+    label: string;
+    items: Array<{ to: string; label: string; icon: any; permission?: PermissionKey }>;
+  }> = [
     {
       label: t('sections.operate'),
       items: [
-        { to: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
-        { to: '/sales', label: t('sales'), icon: Receipt },
-        { to: '/sales/unverified', label: t('unverified'), icon: AlertCircle },
-        { to: '/expenses', label: t('expenses'), icon: Wallet },
-        { to: '/invoices', label: t('invoices'), icon: FileText },
-        { to: '/debtors', label: t('debtors', { defaultValue: 'Debtors' }), icon: BookOpen },
-        { to: '/ai', label: t('ai_assistant'), icon: Bot },
+        { to: '/dashboard', label: t('Dashboard'), icon: LayoutDashboard, permission: 'dashboard.read' },
+        { to: '/sales', label: t('Sales'), icon: Receipt, permission: 'sales.read' },
+        { to: '/expenses', label: t('Expenses'), icon: Wallet, permission: 'expenses.read' },
+        { to: '/invoices', label: t('Invoices'), icon: FileText, permission: 'invoices.read' },
+        {
+          to: '/debtors',
+          label: t('Debtors', { defaultValue: 'Debtors' }),
+          icon: BookOpen,
+          permission: 'debtors.read',
+        },
+        { to: '/ai', label: t('Ai Assistant'), icon: Bot, permission: 'ai.use' },
       ],
     },
     {
       label: t('sections.money'),
       items: [
-        { to: '/tax', label: t('tax_reports'), icon: Calculator },
-        { to: '/payments', label: t('payments'), icon: CreditCard },
-        { to: '/transactions', label: t('transaction_history'), icon: FileText },
-        { to: '/account', label: t('bank_account'), icon: Landmark },
+        { to: '/tax', label: t('Tax Reports'), icon: Calculator, permission: 'tax.read' },
+        {
+          to: '/transactions',
+          label: t('Transaction History'),
+          icon: FileText,
+          permission: 'wallet.read',
+        },
+        { to: '/account', label: t('bank_account', { defaultValue: 'Banking & Wallet' }), icon: Landmark, permission: 'wallet.read' },
       ],
     },
     {
       label: t('sections.account'),
       items: [
-        { to: '/reminders', label: t('reminders'), icon: Bell },
-        { to: '/settings', label: t('settings'), icon: Settings },
+        { to: '/settings', label: t('Settings'), icon: Settings }, // personal settings always visible
       ],
     },
   ];
+
+  const filteredSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => checkPermission(item.permission)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -83,13 +112,26 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
   const handleNavClick = () => {
     onClose?.();
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      mainEl.scrollTop = 0;
+    }
+  };
+
+  const getRoleBadge = (role?: string) => {
+    if (!role || role === 'owner') return { label: 'Owner', class: 'bg-purple-50 text-purple-700 border-purple-200' };
+    if (role === 'manager') return { label: 'Manager', class: 'bg-blue-50 text-blue-700 border-blue-200' };
+    if (role === 'sales_staff') return { label: 'Sales Staff', class: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    if (role === 'accountant') return { label: 'Accountant', class: 'bg-amber-50 text-amber-700 border-amber-200' };
+    return { label: 'Viewer', class: 'bg-gray-50 text-gray-700 border-gray-200' };
   };
 
   const sidebarContent = (
     <>
       {/* Logo */}
       <div className='flex items-center justify-between px-5 py-5'>
-        <img src='/logo.png' alt='PayMyTax' className='h-8' />
+        <OptimizedLogo size='md' className='h-8' />
         {/* Close button — mobile only */}
         <button
           onClick={onClose}
@@ -122,14 +164,21 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <p className='text-[13px] font-semibold text-gray-900 truncate'>
                   {activeBusiness.businessName}
                 </p>
-                <p className='text-[10px] text-gray-400'>{t('business.active_workspace')}</p>
+                <div className='flex items-center gap-1.5 mt-0.5'>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${getRoleBadge(activeBusiness.myRole).class}`}>
+                    {getRoleBadge(activeBusiness.myRole).label}
+                  </span>
+                  <span className='text-[10px] text-gray-400'>
+                    {t('business.active_workspace')}
+                  </span>
+                </div>
               </div>
             </div>
             <ChevronDown
               className={`h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform duration-200 group-hover:text-primary-500 ${showBizDropdown ? 'rotate-180' : ''}`}
             />
           </button>
-        ) : (
+        ) : isOwnerAccount ? (
           <button
             onClick={() => setShowCreateModal(true)}
             className='flex w-full items-center gap-2 rounded-xl border border-dashed border-primary-200 px-3 py-2.5 text-[13px] font-medium text-primary-600 hover:bg-primary-50 hover:border-primary-300 transition-all'
@@ -137,6 +186,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <Plus className='h-4 w-4' />
             {t('actions.create_business')}
           </button>
+        ) : (
+          <div className='rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-[12px] text-gray-500 text-center font-medium'>
+            {t('business.no_business_assigned', { defaultValue: 'No business assigned' })}
+          </div>
         )}
 
         {/* Dropdown */}
@@ -160,7 +213,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  <div className='flex items-center gap-2.5'>
+                  <div className='flex items-center gap-2.5 min-w-0'>
                     <div
                       className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold overflow-hidden shrink-0 ${
                         biz.id === activeBusiness?.id
@@ -179,57 +232,70 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                       )}
                     </div>
                     <span className='truncate'>{biz.businessName}</span>
+                    <span className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border shrink-0 ${getRoleBadge(biz.myRole).class}`}>
+                      {getRoleBadge(biz.myRole).label}
+                    </span>
                   </div>
                   {biz.id === activeBusiness?.id && (
-                    <Check className='h-3.5 w-3.5 text-primary-500' />
+                    <Check className='h-3.5 w-3.5 text-primary-500 shrink-0 ml-1' />
                   )}
                 </button>
               ))}
 
-              <div className='border-t border-gray-50 mt-1 pt-1 px-1.5'>
-                <button
-                  onClick={() => {
-                    setShowCreateModal(true);
-                    setShowBizDropdown(false);
-                  }}
-                  className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium text-primary-600 hover:bg-primary-50 transition-colors'
-                >
-                  <Plus className='h-3.5 w-3.5' />
-                  {t('actions.new_business')}
-                </button>
-              </div>
+              {isOwnerAccount && (
+                <div className='border-t border-gray-50 mt-1 pt-1 px-1.5'>
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(true);
+                      setShowBizDropdown(false);
+                    }}
+                    className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium text-primary-600 hover:bg-primary-50 transition-colors'
+                  >
+                    <Plus className='h-3.5 w-3.5' />
+                    {t('actions.new_business', { defaultValue: 'New Business / Branch' })}
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
 
-      <CreateBusinessModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
+      {isOwnerAccount && (
+        <CreateBusinessModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+        />
+      )}
 
-      <div className='px-4 mt-1 mb-3 space-y-1.5'>
-        <NavLink
-          to='/sales'
-          onClick={handleNavClick}
-          className='flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-[13px] font-semibold text-white shadow-sm shadow-primary-500/20 transition-all duration-200 hover:bg-primary-700 active:scale-[0.99]'
-        >
-          <Plus className='h-4 w-4' strokeWidth={2.4} />
-          {t('actions.record_sale')}
-        </NavLink>
-        <NavLink
-          to='/tax'
-          onClick={handleNavClick}
-          className='flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:border-primary-200 hover:bg-primary-50/40 hover:text-primary-700'
-        >
-          <Zap className='h-4 w-4 text-amber-500' strokeWidth={2.2} />
-          {t('actions.calculate_tax')}
-        </NavLink>
-      </div>
+      {(checkPermission('sales.create') || checkPermission('tax.calculate')) && (
+        <div className='px-4 mt-1 mb-3 space-y-1.5'>
+          {checkPermission('sales.create') && (
+            <NavLink
+              to='/sales'
+              onClick={handleNavClick}
+              className='flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-[13px] font-semibold text-white shadow-sm shadow-primary-500/20 transition-all duration-200 hover:bg-primary-700 active:scale-[0.99]'
+            >
+              <Plus className='h-4 w-4' strokeWidth={2.4} />
+              {t('actions.record_sale')}
+            </NavLink>
+          )}
+          {checkPermission('tax.calculate') && (
+            <NavLink
+              to='/tax'
+              onClick={handleNavClick}
+              className='flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:border-primary-200 hover:bg-primary-50/40 hover:text-primary-700'
+            >
+              <Zap className='h-4 w-4 text-amber-500' strokeWidth={2.2} />
+              {t('actions.calculate_tax')}
+            </NavLink>
+          )}
+        </div>
+      )}
 
       {/* Navigation — grouped by intent (Operate / Money / Account) */}
       <nav className='flex-1 overflow-y-auto px-3' aria-label='Main navigation'>
-        {navSections.map((section) => (
+        {filteredSections.map((section) => (
           <div key={section.label} className='mb-4 last:mb-0'>
             <p className='px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider'>
               {section.label}
@@ -297,29 +363,28 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           </NavLink>
         </div>
       )}
-
     </>
   );
 
   return (
     <>
       {/* Desktop sidebar — always visible at lg+ */}
-      <aside className="hidden lg:flex h-screen w-[260px] flex-col bg-white border-r border-gray-100 shrink-0">
+      <aside className='hidden lg:flex h-screen w-[260px] flex-col bg-white border-r border-gray-100 shrink-0'>
         {sidebarContent}
       </aside>
 
       {/* Mobile sidebar — overlay drawer */}
-      <div className="lg:hidden">
+      <div className='lg:hidden'>
         {/* Backdrop with blur */}
         <div
           className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           onClick={onClose}
-          aria-hidden="true"
+          aria-hidden='true'
         />
         {/* Drawer */}
         <aside
           className={`fixed inset-y-0 left-0 z-50 w-[300px] max-w-[85vw] flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-          aria-label="Navigation sidebar"
+          aria-label='Navigation sidebar'
         >
           {sidebarContent}
         </aside>

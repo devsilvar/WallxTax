@@ -22,6 +22,87 @@ export interface User {
   primaryBusinessId?: string | null;
   regulatoryTermsAcceptedAt?: string | null;
   regulatoryTermsVersion?: string | null;
+  pendingInvitationCount?: number;
+  isOwnerAccount?: boolean;
+}
+
+export type BusinessRole = 'owner' | 'manager' | 'sales_staff' | 'accountant' | 'viewer';
+export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked';
+
+export type PermissionKey =
+  | 'sales.create' | 'sales.read' | 'sales.update' | 'sales.delete' | 'sales.import'
+  | 'expenses.create' | 'expenses.read' | 'expenses.update' | 'expenses.delete'
+  | 'invoices.create' | 'invoices.read' | 'invoices.send' | 'invoices.mark_paid'
+  | 'debtors.read' | 'debtors.manage'
+  | 'tax.read' | 'tax.calculate' | 'tax.finalize' | 'tax.pay'
+  | 'payments.read'
+  | 'dashboard.read'
+  | 'settings.read' | 'settings.update'
+  | 'team.manage'
+  | 'business.delete'
+  | 'wallet.read' | 'wallet.withdraw'
+  | 'statements.download'
+  | 'reminders.read'
+  | 'ai.use';
+
+export interface BusinessMember {
+  id: string;
+  businessId: string;
+  userId: string;
+  role: BusinessRole;
+  permissions?: Record<string, boolean> | null;
+  isActive: boolean;
+  joinedAt: string;
+  user: {
+    id: string;
+    email: string;
+    phone?: string | null;
+    isVerified: boolean;
+    lastLoginAt?: string | null;
+  };
+}
+
+export interface TeamInvitation {
+  id: string;
+  businessId?: string;
+  email: string;
+  role: BusinessRole;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  business?: {
+    id: string;
+    businessName: string;
+    ownerName: string;
+    logoUrl?: string | null;
+  };
+}
+
+export interface TeamCap {
+  maxInvitedMembers: number;
+  activeInvitedCount: number;
+  pendingCount: number;
+  remainingSlots: number;
+}
+
+export interface ValidateInviteResponse {
+  valid: boolean;
+  reason?: 'not_found' | 'revoked' | 'already_used' | 'expired' | 'account_already_registered' | string;
+  email?: string;
+  role?: BusinessRole;
+  business?: {
+    id: string;
+    businessName: string;
+    ownerName: string;
+    logoUrl?: string | null;
+  };
+  expiresAt?: string;
+}
+
+export interface AcceptOnboardingPayload {
+  token: string;
+  password: string;
+  fullName?: string;
 }
 
 export interface Business {
@@ -51,6 +132,9 @@ export interface Business {
   logoPublicId?: string | null;
   createdAt: string;
   updatedAt: string;
+  myRole?: BusinessRole;
+  myPermissions?: Record<string, boolean>;
+  memberCount?: number;
 }
 
 
@@ -83,6 +167,16 @@ export interface SalesTransaction {
   updatedAt?: string;
   items?: SaleLineItem[];
   itemsCount?: number;
+  /**
+   * Accrual links. A sale carrying any of these had its revenue recognised at
+   * invoicing / credit issuance, so it cannot be moved to another business.
+   * Absent (undefined) on payloads that don't include the relations.
+   */
+  invoice?: { id: string; invoiceNumber: string } | null;
+  creditOrigin?: { id: string } | null;
+  creditPayment?: { id: string } | null;
+  /** Derived server-side from the relations above. */
+  accrualLinked?: boolean;
 }
 
 export interface Expense {
@@ -98,6 +192,7 @@ export interface Expense {
   expenseDate: string;
   receiptUrl?: string;
   isDeductible: boolean;
+  linkedCreditId?: string | null;
   createdAt: string;
 }
 
@@ -115,6 +210,7 @@ export interface TaxReport {
   isFinalized: boolean;
   isLocked: boolean;
   lockedAt?: string | null;
+  isNilReturn?: boolean;
   latestPayment?: TaxPayment | null;
   payments?: TaxPayment[];
   createdAt: string;
@@ -346,6 +442,9 @@ export interface AdminDashboardStats {
     breachedCount: number;
     oldestPendingHours: number;
   };
+  unverifiedInflows?: {
+    count: number;
+  };
 }
 
 export interface AdminUser {
@@ -358,6 +457,7 @@ export interface AdminUser {
   lastLoginAt: string | null;
   createdAt: string;
   _count: { businesses: number };
+  autoPayoutEnabled?: boolean;
 }
 
 export interface AdminUserDetail extends AdminUser {
@@ -451,7 +551,8 @@ export type ReminderType =
   | 'payout_rejected'
   | 'payout_completed'
   | 'payout_failed'
-  | 'credit_overdue';
+  | 'credit_overdue'
+  | 'pnl_statement_ready';
 
 export type ReminderReferenceType =
   | 'invoice'
@@ -563,7 +664,7 @@ export interface UnifiedLedgerRow {
   id: string;
   scope: 'dva_bank' | 'general_sales' | 'tax_outflow';
   entryType: 'credit' | 'debit';
-  sourceType: 'dva_transfer' | 'manual_sale' | 'invoice_payment' | 'pos' | 'tax_payment' | 'refund' | 'payout';
+  sourceType: 'dva_transfer' | 'manual_sale' | 'invoice_payment' | 'pos' | 'credit_sale' | 'tax_payment' | 'refund' | 'payout';
   amount: number;
   runningBalance: number;
   classification: string;
@@ -573,6 +674,7 @@ export interface UnifiedLedgerRow {
   status: 'settled' | 'pending' | 'reversed' | 'refunded';
   counterparty: string;
   isTaxable: boolean;
+  accrualLinked?: boolean;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -590,6 +692,7 @@ export interface UnifiedLedgerSummary {
       manual_sale: number;
       pos: number;
       invoice_payment: number;
+      credit_sale: number;
       other: number;
     };
     debitsByType?: {
@@ -676,6 +779,42 @@ export interface TransferFinancials {
   isProfit: boolean;
 }
 
+export interface SiblingBusinessOption {
+  id: string;
+  businessName: string;
+  merchantId: string;
+}
+
+export interface AdminUnverifiedInflowRow {
+  id: string;
+  businessId: string;
+  amount: number;
+  source: string;
+  status: string;
+  referenceId: string | null;
+  customerHint: string | null;
+  customerName: string | null;
+  description: string | null;
+  transactionDate: string;
+  needsVerification: boolean;
+  createdAt: string;
+  business: {
+    id: string;
+    businessName: string;
+    merchantId: string;
+    user: {
+      id: string;
+      email: string;
+    };
+  };
+  invoice?: { id: string; invoiceNumber: string } | null;
+  creditOrigin?: { id: string } | null;
+  creditPayment?: { id: string } | null;
+  /** Revenue was recognised at invoicing/credit issuance — reassignment is refused. */
+  accrualLinked: boolean;
+  siblingBusinesses: SiblingBusinessOption[];
+}
+
 export interface TransferDetailBreakdown {
   id: string;
   type: 'inflow' | 'outflow';
@@ -690,6 +829,14 @@ export interface TransferDetailBreakdown {
     owner: string;
     email: string;
   };
+  assignedBusiness?: {
+    id: string;
+    businessName: string;
+    merchantId: string;
+  };
+  siblingBusinesses: SiblingBusinessOption[];
+  /** Inflows only: revenue recognised at invoice/credit issuance — reassignment refused. */
+  accrualLinked?: boolean;
   financials: TransferFinancials;
   routing: {
     channel: string;
@@ -811,6 +958,8 @@ export interface UpdateCreditPayload {
   guarantorName?: string;
   guarantorPhone?: string;
   notes?: string;
+  items?: Array<{ name: string; quantity: number; unitPrice: number; lineTotal?: number }>;
+  totalAmount?: number;
 }
 
 export interface WriteOffCreditPayload {
@@ -832,3 +981,12 @@ export interface SendCreditWhatsAppResult {
   dueDate: string;
   message: string;
 }
+
+export interface PlatformTaxConfig {
+  id: string;
+  autoFinalizeDay: number;
+  autoFinalizeEnabled: boolean;
+  updatedAt: string;
+  updatedBy?: string | null;
+}
+

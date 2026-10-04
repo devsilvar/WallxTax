@@ -3,6 +3,7 @@ import api from '@/lib/axios.ts';
 import { useReminderStore } from '@/stores/reminder.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
+import { useTeamStore } from '@/stores/team.store.ts';
 import type { User } from '@/types/index.ts';
 
 interface AuthState {
@@ -11,7 +12,12 @@ interface AuthState {
   isLoading: boolean;
 
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, phone: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    phone: string,
+    password: string
+  ) => Promise<{ email: string; verificationLink?: string }>;
+  setAuthSession: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   fetchMe: () => Promise<void>;
   setLoading: (loading: boolean) => void;
@@ -30,8 +36,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   register: async (email, phone, password) => {
-    await api.post('/auth/register', { email, phone, password });
+    const { data } = await api.post('/auth/register', { email, phone, password });
+    return {
+      email: data.data?.user?.email || email,
+      verificationLink: data.data?.verificationLink,
+    };
   },
+
+  setAuthSession: (user, accessToken, refreshToken) => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    set({ user, isAuthenticated: true });
+  },
+
 
   // Logout must wipe every cache that holds the previous user's data.
   // Zustand stores are module singletons — clearing localStorage alone
@@ -46,6 +63,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useReminderStore.getState().clear();
     useBusinessStore.getState().clear();
     useInvoiceStore.getState().clear();
+    useTeamStore.getState().clear();
     set({ user: null, isAuthenticated: false });
   },
 

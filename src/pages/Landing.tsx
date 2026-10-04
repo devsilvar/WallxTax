@@ -9,19 +9,15 @@ import {
   HelpCircle,
   Clock,
   FileText,
-  FileCheck2,
   TrendingUp,
   ChevronRight,
   ChevronDown,
   Star,
   Receipt,
   Bell,
-  Play,
   BadgeCheck,
   Menu,
   BarChart3,
-  LineChart,
-  Calculator,
   Wallet,
   Zap,
   X,
@@ -31,12 +27,34 @@ import {
 import Button from '@/components/ui/Button.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
-import nigerian1 from '@/assets/nigerian1.jfif';
-import nigerian2 from '@/assets/nigerian2.jpg';
-import nigerian3 from '@/assets/nigerian3.jfif';
-import nigerian4 from '@/assets/nigerian4.jfif';
+import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 
-/* ─── Custom Hooks ─── */
+/* ─── High-Performance Shared Scroll Observer ─── */
+let sharedObserver: IntersectionObserver | null = null;
+const observerCallbacks = new Map<Element, () => void>();
+
+function getSharedObserver() {
+  if (typeof window === 'undefined') return null;
+  if (!sharedObserver) {
+    sharedObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const cb = observerCallbacks.get(entry.target);
+            if (cb) {
+              cb();
+              observerCallbacks.delete(entry.target);
+            }
+            sharedObserver?.unobserve(entry.target);
+          }
+        }
+      },
+      { threshold: 0.05, rootMargin: '120px 0px 80px 0px' },
+    );
+  }
+  return sharedObserver;
+}
+
 function useScrollAnimation<T extends HTMLElement = HTMLDivElement>() {
   const ref = useRef<T>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -45,24 +63,32 @@ function useScrollAnimation<T extends HTMLElement = HTMLDivElement>() {
     const element = ref.current;
     if (!element) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(element);
-        }
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' },
-    );
+    // Immediately reveal if already in/near viewport on mount
+    const rect = element.getBoundingClientRect();
+    if (rect.top < window.innerHeight + 120 && rect.bottom > -80) {
+      setIsVisible(true);
+      return;
+    }
 
+    const observer = getSharedObserver();
+    if (!observer) {
+      setIsVisible(true);
+      return;
+    }
+
+    observerCallbacks.set(element, () => setIsVisible(true));
     observer.observe(element);
-    return () => observer.disconnect();
+
+    return () => {
+      observerCallbacks.delete(element);
+      observer?.unobserve(element);
+    };
   }, []);
 
   return { ref, isVisible };
 }
 
-/* ─── Scroll Reveal Components ─── */
+/* ─── Fast & Crisp Scroll Reveal Components ─── */
 function ScrollReveal({
   children,
   className = '',
@@ -73,14 +99,16 @@ function ScrollReveal({
   delay?: number;
 }) {
   const { ref, isVisible } = useScrollAnimation();
+  const effectiveDelay = Math.min(delay, 120);
+
   return (
     <div
       ref={ref as React.Ref<HTMLDivElement>}
-      className={`transition-all duration-700 ease-out ${className}`}
+      className={`transition-[opacity,transform] duration-300 ease-out will-change-[opacity,transform] ${className}`}
       style={{
         opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-        transitionDelay: `${delay}ms`,
+        transform: isVisible ? 'translateY(0)' : 'translateY(10px)',
+        transitionDelay: `${effectiveDelay}ms`,
       }}
     >
       {children}
@@ -91,7 +119,7 @@ function ScrollReveal({
 function StaggerReveal({
   children,
   className = '',
-  staggerDelay = 100,
+  staggerDelay = 35,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -105,11 +133,13 @@ function StaggerReveal({
       {childArray.map((child, i) => (
         <div
           key={i}
-          className='transition-all duration-700 ease-out'
+          className='transition-[opacity,transform] duration-300 ease-out will-change-[opacity,transform]'
           style={{
             opacity: isVisible ? 1 : 0,
-            transform: isVisible ? 'translateY(0)' : 'translateY(40px)',
-            transitionDelay: isVisible ? `${i * staggerDelay}ms` : '0ms',
+            transform: isVisible ? 'translateY(0)' : 'translateY(10px)',
+            transitionDelay: isVisible
+              ? `${Math.min(i * staggerDelay, 180)}ms`
+              : '0ms',
           }}
         >
           {child}
@@ -144,7 +174,7 @@ function MobileNav({
       >
         <div className='flex flex-col h-full overflow-y-auto overscroll-contain'>
           <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0'>
-            <img src='/logo.png' alt='PayMyTax' className='h-8 w-auto' />
+            <OptimizedLogo size='md' className='h-8 w-auto' />
             <button
               onClick={onClose}
               className='min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 hover:bg-gray-100 rounded-xl transition-colors'
@@ -181,12 +211,16 @@ function MobileNav({
                         className='h-full w-full object-cover'
                       />
                     ) : (
-                      (activeBusiness?.businessName || user?.email || 'B').charAt(0).toUpperCase()
+                      (activeBusiness?.businessName || user?.email || 'B')
+                        .charAt(0)
+                        .toUpperCase()
                     )}
                   </div>
                   <div className='min-w-0 flex-1 text-left'>
                     <p className='text-sm font-bold text-gray-900 truncate'>
-                      {activeBusiness?.businessName || user?.email?.split('@')[0] || 'My Business'}
+                      {activeBusiness?.businessName ||
+                        user?.email?.split('@')[0] ||
+                        'My Business'}
                     </p>
                     <p className='text-xs font-semibold text-primary-600 flex items-center gap-1 group-hover:text-primary-700'>
                       Go to Dashboard <ArrowRight className='h-3 w-3' />
@@ -202,7 +236,10 @@ function MobileNav({
             ) : (
               <>
                 <Link to='/login' onClick={onClose} className='block'>
-                  <Button variant='ghost' className='w-full justify-center rounded-full'>
+                  <Button
+                    variant='ghost'
+                    className='w-full justify-center rounded-full'
+                  >
                     Sign in
                   </Button>
                 </Link>
@@ -226,7 +263,7 @@ const testimonials = [
     name: 'Adebayo Ogunlesi',
     role: 'CEO, Greenfield Ventures',
     quote:
-      'PayMyTax completely transformed how we handle taxes. What used to take our accountant days now takes minutes.',
+      'WallXERP completely transformed how we handle taxes. What used to take our accountant days now takes minutes.',
     avatar: 'AO',
     color: 'from-violet-500 to-purple-600',
   },
@@ -234,7 +271,7 @@ const testimonials = [
     name: 'Chioma Nwosu',
     role: 'Founder, CraftHub Lagos',
     quote:
-      'Finally, a tax platform that actually understands Nigerian businesses. The reminders have saved us from FIRS penalties.',
+      'Finally, a tax platform that actually understands Nigerian businesses. The reminders have saved us from NRS penalties.',
     avatar: 'CN',
     color: 'from-purple-500 to-indigo-600',
   },
@@ -250,27 +287,71 @@ const testimonials = [
 
 const faqs = [
   {
-    q: 'Is PayMyTax free to use?',
-    a: 'Yes! PayMyTax is free for small businesses. We only charge a small processing fee when you pay taxes through the platform.',
+    q: 'Is wallXTax really free to use?',
+    a: 'Yes! wallXTax is completely free for small businesses. No monthly fees, no hidden charges. We only charge a small, transparent processing fee when you pay taxes through the platform — and even that goes toward your convenience.',
   },
   {
-    q: 'How is my tax calculated?',
-    a: 'We follow the FIRS formula: Tax Payable = 7.5% x Gross Profit, where Gross Profit = Total Sales - Total Expenses.',
+    q: 'How does the AI Virtual CFO help my business?',
+    a: 'Think of it as having a financial expert in your pocket 24/7. Our AI analyzes your sales, expenses, and cash flow to give you smart recommendations like "Stock up on inventory now" or "You can save ₦50K on taxes this month." It learns your business patterns and alerts you to opportunities you might miss.',
+  },
+  {
+    q: 'Can I track my business from my phone?',
+    a: "Absolutely! Record sales, log expenses, check your cash position, and even send invoices — all from your mobile device. Whether you're at the market, in a meeting, or on the go, your business data is always at your fingertips.",
+  },
+  {
+    q: 'What happens to my debtors? Can the app help me get paid?',
+    a: "Yes! Our Debtors Management feature tracks who owes you, sends automated payment reminders, and shows you which customers pay on time. You'll never forget who owes what, and your customers get professional reminders without awkward phone calls.",
+  },
+  {
+    q: 'How is my tax calculated? Is it really NRS-compliant?',
+    a: '100% NRS-compliant. We use the official formula: Tax Payable = 7.5% × Gross Profit (Sales minus Expenses). Every calculation is auditable and matches exactly what NRS expects — no guesswork, no penalties.',
+  },
+  {
+    q: 'Can I open a business bank account through the app?',
+    a: 'Yes! We partner with licensed Nigerian banks to help you open a dedicated business account directly from the app. It integrates seamlessly with your sales and expense tracking, making reconciliation effortless.',
   },
   {
     q: 'Is my financial data secure?',
-    a: 'Absolutely. All data is encrypted in transit and at rest. We use bank-grade security with Paystack for all payments.',
+    a: "Absolutely. We use the same bank-grade AES-256 encryption and TLS 1.3 security that protect major Nigerian banks. Your data is encrypted both in transit and at rest. We never share your information with third parties, and all payments go through Paystack's secure infrastructure.",
   },
   {
-    q: 'Can I manage multiple businesses?',
-    a: 'Yes. You can add multiple businesses to your account and switch between them seamlessly from the dashboard.',
+    q: 'What if I already use accounting software?',
+    a: "wallXTax complements your existing tools. You can import your data, or use us as your primary system — we're designed to be simple enough for non-accountants while powerful enough to replace complex software. Many businesses switch completely because we're easier and smarter.",
+  },
+  {
+    q: 'Can I manage multiple businesses from one account?',
+    a: 'Yes! Switch between unlimited businesses with one click. Perfect if you run multiple ventures, manage businesses for family members, or have separate brands. Each business gets its own dashboard, reports, and tax calculations.',
+  },
+  {
+    q: 'Do I need accounting knowledge to use this?',
+    a: 'Not at all! We built wallXTax for business owners, not accountants. If you can send a WhatsApp message, you can use our app. The interface is intuitive, and the AI CFO explains everything in plain English — no jargon, no confusion.',
+  },
+  {
+    q: 'How fast can I start using it?',
+    a: "Under 5 minutes. Sign up, add your business details, and you're live. Import past transactions if you have them, or start fresh. You'll be tracking your first sale before your coffee gets cold.",
+  },
+  {
+    q: 'What if I miss a tax deadline?',
+    a: "You won't — that's the point! Our Smart Notifications send you reminders days before any NRS deadline. You'll get alerts via email, SMS, and in-app notifications. We've helped thousands avoid penalties by keeping them ahead of deadlines.",
+  },
+  {
+    q: 'Can I generate invoices for my customers?',
+    a: 'Yes! Create professional, branded e-invoices in seconds. Add your logo, payment terms, and bank details. Customers receive them instantly via email or WhatsApp, and you track payment status in real-time — no more chasing paper receipts.',
+  },
+  {
+    q: 'How does the Cash at Hand feature work?',
+    a: 'It gives you a live, accurate picture of your cash position at any moment. Every sale, expense, and bank transaction updates your balance instantly. No more surprises. You always know exactly how much cash you have available to reinvest or pay bills.',
+  },
+  {
+    q: 'What kind of support do I get?',
+    a: 'You get real human support via email, WhatsApp, and in-app chat. Plus, our AI CFO answers common questions instantly. Most issues are resolved within hours, not days. We also have video tutorials and a comprehensive help center.',
   },
 ];
 
 const trustIndicators = [
-  { icon: Shield, text: 'Bank-grade security' },
-  { icon: CreditCard, text: 'No credit card required' },
-  { icon: Clock, text: 'Setup in 2 minutes' },
+  { icon: Shield, text: 'High Data Encryption' },
+  { icon: CreditCard, text: 'Practical Growth Metrics' },
+  { icon: Clock, text: 'Setup in 5 minutes' },
 ];
 
 /* ─── FAQ Accordion ─── */
@@ -283,21 +364,22 @@ function FAQSection() {
       className='scroll-mt-20 sm:scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'
     >
       <div className='mx-auto max-w-3xl px-4 sm:px-6'>
-        <ScrollReveal className='text-center mb-14 sm:mb-16'>
-          <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-5 py-2 mb-6 shadow-sm'>
-            <HelpCircle className='h-4 sm:h-4 w-4 sm:w-4 text-primary-500' />
-            <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
+        <ScrollReveal className='text-center mb-12 sm:mb-14'>
+          <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+            <HelpCircle className='h-3.5 w-3.5 text-primary-600' />
+            <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
               Got Questions?
             </span>
           </span>
-          <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+          <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug max-w-3xl mx-auto'>
             Frequently asked{' '}
             <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
               questions
             </span>
           </h2>
-          <p className='mt-6 font-body text-base sm:text-lg text-gray-600'>
-            Find answers to common questions about WallxTax and tax compliance.
+          <p className='mt-4 font-body text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed'>
+            Everything you need to know about wallXTax and how it transforms
+            your business
           </p>
         </ScrollReveal>
 
@@ -315,14 +397,14 @@ function FAQSection() {
                     {faq.q}
                   </span>
                   <ChevronDown
-                    className={`h-5 w-5 shrink-0 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                    className={`h-5 w-5 shrink-0 text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
                   />
                 </button>
                 <div
                   className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
                 >
                   <div className='overflow-hidden'>
-                    <p className='px-4 sm:px-6 pb-4 sm:pb-5 font-body text-sm sm:text-base leading-relaxed text-gray-500'>
+                    <p className='px-4 sm:px-6 pb-4 sm:pb-5 font-body text-sm sm:text-base leading-relaxed text-gray-600'>
                       {faq.a}
                     </p>
                   </div>
@@ -363,24 +445,15 @@ function HeroDashboardPreview() {
     <div className='mt-10 sm:mt-14 lg:mt-16 relative mx-auto max-w-5xl px-2 sm:px-0'>
       {/* Dynamic ambient backdrops */}
       <div
-        className={`absolute -inset-8 rounded-3xl bg-gradient-to-r from-primary-500/30 via-purple-500/20 to-pink-500/30 blur-3xl transition-all duration-700 pointer-events-none ${
-          isHovered ? 'opacity-85 scale-105' : 'opacity-50 scale-100'
+        className={`absolute -inset-8 rounded-3xl bg-gradient-to-r from-primary-500/25 via-purple-500/15 to-pink-500/25 blur-3xl transition-opacity duration-300 pointer-events-none ${
+          isHovered ? 'opacity-80' : 'opacity-40'
         }`}
       />
-      <div
-        className='absolute -top-4 -left-4 sm:-left-8 w-16 sm:w-24 h-16 sm:h-24 bg-gradient-to-br from-primary-400/20 to-purple-400/20 blur-xl animate-blob-morph animate-bounce-gentle pointer-events-none'
-        style={{ animationDelay: '0s' }}
-      />
-      <div
-        className='absolute -bottom-4 -right-4 sm:-right-8 w-20 sm:w-32 h-20 sm:h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-xl animate-blob-morph pointer-events-none'
-        style={{ animationDelay: '2s' }}
-      />
-      <div
-        className='absolute top-1/2 -right-6 w-12 h-12 bg-gradient-to-br from-fuchsia-400/15 to-purple-400/15 blur-lg animate-sway pointer-events-none'
-        style={{ animationDelay: '1s' }}
-      />
+      <div className='absolute -top-4 -left-4 sm:-left-8 w-16 sm:w-24 h-16 sm:h-24 bg-gradient-to-br from-primary-400/20 to-purple-400/20 blur-xl pointer-events-none' />
+      <div className='absolute -bottom-4 -right-4 sm:-right-8 w-20 sm:w-32 h-20 sm:h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-xl pointer-events-none' />
+      <div className='absolute top-1/2 -right-6 w-12 h-12 bg-gradient-to-br from-fuchsia-400/15 to-purple-400/15 blur-lg pointer-events-none' />
 
-      {/* Floating Badge 1 - Top Left: Live FIRS Engine Active */}
+      {/* Floating Badge 1 - Top Left: Live NRS Engine Active */}
       <div
         className='absolute -top-4 -left-1 sm:-left-5 z-30 hidden sm:flex items-center gap-2 rounded-full bg-white/95 backdrop-blur-md border border-gray-200/80 px-3.5 py-1.5 shadow-lg shadow-primary-900/10 transition-all duration-300 hover:scale-105 animate-bounce-gentle select-none cursor-default'
         style={{ animationDuration: '6s' }}
@@ -390,7 +463,7 @@ function HeroDashboardPreview() {
           <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500' />
         </span>
         <span className='text-xs font-bold text-gray-800 tracking-tight'>
-          FIRS Engine Active
+          NRS Engine Active
         </span>
       </div>
 
@@ -403,7 +476,7 @@ function HeroDashboardPreview() {
           <Zap className='h-3.5 w-3.5 fill-current' />
         </div>
         <div className='text-left'>
-          <div className='text-[9px] uppercase font-bold text-gray-400 leading-tight'>
+          <div className='text-[9px] uppercase font-bold text-gray-600 leading-tight'>
             Auto-calculated
           </div>
           <div className='text-xs font-bold text-gray-900 tabular-nums leading-tight'>
@@ -420,7 +493,9 @@ function HeroDashboardPreview() {
         className='relative overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-2xl shadow-primary-900/10 mx-2 sm:mx-0 will-change-transform'
         style={{
           transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${isHovered ? 1.015 : 1}, ${isHovered ? 1.015 : 1}, 1)`,
-          transition: isHovered ? 'transform 0.12s ease-out' : 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          transition: isHovered
+            ? 'transform 0.12s ease-out'
+            : 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
           transformStyle: 'preserve-3d',
         }}
       >
@@ -442,7 +517,7 @@ function HeroDashboardPreview() {
             <span className='h-2.5 sm:h-3 w-2.5 sm:w-3 rounded-full bg-green-400 transition-transform duration-200 hover:scale-125' />
           </div>
           <div className='mx-auto hidden sm:flex h-5 sm:h-6 items-center rounded-md bg-gray-100 px-2 sm:px-3'>
-            <span className='font-body text-[9px] sm:text-[10px] text-gray-400'>
+            <span className='font-body text-[9px] sm:text-[10px] text-gray-600 font-medium'>
               app.paymytax.com/dashboard
             </span>
           </div>
@@ -457,27 +532,23 @@ function HeroDashboardPreview() {
                 </span>
               </div>
               <span className='text-[10px] sm:text-xs font-semibold text-gray-800'>
-                PayMyTax
+                WallXERP
               </span>
             </div>
-            {[
-              'Dashboard',
-              'Sales',
-              'Expenses',
-              'Tax Reports',
-              'Payments',
-            ].map((item, i) => (
-              <div
-                key={item}
-                className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-medium transition-colors ${
-                  i === 0
-                    ? 'bg-primary-50 text-primary-700 shadow-xs'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/50'
-                }`}
-              >
-                {item}
-              </div>
-            ))}
+            {['Dashboard', 'Sales', 'Expenses', 'Tax Reports', 'Payments'].map(
+              (item, i) => (
+                <div
+                  key={item}
+                  className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-[9px] sm:text-[11px] font-medium transition-colors ${
+                    i === 0
+                      ? 'bg-primary-50 text-primary-700 shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
+                  }`}
+                >
+                  {item}
+                </div>
+              ),
+            )}
           </div>
 
           <div className='col-span-12 lg:col-span-9 p-3 sm:p-5'>
@@ -486,7 +557,7 @@ function HeroDashboardPreview() {
                 <div className='text-xs sm:text-sm font-semibold text-gray-800'>
                   Good morning, John
                 </div>
-                <div className='font-body text-[9px] sm:text-[11px] text-gray-400'>
+                <div className='font-body text-[9px] sm:text-[11px] text-gray-600 font-medium'>
                   Here's your tax overview
                 </div>
               </div>
@@ -508,33 +579,33 @@ function HeroDashboardPreview() {
                   label: 'Total Sales',
                   value: '₦700,000',
                   change: '+12%',
-                  color: 'text-green-500',
+                  color: 'text-emerald-700',
                 },
                 {
                   label: 'Total Expenses',
                   value: '₦360,000',
                   change: '-3%',
-                  color: 'text-red-400',
+                  color: 'text-red-600',
                 },
                 {
                   label: 'Tax Payable',
                   value: '₦25,500',
                   change: '7.5%',
-                  color: 'text-primary-500',
+                  color: 'text-primary-700',
                 },
               ].map((s) => (
                 <div
                   key={s.label}
-                  className='rounded-xl border border-gray-100 bg-white p-1.5 sm:p-3 shadow-xs min-w-0 transition-all duration-300 hover:shadow-md hover:border-primary-200 hover:-translate-y-0.5 cursor-default'
+                  className='rounded border border-gray-100 bg-white p-1.5 sm:p-3 shadow-xs min-w-0 transition-all duration-300 hover:shadow-md hover:border-primary-200 hover:-translate-y-0.5 cursor-default'
                 >
-                  <div className='font-body text-[8px] sm:text-[10px] text-gray-400 truncate'>
+                  <div className='font-body text-[8px] sm:text-[10px] text-gray-600 font-medium truncate'>
                     {s.label}
                   </div>
                   <div className='mt-0.5 text-[10px] sm:text-sm font-bold text-gray-800 tabular-nums truncate'>
                     {s.value}
                   </div>
                   <div
-                    className={`mt-0.5 font-body text-[8px] sm:text-[10px] font-medium ${s.color}`}
+                    className={`mt-0.5 font-body text-[8px] sm:text-[10px] font-semibold ${s.color}`}
                   >
                     {s.change}
                   </div>
@@ -542,19 +613,16 @@ function HeroDashboardPreview() {
               ))}
             </div>
 
-            <div className='rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-2 sm:p-4'>
+            <div className='rounded border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-2 sm:p-4'>
               <div className='flex items-center justify-between mb-1.5 sm:mb-3'>
                 <span className='text-[10px] sm:text-xs font-semibold text-gray-700'>
                   Monthly Revenue
                 </span>
-                <span className='font-body text-[8px] sm:text-[10px] text-gray-400 hidden sm:block'>
+                <span className='font-body text-[8px] sm:text-[10px] text-gray-600 font-medium hidden sm:block'>
                   Last 6 months
                 </span>
               </div>
-              <svg
-                viewBox='0 0 400 80'
-                className='w-full h-12 sm:h-20'
-              >
+              <svg viewBox='0 0 400 80' className='w-full h-12 sm:h-20'>
                 <defs>
                   <linearGradient
                     id='heroChartGrad'
@@ -563,16 +631,8 @@ function HeroDashboardPreview() {
                     x2='0'
                     y2='1'
                   >
-                    <stop
-                      offset='0%'
-                      stopColor='#7c3aed'
-                      stopOpacity='0.35'
-                    />
-                    <stop
-                      offset='100%'
-                      stopColor='#7c3aed'
-                      stopOpacity='0'
-                    />
+                    <stop offset='0%' stopColor='#7c3aed' stopOpacity='0.35' />
+                    <stop offset='100%' stopColor='#7c3aed' stopOpacity='0' />
                   </linearGradient>
                 </defs>
                 <path
@@ -586,7 +646,13 @@ function HeroDashboardPreview() {
                   strokeWidth='2'
                   strokeLinecap='round'
                 />
-                <circle cx='400' cy='4' r='3.5' fill='#7c3aed' className='animate-pulse' />
+                <circle
+                  cx='400'
+                  cy='4'
+                  r='3.5'
+                  fill='#7c3aed'
+                  className='animate-pulse'
+                />
               </svg>
             </div>
           </div>
@@ -595,6 +661,36 @@ function HeroDashboardPreview() {
     </div>
   );
 }
+
+/* ─── Footer ─── */
+const FOOTER_LINKS = [
+  { label: 'Features', href: '#features' },
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Testimonials', href: '#testimonials' },
+];
+
+const FOOTER_ACCOUNT_LINKS = [
+  { label: 'Create Account', to: '/register' },
+  { label: 'Sign In', to: '/login' },
+  { label: 'Dashboard', to: '/dashboard' },
+];
+
+const FOOTER_SUPPORT_LINKS = [
+  { label: 'Help & FAQ', href: '#faq' },
+  { label: 'Contact Us', href: 'mailto:support@paymytax.com' },
+];
+
+/* Colour lift + underline wipe that hugs the text width, mirroring the header
+   nav idiom. `block w-fit` (not `inline-block`) keeps one link per line — an
+   inline-block would let short labels share a line and collide with `space-y`. */
+const FOOTER_LINK =
+  'relative block w-fit font-body text-sm sm:text-[15px] text-gray-400 ' +
+  'transition-colors duration-200 hover:text-white ' +
+  'after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-current ' +
+  'after:transition-all after:duration-300 after:ease-out hover:after:w-full ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ' +
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 focus-visible:rounded-sm ' +
+  'motion-reduce:transition-none motion-reduce:after:transition-none';
 
 /* ─── Component ─── */
 export default function Landing() {
@@ -618,10 +714,10 @@ export default function Landing() {
       <header className='fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100/50'>
         <div className='mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3'>
           <Link to='/' className='flex items-center gap-2 sm:gap-3'>
-            <img
-              src='/logo.png'
-              alt='PayMyTax'
+            <OptimizedLogo
+              size='lg'
               className='h-8 sm:h-10 lg:h-12 w-auto'
+              fetchPriority='high'
             />
           </Link>
           <nav className='hidden lg:flex items-center gap-6 xl:gap-8 my-3'>
@@ -650,12 +746,16 @@ export default function Landing() {
                       className='h-full w-full object-cover'
                     />
                   ) : (
-                    (activeBusiness?.businessName || user?.email || 'B').charAt(0).toUpperCase()
+                    (activeBusiness?.businessName || user?.email || 'B')
+                      .charAt(0)
+                      .toUpperCase()
                   )}
                 </div>
                 <div className='text-left min-w-0 hidden sm:block'>
                   <p className='text-xs sm:text-sm font-bold text-gray-900 truncate max-w-[120px] sm:max-w-[160px] leading-tight'>
-                    {activeBusiness?.businessName || user?.email?.split('@')[0] || 'My Business'}
+                    {activeBusiness?.businessName ||
+                      user?.email?.split('@')[0] ||
+                      'My Business'}
                   </p>
                   <p className='text-[10px] sm:text-[11px] font-semibold text-primary-600 flex items-center gap-1 leading-tight group-hover:text-primary-700'>
                     <span>Dashboard</span>
@@ -706,47 +806,47 @@ export default function Landing() {
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%237c3aed' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         />
-        <div className='absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-radial from-primary-400/15 via-transparent to-transparent blur-3xl animate-blob-morph' />
-        <div
-          className='absolute top-40 -right-40 w-[500px] h-[500px] bg-purple-300/10 blur-3xl animate-blob-morph'
-          style={{ animationDelay: '3s' }}
-        />
-        <div
-          className='absolute top-60 -left-40 w-[400px] h-[400px] bg-indigo-300/10 blur-3xl animate-blob-morph'
-          style={{ animationDelay: '1.5s' }}
-        />
+        <div className='absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-radial from-primary-400/15 via-transparent to-transparent blur-3xl pointer-events-none' />
+        <div className='absolute top-40 -right-40 w-[500px] h-[500px] bg-purple-300/10 blur-3xl pointer-events-none' />
+        <div className='absolute top-60 -left-40 w-[400px] h-[400px] bg-indigo-300/10 blur-3xl pointer-events-none' />
 
         <div className='relative mx-auto max-w-7xl px-4 sm:px-6 py-10'>
           <div className='text-center'>
-            {/* Premium Trust Badge */}
-            {/* Premium Animated Trust Badge */}
+            {/* Compact Trust Badge */}
             <ScrollReveal delay={0}>
-              <div className='inline-flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur rounded-full border border-gray-200 px-3.5 sm:px-4 py-1.5 sm:py-2 mb-6 sm:mb-9 shadow-sm hover:shadow-md hover:border-primary-300 transition-all duration-300 hover:-translate-y-0.5 group max-w-full cursor-default'>
-                <span className='relative flex h-2 w-2 mr-0.5'>
+              <div className='inline-flex items-center gap-1.5 bg-white/95 backdrop-blur rounded-full border border-gray-200 px-2.5 sm:px-3 py-1 sm:py-1.5 mb-5 sm:mb-7 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group cursor-default'>
+                <span className='relative flex h-1.5 w-1.5 mr-0.5'>
                   <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
-                  <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500' />
+                  <span className='relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500' />
                 </span>
-                <div className='flex -space-x-1.5 group-hover:space-x-0.5 transition-all duration-300 shrink-0'>
-                  {[nigerian1, nigerian2, nigerian3, nigerian4].map(
-                    (avatar, i) => (
-                      <img
-                        key={i}
-                        src={avatar}
-                        alt={`Business owner ${i + 1}`}
-                        className='h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-white object-cover transition-transform duration-300 group-hover:scale-105'
-                      />
+                <div className='flex -space-x-1 group-hover:space-x-0.5 transition-all duration-300 shrink-0'>
+                  {['nigerian1', 'nigerian2', 'nigerian3', 'nigerian4'].map(
+                    (imageName, i) => (
+                      <picture key={i}>
+                        <source
+                          type='image/webp'
+                          srcSet={`/images-optimized/${imageName}-sm.webp 32w, /images-optimized/${imageName}-md.webp 48w`}
+                          sizes='32px'
+                        />
+                        <img
+                          src={`/assets/${imageName}.${imageName === 'nigerian2' ? 'jpg' : 'jfif'}`}
+                          alt={`Business owner ${i + 1}`}
+                          className='h-5 w-5 sm:h-6 sm:w-6 rounded-full border-2 border-white object-cover transition-transform duration-300 group-hover:scale-105'
+                          loading='eager'
+                        />
+                      </picture>
                     ),
                   )}
                 </div>
-                <span className='font-body text-xs sm:text-sm font-semibold text-gray-700 pl-1 truncate group-hover:text-primary-700 transition-colors'>
-                  Trusted by 2,500+ businesses
+                <span className='font-body text-[11px] sm:text-xs font-semibold text-gray-700 pl-0.5 group-hover:text-primary-700 transition-colors'>
+                  Trusted by 100+ businesses
                 </span>
               </div>
             </ScrollReveal>
 
-            {/* Headline with Animated Gradient Flow */}
+            {/* Headline - Refined Typography & Authoritative Hierarchy */}
             <ScrollReveal delay={100}>
-              <h1 className='relative text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15] sm:leading-[1.1]'>
+              <h1 className='relative text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight text-gray-900 leading-[1.18] sm:leading-[1.14] max-w-4xl lg:max-w-5xl mx-auto mb-6 sm:mb-8'>
                 The Toolkit for African{' '}
                 <span className='relative inline-block mt-1 sm:mt-0 group'>
                   <span className='bg-gradient-to-r from-primary-700 via-primary-500 to-purple-500 bg-clip-text text-transparent animate-gradient'>
@@ -791,18 +891,49 @@ export default function Landing() {
               </h1>
             </ScrollReveal>
 
-            {/* Subheadline */}
-            <ScrollReveal delay={200}>
-              <p className='mx-auto mt-4 sm:mt-5 max-w-xl sm:max-w-2xl font-body text-base sm:text-lg lg:text-xl leading-relaxed text-gray-500 px-2'>
-                Track sales, auto-compute FIRS-compliant taxes, and pay online
-                in minutes. Built exclusively for Nigerian MSME's and SMBs
-              </p>
+            {/* Subheadline - Premium Typography & Balanced Rhythm */}
+            <ScrollReveal delay={100}>
+              <div className='mx-auto max-w-4xl lg:max-w-5xl px-4 sm:px-6 my-6 sm:my-7'>
+                <p className='font-body text-base sm:text-lg md:text-xl lg:text-[22px] leading-relaxed text-gray-700 font-normal max-w-3xl sm:max-w-4xl mx-auto'>
+                  Track your{' '}
+                  <strong className='font-semibold text-gray-900'>Sales</strong>
+                  ,{' '}
+                  <strong className='font-semibold text-gray-900'>
+                    Expenses
+                  </strong>
+                  , and{' '}
+                  <strong className='font-semibold text-gray-900'>
+                    Business Profit & Loss
+                  </strong>{' '}
+                  <span className='hidden sm:inline text-primary-400 font-light mx-2 select-none'>
+                    —
+                  </span>
+                  <span className='block sm:inline mt-1 sm:mt-0 text-gray-600'>
+                    with{' '}
+                    <strong className='font-semibold text-gray-900'>
+                      Tax Management
+                    </strong>
+                    ,{' '}
+                    <strong className='font-semibold text-gray-900'>
+                      Debtor Management
+                    </strong>
+                    ,{' '}
+                    <em className='italic font-semibold text-primary-600 not-italic-font'>
+                      A.I Powered Virtual CFO
+                    </em>
+                    , and other Business Management tools.
+                  </span>
+                </p>
+              </div>
             </ScrollReveal>
 
             {/* CTA Buttons - Pill Shaped with Sheen & Glow */}
-            <ScrollReveal delay={300}>
+            <ScrollReveal delay={150}>
               <div className='mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 px-4 sm:px-0'>
-                <Link to={isAuthenticated ? '/dashboard' : '/register'} className='w-full sm:w-auto'>
+                <Link
+                  to={isAuthenticated ? '/dashboard' : '/register'}
+                  className='w-full sm:w-auto'
+                >
                   <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-bold text-white shadow-xl shadow-primary-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/50 hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden group'>
                     <span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/25 to-white/0 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700' />
                     <span className='relative flex items-center gap-2'>
@@ -811,15 +942,18 @@ export default function Landing() {
                     </span>
                   </button>
                 </Link>
-                <Link to={isAuthenticated ? '/tax' : '/login'} className='w-full sm:w-auto'>
-                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-semibold text-gray-700 shadow-sm transition-all duration-300 hover:border-primary-300 hover:bg-white hover:shadow-md hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
+                <Link
+                  to={isAuthenticated ? '/tax' : '/login'}
+                  className='w-full sm:w-auto'
+                >
+                  <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-semibold text-gray-700 shadow-sm transition-all duration-300 hover:bg-white hover:shadow-md hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
                     {isAuthenticated ? (
                       <>
                         <FileText className='h-4 w-4' /> View Tax Reports
                       </>
                     ) : (
                       <>
-                        <Play className='h-3.5 w-3.5 fill-current' /> Watch Demo
+                        <FileText className='h-4 w-4' /> View Tax Reports
                       </>
                     )}
                   </button>
@@ -833,7 +967,7 @@ export default function Landing() {
                 {trustIndicators.map(({ icon: Icon, text }, i) => (
                   <div
                     key={text}
-                    className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur border border-gray-200/80 hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300 cursor-default group'
+                    className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur border border-gray-200/80 hover:bg-primary-50/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-300 cursor-default group'
                     style={{ transitionDelay: `${i * 100}ms` }}
                   >
                     <Icon className='h-4 w-4 text-primary-500 group-hover:scale-110 transition-transform duration-300' />
@@ -873,24 +1007,21 @@ export default function Landing() {
 
         <div className='relative mx-auto max-w-7xl px-4 sm:px-6'>
           {/* Heading */}
-          <ScrollReveal className='text-center mb-14 sm:mb-20'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-5 sm:mb-6 shadow-sm'>
-              <span className='relative flex h-2 w-2'>
-                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
-                <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
-              </span>
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
-                Built for Nigeria
+          <ScrollReveal className='text-center mb-14 sm:mb-16'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+              <ShieldCheck className='h-3.5 w-3.5 text-primary-600' />
+              <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
+                Built For Nigeria
               </span>
             </span>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-5 max-w-3xl mx-auto leading-tight'>
+            <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 max-w-4xl mx-auto leading-snug'>
               Making tax compliance{' '}
               <span className='bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
                 effortless
               </span>{' '}
               for Nigerian businesses
             </h2>
-            <p className='font-body text-base sm:text-lg text-gray-500 max-w-xl mx-auto'>
+            <p className='font-body text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed'>
               Simple tools that help you stay compliant without the headache
             </p>
           </ScrollReveal>
@@ -900,8 +1031,8 @@ export default function Landing() {
             {/* Stats Grid */}
             <div className='lg:col-span-2 grid grid-cols-2 gap-3.5 sm:gap-4'>
               {[
-                { icon: Receipt, value: '7.5%', label: 'FIRS Tax Rate' },
-                { icon: BadgeCheck, value: '100%', label: 'FIRS Compliant' },
+                { icon: Receipt, value: '7.5%', label: 'NRS Tax Rate' },
+                { icon: BadgeCheck, value: '100%', label: 'NRS Compliant' },
                 { icon: Zap, value: '<2min', label: 'Setup Time' },
                 { icon: BarChart3, value: 'Auto', label: 'Calculation' },
               ].map((stat, i) => (
@@ -946,7 +1077,7 @@ export default function Landing() {
                   className='absolute -top-1 left-0 sm:top-4 sm:left-2 lg:left-0 z-20 scale-[0.85] sm:scale-100 origin-top-left animate-bounce-gentle'
                   style={{ animationDelay: '0.5s' }}
                 >
-                  <div className='flex items-center gap-2.5 rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
+                  <div className='flex items-center gap-2.5 rounded bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
                     <div className='h-9 w-9 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/30'>
                       <CheckCircle2
                         className='h-5 w-5 text-white'
@@ -954,7 +1085,7 @@ export default function Landing() {
                       />
                     </div>
                     <div>
-                      <div className='text-[10px] font-medium text-gray-400 leading-tight'>
+                      <div className='text-[10px] font-medium text-gray-600 leading-tight'>
                         Tax Filed
                       </div>
                       <div className='text-xs font-bold text-gray-900 leading-tight'>
@@ -969,7 +1100,7 @@ export default function Landing() {
                   className='absolute -bottom-1 right-0 sm:bottom-6 sm:right-2 lg:right-0 z-20 scale-[0.85] sm:scale-100 origin-bottom-right animate-bounce-gentle'
                   style={{ animationDelay: '1.8s' }}
                 >
-                  <div className='flex items-center gap-2.5 rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
+                  <div className='flex items-center gap-2.5 rounded bg-white/95 backdrop-blur-xl border border-gray-200/80 px-3.5 py-2.5 shadow-xl shadow-primary-900/10'>
                     <div className='h-9 w-9 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center shadow-lg shadow-primary-500/30'>
                       <Zap
                         className='h-5 w-5 text-white fill-white'
@@ -977,7 +1108,7 @@ export default function Landing() {
                       />
                     </div>
                     <div>
-                      <div className='text-[10px] font-medium text-gray-400 leading-tight'>
+                      <div className='text-[10px] font-medium text-gray-600 leading-tight'>
                         Auto-calculated
                       </div>
                       <div className='text-xs font-bold text-gray-900 leading-tight'>
@@ -992,13 +1123,13 @@ export default function Landing() {
                   className='hidden sm:block absolute top-6 right-2 sm:right-4 z-20 animate-sway'
                   style={{ animationDelay: '0s' }}
                 >
-                  <div className='rounded-xl bg-white/95 backdrop-blur-xl border border-gray-200/80 px-4 py-3 shadow-xl shadow-primary-900/10'>
+                  <div className='rounded bg-white/95 backdrop-blur-xl border border-gray-200/80 px-4 py-3 shadow-xl shadow-primary-900/10'>
                     <div className='flex items-center gap-2 mb-2'>
-                      <TrendingUp className='h-3.5 w-3.5 text-green-500' />
+                      <TrendingUp className='h-3.5 w-3.5 text-emerald-600' />
                       <span className='text-[10px] font-semibold text-gray-700'>
                         Revenue
                       </span>
-                      <span className='text-[10px] font-bold text-green-500'>
+                      <span className='text-[10px] font-bold text-emerald-700'>
                         +24%
                       </span>
                     </div>
@@ -1129,7 +1260,7 @@ export default function Landing() {
                       <div className='relative flex items-center gap-3 my-3 sm:my-4'>
                         <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
                         <span className='text-[9px] font-mono font-bold uppercase tracking-wider text-white/40'>
-                          × 7.5% FIRS
+                          × 7.5% NRS
                         </span>
                         <div className='h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent' />
                       </div>
@@ -1165,108 +1296,85 @@ export default function Landing() {
       {/* ── Features ── */}
       <section
         id='features'
-        className='scroll-mt-20 sm:scroll-mt-24 py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-white to-gray-50/50 relative overflow-hidden'
+        className='scroll-mt-20 sm:scroll-mt-24 py-16 sm:py-20 lg:py-28 bg-[#ebedf1] border-y border-slate-300/40 relative overflow-hidden'
       >
-        <div
-          className='absolute top-1/2 left-1/4 w-64 h-64 bg-gradient-to-br from-primary-400/10 to-purple-400/10 blur-3xl animate-blob-morph'
-          style={{ animationDelay: '1s' }}
-        />
-        <div
-          className='absolute top-1/3 right-1/4 w-80 h-80 bg-gradient-to-bl from-purple-400/10 to-fuchsia-400/10 blur-3xl animate-blob-morph'
-          style={{ animationDelay: '3s' }}
-        />
-
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-8 sm:mb-10'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-4 sm:mb-5 shadow-sm'>
-              <span className='relative flex h-2 w-2'>
-                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
-                <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
-              </span>
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
+          <ScrollReveal className='mx-auto max-w-4xl text-center mb-12 sm:mb-16'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+              <Zap className='h-3.5 w-3.5 text-primary-600 fill-primary-600' />
+              <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
                 Features
               </span>
             </span>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight'>
-              Everything you need to{' '}
+            <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug'>
+              Everything you need to run your business &{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
                 stay compliant
               </span>
             </h2>
-            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-500 leading-relaxed'>
-              Powerful tools that make tax filing feel simple
+            <p className='mt-3 sm:mt-4 font-body text-sm sm:text-base text-gray-600 leading-relaxed max-w-2xl mx-auto'>
+              Comprehensive business management tools for growth and compliance
             </p>
           </ScrollReveal>
 
-          {/*
-            Bento Grid — 4 columns × 4 rows on lg
-            ┌─────────────┬───────┬───────┐
-            │  Sales (2×2)│ FIRS  │ 1-Clk │
-            │             ├───────┴───────┤
-            │             │ Reminders(2×1)│
-            ├───────┬─────┴───────────────┤
-            │ Dash  │   PDF Statements    │
-            │ (1×2) │     (2×2)           │
-            ├───────┤                     │
-            │ Dash2 │                     │
-            └───────┴─────────────────────┘
-          */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-4 auto-rows-[minmax(180px,auto)] gap-4 sm:gap-5'>
-            {/* 1. Sales & Expense Tracking — HERO (2×2) */}
+          {/* Professional Bento Grid - Pure White Boxes with Sharp Architectural Shadow on Ash Background */}
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-[minmax(160px,auto)] gap-3 sm:gap-3.5 lg:gap-4'>
+            {/* 1. Sales Tracking — Featured (2×2) */}
             <ScrollReveal
               delay={0}
               className='sm:col-span-2 lg:col-span-2 lg:row-span-2 h-full'
             >
-              <div className='relative h-full overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-purple-50 p-6 sm:p-7 group hover:shadow-xl hover:shadow-primary-500/10 hover:border-primary-200 transition-all duration-500'>
-                <div className='absolute -top-16 -right-16 w-48 h-48 bg-primary-200/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
+              <div className='relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-6 sm:p-8 group shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
                 <div className='relative flex h-full flex-col'>
-                  <div className='w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-primary-500/10 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500'>
-                    <Wallet
-                      className='w-7 h-7 text-primary-600'
-                      strokeWidth={1.5}
+                  <div className='w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300'>
+                    <TrendingUp
+                      className='w-7 h-7 text-white'
+                      strokeWidth={2.5}
                     />
                   </div>
                   <h3 className='text-xl sm:text-2xl font-bold text-gray-900 mb-3'>
-                    Sales & Expense Tracking
+                    Sales Tracking
                   </h3>
                   <p className='text-sm sm:text-base text-gray-600 leading-relaxed mb-6'>
-                    Log every naira in and out. Auto-categorize transactions and
-                    see profit margins at a glance.
+                    Track every sale in real-time. Monitor revenue streams,
+                    customer trends, and growth patterns with precision.
                   </p>
 
-                  {/* Live mini visual — revenue vs expenses bars */}
-                  <div className='mt-auto rounded-xl bg-white/70 backdrop-blur-sm border border-white/80 p-4 shadow-sm'>
+                  {/* Live sales chart */}
+                  <div className='mt-auto rounded-lg bg-slate-50 border border-slate-200/80 p-4 sm:p-5 shadow-xs'>
                     <div className='flex items-center justify-between mb-3'>
-                      <span className='text-[11px] font-semibold text-gray-500 uppercase tracking-wider'>
-                        This month
+                      <span className='text-[11px] font-semibold text-gray-600 uppercase tracking-wider'>
+                        Live Sales
                       </span>
-                      <span className='text-[11px] font-bold text-green-600'>
-                        +24% ↑
+                      <span className='text-[11px] font-bold text-emerald-600'>
+                        +32% ↑
                       </span>
                     </div>
                     <div className='space-y-2.5'>
                       <div>
                         <div className='flex items-center justify-between mb-1'>
-                          <span className='text-xs text-gray-500'>Sales</span>
+                          <span className='text-xs text-gray-600 font-medium'>
+                            Today
+                          </span>
                           <span className='text-xs font-bold text-gray-800 tabular-nums'>
-                            ₦700K
+                            ₦850K
                           </span>
                         </div>
-                        <div className='h-2 rounded-full bg-gray-100 overflow-hidden'>
-                          <div className='h-full w-[85%] rounded-full bg-gradient-to-r from-primary-500 to-purple-500' />
+                        <div className='h-2 rounded-full bg-slate-200/80 overflow-hidden'>
+                          <div className='h-full w-[92%] rounded-full bg-gradient-to-r from-emerald-500 to-teal-500' />
                         </div>
                       </div>
                       <div>
                         <div className='flex items-center justify-between mb-1'>
-                          <span className='text-xs text-gray-500'>
-                            Expenses
+                          <span className='text-xs text-gray-600 font-medium'>
+                            This Week
                           </span>
                           <span className='text-xs font-bold text-gray-800 tabular-nums'>
-                            ₦360K
+                            ₦4.2M
                           </span>
                         </div>
-                        <div className='h-2 rounded-full bg-gray-100 overflow-hidden'>
-                          <div className='h-full w-[45%] rounded-full bg-gradient-to-r from-fuchsia-400 to-pink-400' />
+                        <div className='h-2 rounded-full bg-slate-200/80 overflow-hidden'>
+                          <div className='h-full w-[78%] rounded-full bg-gradient-to-r from-teal-400 to-cyan-400' />
                         </div>
                       </div>
                     </div>
@@ -1275,388 +1383,473 @@ export default function Landing() {
               </div>
             </ScrollReveal>
 
-            {/* 2. FIRS-Compliant — small (1×1) */}
+            {/* 2. Expense Tracking (1×1) */}
             <ScrollReveal
               delay={100}
               className='lg:col-span-1 lg:row-span-1 h-full'
             >
-              <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 hover:border-primary-200 hover:shadow-lg hover:shadow-primary-500/5 hover:-translate-y-0.5 transition-all duration-300'>
-                <div className='w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
-                  <Shield
-                    className='w-5 h-5 text-primary-600'
-                    strokeWidth={1.5}
-                  />
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center mb-4 shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform duration-300'>
+                  <Receipt className='w-6 h-6 text-white' strokeWidth={2.5} />
                 </div>
-                <h3 className='text-base font-bold text-gray-900 mb-1.5'>
-                  FIRS-Compliant
+                <h3 className='text-base sm:text-lg font-bold text-gray-900 mb-1.5'>
+                  Expense Tracking
                 </h3>
                 <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
-                  7.5% VAT calculator follows FIRS rules precisely
+                  Monitor spending, categorize costs, optimize cash flow
                 </p>
               </div>
             </ScrollReveal>
 
-            {/* 3. One-Click Payment — small (1×1) */}
+            {/* 3. Cash at Hand Register (1×1) */}
             <ScrollReveal
-              delay={200}
+              delay={150}
               className='lg:col-span-1 lg:row-span-1 h-full'
             >
-              <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 hover:border-purple-200 hover:shadow-lg hover:shadow-purple-500/5 hover:-translate-y-0.5 transition-all duration-300'>
-                <div className='w-11 h-11 rounded-xl bg-purple-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300'>
-                  <CreditCard
-                    className='w-5 h-5 text-purple-600'
-                    strokeWidth={1.5}
-                  />
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300'>
+                  <Wallet className='w-6 h-6 text-white' strokeWidth={2.5} />
                 </div>
-                <h3 className='text-base font-bold text-gray-900 mb-1.5'>
-                  One-Click Payment
+                <h3 className='text-base sm:text-lg font-bold text-gray-900 mb-1.5'>
+                  Cash at Hand Register
                 </h3>
                 <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
-                  Pay instantly via Paystack — card, transfer, or USSD
+                  Live cash position tracking with precision accuracy
                 </p>
               </div>
             </ScrollReveal>
 
-            {/* 4. Smart Tax Reminders — wide (2×1) */}
+            {/* 4. Debtors Management (2×1) */}
             <ScrollReveal
-              delay={300}
+              delay={200}
               className='sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full'
             >
-              <div className='relative h-full overflow-hidden rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 to-purple-50 p-4 sm:p-6 group hover:shadow-lg hover:shadow-fuchsia-500/10 transition-all duration-500'>
+              <div className='relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 group shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
                 <div className='flex items-center gap-3 sm:gap-5 h-full'>
-                  <div className='flex-shrink-0 w-12 sm:w-14 h-12 sm:h-14 rounded-2xl bg-white flex items-center justify-center shadow-md shadow-fuchsia-500/10 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500'>
-                    <Bell
-                      className='w-5 sm:w-6 h-5 sm:h-6 text-fuchsia-600'
-                      strokeWidth={1.5}
-                    />
+                  <div className='flex-shrink-0 w-12 sm:w-14 h-12 sm:h-14 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300'>
+                    <Clock className='w-6 h-6 text-white' strokeWidth={2.5} />
                   </div>
                   <div className='flex-1 min-w-0'>
                     <h3 className='text-lg sm:text-xl font-bold text-gray-900 mb-1'>
-                      Smart Tax Reminders
+                      Debtors Management
                     </h3>
                     <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
-                      Never miss a deadline. Automated notifications keep you
-                      penalty-free.
+                      Track receivables, automate follow-ups, and maintain
+                      healthy cash flow with smart reminders.
                     </p>
                   </div>
-                  {/* Date chip */}
-                  <div className='hidden sm:flex flex-shrink-0 flex-col items-center justify-center w-14 h-16 rounded-xl bg-white border border-fuchsia-200 shadow-sm'>
-                    <div className='text-[9px] font-bold uppercase tracking-wider text-fuchsia-600 bg-fuchsia-50 w-full text-center py-0.5 rounded-t-[10px]'>
-                      Apr
+                  {/* Status badge */}
+                  <div className='hidden sm:flex flex-shrink-0 flex-col items-center justify-center px-3.5 py-2.5 rounded-lg bg-blue-50 border border-blue-200 shadow-xs'>
+                    <div className='text-[10px] font-bold text-blue-600 uppercase tracking-wider'>
+                      Due
                     </div>
-                    <div className='text-xl font-bold text-gray-900 flex-1 flex items-center'>
-                      25
-                    </div>
+                    <div className='text-lg font-bold text-gray-900'>5</div>
                   </div>
                 </div>
               </div>
             </ScrollReveal>
 
-            {/* 5. Real-Time Dashboard — tall (1×2) */}
+            {/* 5. Business Performance Tracking (1×2) */}
             <ScrollReveal
-              delay={400}
+              delay={250}
               className='sm:col-span-2 lg:col-span-1 lg:row-span-2 h-full'
             >
-              <div className='group relative h-full overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-violet-50/40 p-5 sm:p-6 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-500/10 transition-all duration-500'>
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
                 <div className='flex h-full flex-col'>
-                  <div className='w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500'>
-                    <TrendingUp
-                      className='w-6 h-6 text-violet-600'
-                      strokeWidth={1.5}
+                  <div className='w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300'>
+                    <BarChart3
+                      className='w-6 h-6 text-white'
+                      strokeWidth={2.5}
                     />
                   </div>
                   <h3 className='text-lg font-bold text-gray-900 mb-2'>
-                    Real-Time Dashboard
+                    Business Performance
                   </h3>
                   <p className='text-sm text-gray-600 leading-relaxed mb-5'>
-                    Bird's-eye view of revenue, expenses & tax liability.
+                    Complete analytics dashboard with KPIs, trends, and
+                    actionable insights.
                   </p>
 
-                  {/* Live chart */}
-                  <div className='mt-auto rounded-xl bg-white border border-gray-100 p-3 shadow-sm'>
-                    <svg viewBox='0 0 120 50' className='w-full h-14'>
-                      <defs>
-                        <linearGradient
-                          id='dashChartGrad'
-                          x1='0'
-                          y1='0'
-                          x2='0'
-                          y2='1'
-                        >
-                          <stop
-                            offset='0%'
-                            stopColor='#8b5cf6'
-                            stopOpacity='0.3'
-                          />
-                          <stop
-                            offset='100%'
-                            stopColor='#8b5cf6'
-                            stopOpacity='0'
-                          />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d='M0,42 L20,36 L40,38 L60,22 L80,28 L100,14 L120,8 L120,50 L0,50 Z'
-                        fill='url(#dashChartGrad)'
-                      />
-                      <path
-                        d='M0,42 L20,36 L40,38 L60,22 L80,28 L100,14 L120,8'
-                        fill='none'
-                        stroke='#8b5cf6'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      />
-                      <circle cx='120' cy='8' r='3' fill='#8b5cf6' />
-                      <circle
-                        cx='120'
-                        cy='8'
-                        r='6'
-                        fill='#8b5cf6'
-                        fillOpacity='0.25'
-                      />
-                    </svg>
+                  {/* Performance metrics */}
+                  <div className='mt-auto space-y-3'>
+                    <div className='rounded-lg bg-slate-50 border border-slate-200/80 p-3 shadow-xs'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wider'>
+                          Profit Margin
+                        </span>
+                        <span className='text-xs font-bold text-emerald-600'>
+                          +18%
+                        </span>
+                      </div>
+                      <div className='h-1.5 rounded-full bg-slate-200/80 overflow-hidden'>
+                        <div className='h-full w-[78%] rounded-full bg-gradient-to-r from-violet-500 to-purple-500' />
+                      </div>
+                    </div>
+                    <div className='rounded-lg bg-slate-50 border border-slate-200/80 p-3 shadow-xs'>
+                      <svg viewBox='0 0 120 40' className='w-full h-10'>
+                        <defs>
+                          <linearGradient
+                            id='perfChartGrad'
+                            x1='0'
+                            y1='0'
+                            x2='0'
+                            y2='1'
+                          >
+                            <stop
+                              offset='0%'
+                              stopColor='#8b5cf6'
+                              stopOpacity='0.3'
+                            />
+                            <stop
+                              offset='100%'
+                              stopColor='#8b5cf6'
+                              stopOpacity='0'
+                            />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d='M0,32 L20,28 L40,30 L60,18 L80,22 L100,10 L120,6 L120,40 L0,40 Z'
+                          fill='url(#perfChartGrad)'
+                        />
+                        <path
+                          d='M0,32 L20,28 L40,30 L60,18 L80,22 L100,10 L120,6'
+                          fill='none'
+                          stroke='#8b5cf6'
+                          strokeWidth='2'
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </div>
             </ScrollReveal>
 
-            {/* 6. PDF Tax Statements — wide (2×2) */}
+            {/* 6. AI-Powered Virtual CFO (2×2) */}
             <ScrollReveal
-              delay={500}
+              delay={300}
               className='sm:col-span-2 lg:col-span-2 lg:row-span-2 h-full'
             >
-              <div className='group relative h-full overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/30 to-primary-50/40 p-6 sm:p-7 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-500'>
-                <div className='absolute -bottom-20 -right-20 w-56 h-56 bg-indigo-200/30 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500' />
-
-                <div className='relative grid sm:grid-cols-5 gap-5 h-full items-center'>
-                  {/* Left: copy */}
-                  <div className='sm:col-span-3'>
-                    <div className='w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500'>
-                      <FileText
-                        className='w-6 h-6 text-indigo-600'
-                        strokeWidth={1.5}
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='relative flex h-full flex-col'>
+                  <div className='flex items-start justify-between mb-5'>
+                    <div className='w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300'>
+                      <Zap
+                        className='w-6 h-6 text-white fill-white'
+                        strokeWidth={2.5}
                       />
                     </div>
-                    <h3 className='text-xl font-bold text-gray-900 mb-2'>
-                      PDF Tax Statements
-                    </h3>
-                    <p className='text-sm text-gray-600 leading-relaxed mb-4'>
-                      Download professionally formatted statements — monthly or
-                      custom date ranges, on demand.
-                    </p>
-                    <div className='space-y-1.5'>
+                    <span className='inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 shadow-xs'>
+                      <span className='relative flex h-2 w-2'>
+                        <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75' />
+                        <span className='relative inline-flex rounded-full h-2 w-2 bg-indigo-500' />
+                      </span>
+                      AI Powered
+                    </span>
+                  </div>
+
+                  <h3 className='text-xl sm:text-2xl font-bold text-gray-900 mb-3'>
+                    Virtual CFO Assistant
+                  </h3>
+                  <p className='text-sm sm:text-base text-gray-600 leading-relaxed mb-6'>
+                    Your intelligent financial advisor. Get instant insights,
+                    forecasts, and recommendations powered by advanced AI.
+                  </p>
+
+                  {/* AI conversation preview */}
+                  <div className='mt-auto space-y-3'>
+                    <div className='flex gap-2.5 items-start'>
+                      <div className='w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0'>
+                        <Zap className='w-3.5 h-3.5 text-white fill-white' />
+                      </div>
+                      <div className='flex-1 rounded-lg bg-slate-50 border border-slate-200/80 p-3.5 shadow-xs'>
+                        <p className='text-xs text-gray-700 leading-relaxed font-medium'>
+                          "Your cash flow is optimal this month. Consider
+                          investing ₦200K in inventory for Q2 growth."
+                        </p>
+                      </div>
+                    </div>
+                    <div className='grid grid-cols-3 gap-2.5'>
                       {[
-                        'Monthly summaries',
-                        'Custom date ranges',
-                        'Print-ready formats',
-                      ].map((item) => (
+                        { label: 'Forecast', value: '₦8.5M', trend: '+12%' },
+                        { label: 'Savings', value: '₦450K', trend: '+8%' },
+                        { label: 'ROI', value: '24%', trend: '+3%' },
+                      ].map((stat) => (
                         <div
-                          key={item}
-                          className='flex items-center gap-2 text-xs text-gray-600'
+                          key={stat.label}
+                          className='rounded-lg bg-slate-50 border border-slate-200/80 p-2.5 text-center shadow-xs'
                         >
-                          <CheckCircle2
-                            className='w-3.5 h-3.5 text-indigo-500 flex-shrink-0'
-                            strokeWidth={2.5}
-                          />
-                          <span className='font-medium'>{item}</span>
+                          <div className='text-[9px] font-semibold text-gray-600 uppercase tracking-wider mb-1'>
+                            {stat.label}
+                          </div>
+                          <div className='text-xs sm:text-sm font-bold text-gray-900 tabular-nums mb-0.5'>
+                            {stat.value}
+                          </div>
+                          <div className='text-[9px] font-semibold text-emerald-600'>
+                            {stat.trend}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+            </ScrollReveal>
 
-                  {/* Right: document mockup */}
-                  <div className='sm:col-span-2 hidden sm:flex items-center justify-center'>
-                    <div className='relative w-full max-w-[180px] aspect-[3/4] group-hover:-rotate-2 transition-transform duration-500'>
-                      {/* Back doc */}
-                      <div className='absolute inset-0 translate-x-2 translate-y-2 rounded-lg bg-white border border-gray-200 shadow-sm' />
-                      {/* Front doc */}
-                      <div className='absolute inset-0 rounded-lg bg-white border border-gray-200 shadow-lg p-3 flex flex-col'>
-                        <div className='flex items-center justify-between pb-2 border-b border-gray-100'>
-                          <div className='h-1.5 w-10 rounded-full bg-gradient-to-r from-primary-500 to-purple-500' />
-                          <div className='text-[7px] font-bold text-gray-400 uppercase'>
-                            PDF
-                          </div>
-                        </div>
-                        <div className='mt-2 space-y-1'>
-                          <div className='h-1 w-full rounded-full bg-gray-100' />
-                          <div className='h-1 w-4/5 rounded-full bg-gray-100' />
-                          <div className='h-1 w-3/5 rounded-full bg-gray-100' />
-                        </div>
-                        <div className='mt-3 grid grid-cols-2 gap-1'>
-                          <div className='h-6 rounded bg-primary-50 border border-primary-100' />
-                          <div className='h-6 rounded bg-purple-50 border border-purple-100' />
-                        </div>
-                        <div className='mt-2 space-y-1'>
-                          <div className='h-1 w-full rounded-full bg-gray-100' />
-                          <div className='h-1 w-5/6 rounded-full bg-gray-100' />
-                          <div className='h-1 w-4/6 rounded-full bg-gray-100' />
-                        </div>
-                        <div className='mt-auto pt-2 flex items-center justify-between'>
-                          <div className='h-1.5 w-8 rounded-full bg-gray-200' />
-                          <div className='text-[7px] font-bold text-indigo-500'>
-                            ₦25,500
-                          </div>
-                        </div>
-                      </div>
+            {/* 7. E-Invoicing (1×1) */}
+            <ScrollReveal
+              delay={350}
+              className='lg:col-span-1 lg:row-span-1 h-full'
+            >
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center mb-4 shadow-lg shadow-sky-500/30 group-hover:scale-110 transition-transform duration-300'>
+                  <FileText className='w-6 h-6 text-white' strokeWidth={2.5} />
+                </div>
+                <h3 className='text-base sm:text-lg font-bold text-gray-900 mb-1.5'>
+                  E-Invoicing
+                </h3>
+                <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                  Professional invoices in seconds — branded and trackable
+                </p>
+              </div>
+            </ScrollReveal>
+
+            {/* 8. Open Business Bank Account (1×1) */}
+            <ScrollReveal
+              delay={400}
+              className='lg:col-span-1 lg:row-span-1 h-full'
+            >
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-indigo-500 flex items-center justify-center mb-4 shadow-lg shadow-primary-500/30 group-hover:scale-110 transition-transform duration-300'>
+                  <CreditCard
+                    className='w-6 h-6 text-white'
+                    strokeWidth={2.5}
+                  />
+                </div>
+                <h3 className='text-base sm:text-lg font-bold text-gray-900 mb-1.5'>
+                  Business Bank Account
+                </h3>
+                <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                  Open dedicated account — seamless integration
+                </p>
+              </div>
+            </ScrollReveal>
+
+            {/* 9. Smart Notifications & Reminders (2×1) */}
+            <ScrollReveal
+              delay={450}
+              className='sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full'
+            >
+              <div className='relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 group shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='flex items-center gap-3 sm:gap-5 h-full'>
+                  <div className='flex-shrink-0 w-12 sm:w-14 h-12 sm:h-14 rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-500 flex items-center justify-center shadow-lg shadow-fuchsia-500/30 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300'>
+                    <Bell className='w-6 h-6 text-white' strokeWidth={2.5} />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <h3 className='text-lg sm:text-xl font-bold text-gray-900 mb-1'>
+                      Smart Notifications
+                    </h3>
+                    <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                      Stay ahead with intelligent alerts for payments,
+                      deadlines, and business events — never miss what matters.
+                    </p>
+                  </div>
+                  {/* Live notification badge */}
+                  <div className='hidden sm:flex flex-shrink-0 relative'>
+                    <div className='w-12 h-12 rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-500 flex items-center justify-center shadow-md shadow-fuchsia-500/25'>
+                      <span className='text-lg font-bold text-white'>3</span>
                     </div>
+                    <span className='absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 animate-ping' />
+                    <span className='absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500' />
                   </div>
                 </div>
+              </div>
+            </ScrollReveal>
+
+            {/* 10. Tax Compliance (NRS) - Small accent (1×1) */}
+            <ScrollReveal
+              delay={500}
+              className='lg:col-span-1 lg:row-span-1 h-full'
+            >
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300'>
+                  <ShieldCheck
+                    className='w-6 h-6 text-white'
+                    strokeWidth={2.5}
+                  />
+                </div>
+                <h3 className='text-base sm:text-lg font-bold text-gray-900 mb-1.5'>
+                  NRS Compliant
+                </h3>
+                <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                  Automated 7.5% tax calculations — always accurate
+                </p>
+              </div>
+            </ScrollReveal>
+
+            {/* 11. One-Click Tax Payment - Small accent (1×1) */}
+            <ScrollReveal
+              delay={550}
+              className='lg:col-span-1 lg:row-span-1 h-full'
+            >
+              <div className='group relative h-full overflow-hidden rounded-xl bg-white border border-slate-200/90 p-5 sm:p-6 shadow-[0_2px_4px_rgba(15,23,42,0.06),0_12px_24px_-4px_rgba(15,23,42,0.12)] hover:shadow-[0_4px_8px_rgba(15,23,42,0.06),0_20px_32px_-4px_rgba(15,23,42,0.18)] hover:border-slate-300 hover:-translate-y-1 transition-all duration-300'>
+                <div className='w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300'>
+                  <Zap
+                    className='w-6 h-6 text-white fill-white'
+                    strokeWidth={2.5}
+                  />
+                </div>
+                <h3 className='text-base sm:text-lg font-bold text-gray-900 mb-1.5'>
+                  Instant Payment
+                </h3>
+                <p className='text-xs sm:text-sm text-gray-600 leading-relaxed'>
+                  Pay taxes in one click — Paystack powered
+                </p>
               </div>
             </ScrollReveal>
           </div>
         </div>
       </section>
 
-      {/* ── Why Choose Us - Million Dollar Section ── */}
-      <section className='py-14 sm:py-18 lg:py-24 bg-white relative overflow-hidden'>
+      {/* ── Why Choose Us - Refined Professional Section ── */}
+      <section className='py-16 sm:py-20 lg:py-28 bg-white relative overflow-hidden'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
-          {/* Section Header - Consistent with other sections */}
-          <ScrollReveal className='mx-auto max-w-3xl mb-10 sm:mb-14 text-center'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-1.5 mb-4 shadow-sm'>
-              <span className='relative flex h-2 w-2'>
-                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
-                <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
-              </span>
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
-                Why WallxTax
+          <ScrollReveal className='mx-auto max-w-2xl mb-12 sm:mb-16 text-center'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-3.5 py-1.5 mb-4 shadow-sm'>
+              <BadgeCheck className='h-3.5 w-3.5 text-primary-600' />
+              <span className='font-body text-xs font-semibold tracking-wide text-primary-700'>
+                Why Businesses Trust Us
               </span>
             </span>
-            <h2 className='text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-3 sm:mb-4'>
-              Professional tools for{' '}
+            <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug mb-3'>
+              Built for{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
-                serious businesses
+                modern businesses
               </span>
             </h2>
-            <p className='font-body text-sm sm:text-base text-gray-600 max-w-2xl mx-auto'>
-              Built by professionals. For professionals. Every feature designed
-              to make tax management smarter, faster, and more reliable.
+            <p className='font-body text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed'>
+              Enterprise-grade tools designed to save time and reduce complexity
             </p>
           </ScrollReveal>
 
-          {/* Feature Grid - All 4 boxes on the same line on desktop with taller images & refined sizing */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 lg:gap-4 xl:gap-6'>
-            {[
-              {
-                icon: Calculator,
-                title: 'Precise Tax Calculation',
-                description:
-                  'Every kobo accounted for. FIRS-compliant math that runs the moment you log a sale or expense.',
-                detail:
-                  'Live 7.5% formula • Auto-deductions • Audit-ready trail',
-                feature: 'FIRS Compliant',
-                accent: 'from-primary-500 to-purple-500',
-                tint: 'bg-primary-50 text-primary-600',
-                image: '/images/analytics-feature.jpg',
-              },
-              {
-                icon: ShieldCheck,
-                title: 'Bank-Level Security',
-                description:
-                  'Your financials are protected with the same encryption banks use — at rest and in transit.',
-                detail: 'AES-256 encryption • TLS 1.3 • Zero-trust access',
-                feature: 'Enterprise Grade',
-                accent: 'from-emerald-500 to-teal-500',
-                tint: 'bg-emerald-50 text-emerald-600',
-                image: '/images/compliance-secure.jpg',
-              },
-              {
-                icon: LineChart,
-                title: 'Financial Intelligence',
-                description:
-                  'Dashboards that turn raw transactions into decisions you can act on this week.',
-                detail: 'Live dashboards • Trend analytics • Margin warnings',
-                feature: 'Live Analytics',
-                accent: 'from-violet-500 to-fuchsia-500',
-                tint: 'bg-violet-50 text-violet-600',
-                image: '/images/dashboard-hero.jpg',
-              },
-              {
-                icon: FileCheck2,
-                title: 'Seamless Filing',
-                description:
-                  'From sale to submitted return in minutes, with audit-ready PDFs you can hand to FIRS.',
-                detail: 'One-click pay • PDF statements • Receipt archive',
-                feature: 'Auto Generated',
-                accent: 'from-indigo-500 to-blue-500',
-                tint: 'bg-indigo-50 text-indigo-600',
-                image: '/images/mobile-interface.jpg',
-              },
-            ].map((item, i) => (
-              <ScrollReveal key={item.title} delay={i * 80} className='group h-full'>
-                <div className='relative h-full rounded-2xl overflow-hidden bg-white border border-gray-200/90 shadow-sm hover:shadow-2xl hover:shadow-primary-500/15 hover:border-primary-300 transition-all duration-500 hover:-translate-y-1.5 flex flex-col'>
-                  {/* Image Section - Taller & beautifully framed */}
-                  <div className='relative h-44 sm:h-52 lg:h-44 xl:h-52 overflow-hidden bg-gray-100'>
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className='w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-108'
+          {/* Horizontal cards with images on the left */}
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto'>
+            <ScrollReveal delay={0}>
+              <div className='group relative flex items-center gap-4 bg-white border border-gray-200/80 rounded-lg overflow-hidden hover:shadow-lg hover:shadow-gray-900/5 hover:border-gray-300 transition-all duration-300'>
+                <div className='flex-shrink-0 w-24 h-full'>
+                  <picture>
+                    <source
+                      type='image/webp'
+                      srcSet='/images-optimized/step-3-file-tax-sm.webp 640w, /images-optimized/step-3-file-tax-md.webp 768w'
+                      sizes='96px'
                     />
-                    <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent' />
-
-                    {/* Feature Badge - Accented */}
-                    <div className='absolute top-3 right-3 inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full shadow-md border border-white/70'>
-                      <span
-                        className={`h-2 w-2 rounded-full bg-gradient-to-br ${item.accent}`}
-                      />
-                      <span className='text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-800'>
-                        {item.feature}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Content Section */}
-                  <div className='p-5 sm:p-5 xl:p-6 flex flex-col flex-1'>
-                    {/* Icon + Title row */}
-                    <div className='flex items-center gap-3 mb-3'>
-                      <div
-                        className={`flex-shrink-0 h-10 w-10 sm:h-11 sm:w-11 rounded-xl ${item.tint.split(' ')[0]} flex items-center justify-center shadow-xs transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3`}
-                      >
-                        <item.icon
-                          className={`h-5 w-5 sm:h-5.5 sm:w-5.5 ${item.tint.split(' ')[1]}`}
-                          strokeWidth={1.8}
-                        />
-                      </div>
-                      <h3 className='text-base sm:text-lg xl:text-[19px] font-bold text-gray-900 leading-snug group-hover:text-primary-700 transition-colors'>
-                        {item.title}
-                      </h3>
-                    </div>
-
-                    <p className='font-body text-xs sm:text-sm xl:text-[14px] leading-relaxed text-gray-600 mb-4'>
-                      {item.description}
-                    </p>
-
-                    {/* Detail points with check marks */}
-                    <ul className='space-y-2 mb-5 flex-grow'>
-                      {item.detail.split(' • ').map((point) => (
-                        <li
-                          key={point}
-                          className='flex items-center gap-2 text-xs sm:text-[13px] text-gray-700'
-                        >
-                          <div className={`h-4 w-4 rounded-full ${item.tint.split(' ')[0]} flex items-center justify-center shrink-0`}>
-                            <CheckCircle2
-                              className={`h-3 w-3 ${item.tint.split(' ')[1]}`}
-                              strokeWidth={2.8}
-                            />
-                          </div>
-                          <span className='font-medium'>{point}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Footer accent */}
-                    <div className='pt-3.5 border-t border-gray-100 flex items-center justify-between mt-auto'>
-                      <span className='text-[11px] font-semibold uppercase tracking-wider text-gray-400'>
-                        Included as standard
-                      </span>
-                      <div
-                        className={`h-1.5 w-10 rounded-full bg-gradient-to-r ${item.accent} opacity-40 group-hover:opacity-100 transition-opacity duration-300`}
-                      />
-                    </div>
-                  </div>
+                    <img
+                      src='/images/step-3-file-tax.jpg'
+                      alt='Tax Calculation'
+                      className='w-full h-full object-cover'
+                      loading='lazy'
+                    />
+                  </picture>
                 </div>
-              </ScrollReveal>
-            ))}
+                <div className='flex-1 min-w-0 py-4 pr-5'>
+                  <h3 className='text-base font-bold text-gray-900 mb-1 leading-tight'>
+                    Precise Tax Calculation
+                  </h3>
+                  <p className='text-sm text-gray-600 leading-relaxed'>
+                    NRS-compliant 7.5% VAT calculations with real-time tracking
+                    and audit trails.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={100}>
+              <div className='group relative flex items-center gap-4 bg-white border border-gray-200/80 rounded-lg overflow-hidden hover:shadow-lg hover:shadow-gray-900/5 hover:border-gray-300 transition-all duration-300'>
+                <div className='flex-shrink-0 w-24 h-full'>
+                  <picture>
+                    <source
+                      type='image/webp'
+                      srcSet='/images-optimized/compliance-secure-sm.webp 640w, /images-optimized/compliance-secure-md.webp 768w'
+                      sizes='96px'
+                    />
+                    <img
+                      src='/images/compliance-secure.jpg'
+                      alt='Security'
+                      className='w-full h-full object-cover'
+                      loading='lazy'
+                    />
+                  </picture>
+                </div>
+                <div className='flex-1 min-w-0 py-4 pr-5'>
+                  <h3 className='text-base font-bold text-gray-900 mb-1 leading-tight'>
+                    Bank-Level Security
+                  </h3>
+                  <p className='text-sm text-gray-600 leading-relaxed'>
+                    AES-256 encryption and TLS 1.3 protection for all your
+                    financial data.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={200}>
+              <div className='group relative flex items-center gap-4 bg-white border border-gray-200/80 rounded-lg overflow-hidden hover:shadow-lg hover:shadow-gray-900/5 hover:border-gray-300 transition-all duration-300'>
+                <div className='flex-shrink-0 w-24 h-full'>
+                  <picture>
+                    <source
+                      type='image/webp'
+                      srcSet='/images-optimized/analytics-feature-sm.webp 640w, /images-optimized/analytics-feature-md.webp 768w'
+                      sizes='96px'
+                    />
+                    <img
+                      src='/images/analytics-feature.jpg'
+                      alt='Analytics'
+                      className='w-full h-full object-cover'
+                      loading='lazy'
+                    />
+                  </picture>
+                </div>
+                <div className='flex-1 min-w-0 py-4 pr-5'>
+                  <h3 className='text-base font-bold text-gray-900 mb-1 leading-tight'>
+                    Smart Analytics
+                  </h3>
+                  <p className='text-sm text-gray-600 leading-relaxed'>
+                    Live dashboards with trend analysis and actionable business
+                    insights.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={300}>
+              <div className='group relative flex items-center gap-4 bg-white border border-gray-200/80 rounded-lg overflow-hidden hover:shadow-lg hover:shadow-gray-900/5 hover:border-gray-300 transition-all duration-300'>
+                <div className='flex-shrink-0 w-24 h-full'>
+                  <picture>
+                    <source
+                      type='image/webp'
+                      srcSet='/images-optimized/step-2-transactions-sm.webp 640w, /images-optimized/step-2-transactions-md.webp 768w'
+                      sizes='96px'
+                    />
+                    <img
+                      src='/images/step-2-transactions.jpg'
+                      alt='Automated Filing'
+                      className='w-full h-full object-cover'
+                      loading='lazy'
+                    />
+                  </picture>
+                </div>
+                <div className='flex-1 min-w-0 py-4 pr-5'>
+                  <h3 className='text-base font-bold text-gray-900 mb-1 leading-tight'>
+                    Automated Filing
+                  </h3>
+                  <p className='text-sm text-gray-600 leading-relaxed'>
+                    One-click tax payments and professional PDF statements for
+                    NRS submission.
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -1667,25 +1860,22 @@ export default function Landing() {
         className='scroll-mt-20 sm:scroll-mt-24 py-14 sm:py-18 lg:py-24 bg-white relative overflow-hidden'
       >
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative'>
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-10 sm:mb-14'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-4 shadow-sm'>
-              <span className='relative flex h-2 w-2'>
-                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
-                <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
-              </span>
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
+          <ScrollReveal className='mx-auto max-w-4xl text-center mb-10 sm:mb-14'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+              <CheckCircle2 className='h-3.5 w-3.5 text-primary-600' />
+              <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
                 Simple Process
               </span>
             </span>
-            <h2 className='text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold text-gray-900 leading-tight'>
+            <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug'>
               Get compliant in{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
                 three simple steps
               </span>
             </h2>
-            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-600'>
+            <p className='mt-3 sm:mt-4 font-body text-sm sm:text-base text-gray-600 leading-relaxed'>
               Your path to effortless tax management, designed for clarity and
-              speed.
+              speed
             </p>
           </ScrollReveal>
 
@@ -1708,7 +1898,7 @@ export default function Landing() {
               {
                 title: 'File & Pay Tax',
                 description:
-                  'Review your auto-calculated FIRS tax, finalize with confidence, and pay securely in minutes.',
+                  'Review your auto-calculated NRS tax, finalize with confidence, and pay securely in minutes.',
                 stepNum: 3,
                 image: '/images/step-3-file-tax.jpg',
               },
@@ -1718,7 +1908,7 @@ export default function Landing() {
                 delay={index * 150}
                 className='relative group'
               >
-                <div className='flex flex-col h-full rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-md transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/15 hover:border-primary-300 hover:-translate-y-1.5'>
+                <div className='flex flex-col h-full rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-md transition-all duration-500 hover:shadow-xl hover:shadow-primary-500/15 hover:-translate-y-1.5'>
                   {/* Image Section with gradient overlay */}
                   <div className='relative h-36 sm:h-44 lg:h-40 xl:h-44 overflow-hidden bg-gray-100'>
                     <img
@@ -1784,22 +1974,22 @@ export default function Landing() {
       <section className='py-14 sm:py-18 lg:py-24 bg-gradient-to-b from-gray-50/50 to-white relative overflow-hidden'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6'>
           {/* Header - Consistent centered style */}
-          <ScrollReveal className='mx-auto max-w-2xl text-center mb-10 sm:mb-14'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100/50 px-4 sm:px-5 py-1.5 mb-4 shadow-sm'>
-              <Globe2 className='h-4 w-4 text-primary-500' />
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-primary-600'>
+          <ScrollReveal className='mx-auto max-w-4xl text-center mb-10 sm:mb-14'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+              <Globe2 className='h-3.5 w-3.5 text-primary-600' />
+              <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
                 In Practice
               </span>
             </span>
-            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+            <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug'>
               Trusted by{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
                 growing businesses
               </span>
             </h2>
-            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-600 max-w-xl mx-auto'>
+            <p className='mt-3 sm:mt-4 font-body text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed'>
               From startups to established enterprises — see how businesses
-              across Nigeria manage taxes with clarity and confidence.
+              across Nigeria manage taxes with clarity and confidence
             </p>
           </ScrollReveal>
 
@@ -1807,42 +1997,42 @@ export default function Landing() {
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-max'>
             {[
               {
-                image: '/images/workspace.jpg',
+                imageName: 'workspace',
                 title: 'Professional Setup',
                 subtitle: 'Clean workspace, clear finances',
                 span: 'sm:col-span-1 lg:col-span-1',
                 height: 'h-44 sm:h-48 lg:h-52',
               },
               {
-                image: '/images/team-efficiency.jpg',
+                imageName: 'team-efficiency',
                 title: 'Team Efficiency',
                 subtitle: 'Collaborative financial management',
                 span: 'sm:col-span-1 lg:col-span-2 lg:row-span-1',
                 height: 'h-44 sm:h-48 lg:h-52',
               },
               {
-                image: '/images/mobile-interface.jpg',
+                imageName: 'mobile-interface',
                 title: 'On-The-Go',
                 subtitle: 'Tax management, anywhere, anytime',
                 span: 'sm:col-span-1 lg:col-span-1 lg:row-span-2',
                 height: 'h-44 sm:h-48 lg:h-full lg:min-h-[440px]',
               },
               {
-                image: '/images/business-growth.jpg',
+                imageName: 'business-growth',
                 title: 'Growth Metrics',
                 subtitle: 'Track expansion with precision',
                 span: 'sm:col-span-1 lg:col-span-1',
                 height: 'h-44 sm:h-48 lg:h-52',
               },
               {
-                image: '/images/dashboard-hero.jpg',
+                imageName: 'dashboard-hero',
                 title: 'Real-Time Insights',
                 subtitle: 'Live dashboards for smart decisions',
                 span: 'sm:col-span-1 lg:col-span-1',
                 height: 'h-44 sm:h-48 lg:h-52',
               },
               {
-                image: '/images/compliance-secure.jpg',
+                imageName: 'compliance-secure',
                 title: 'Security & Trust',
                 subtitle: 'Enterprise protection for your data',
                 span: 'sm:col-span-1 lg:col-span-2',
@@ -1855,11 +2045,23 @@ export default function Landing() {
                 className={`group relative overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 cursor-pointer ${item.height} ${item.span || ''}`}
               >
                 {/* Image with sophisticated overlay */}
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
-                />
+                <picture>
+                  <source
+                    type='image/webp'
+                    srcSet={`
+                      /images-optimized/${item.imageName}-sm.webp 640w,
+                      /images-optimized/${item.imageName}-md.webp 768w,
+                      /images-optimized/${item.imageName}-lg.webp 1024w
+                    `}
+                    sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'
+                  />
+                  <img
+                    src={`/images/${item.imageName}.jpg`}
+                    alt={item.title}
+                    className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'
+                    loading={i < 3 ? 'eager' : 'lazy'}
+                  />
+                </picture>
 
                 {/* Gradient Overlay - Elegant */}
                 <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500' />
@@ -1891,7 +2093,9 @@ export default function Landing() {
             <Link to={isAuthenticated ? '/dashboard' : '/register'}>
               <button className='group px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white text-sm sm:text-base font-semibold shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/40 transition-all duration-300 hover:-translate-y-0.5'>
                 <span className='flex items-center gap-2'>
-                  {isAuthenticated ? 'Go to Dashboard' : 'Join growing businesses'}
+                  {isAuthenticated
+                    ? 'Go to Dashboard'
+                    : 'Join growing businesses'}
                   <ArrowRight className='h-4.5 w-4.5 group-hover:translate-x-1 transition-transform' />
                 </span>
               </button>
@@ -1906,30 +2110,38 @@ export default function Landing() {
         className='scroll-mt-20 sm:scroll-mt-24 py-14 sm:py-18 lg:py-24 relative overflow-hidden'
       >
         <div className='absolute inset-0 z-0'>
-          <img
-            src='/images/dashboard-hero.jpg'
-            alt='Business success'
-            className='w-full h-full object-cover object-center'
-          />
+          <picture>
+            <source
+              type='image/webp'
+              srcSet='/images-optimized/dashboard-hero-sm.webp 640w, /images-optimized/dashboard-hero-md.webp 768w, /images-optimized/dashboard-hero-lg.webp 1024w'
+              sizes='100vw'
+            />
+            <img
+              src='/images/dashboard-hero.jpg'
+              alt='Business success'
+              className='w-full h-full object-cover object-center'
+              loading='lazy'
+            />
+          </picture>
           <div className='absolute inset-0 bg-gradient-to-br from-white via-white/95 to-white/90' />
         </div>
 
         <div className='mx-auto max-w-7xl px-4 sm:px-6 relative z-10'>
-          <ScrollReveal className='mx-auto max-w-3xl text-center mb-10 sm:mb-14'>
-            <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 sm:px-5 py-1.5 mb-4 shadow-sm'>
-              <span className='flex h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse' />
-              <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-700'>
+          <ScrollReveal className='mx-auto max-w-4xl text-center mb-10 sm:mb-14'>
+            <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+              <Star className='h-3.5 w-3.5 text-primary-600 fill-primary-600' />
+              <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
                 Real Results
               </span>
             </span>
-            <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
+            <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug'>
               Trusted by{' '}
               <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
-                thousands of businesses
+                Nigerian businesses
               </span>
             </h2>
-            <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-700'>
-              Hear from business owners who've transformed their tax management.
+            <p className='mt-3 sm:mt-4 font-body text-sm sm:text-base text-gray-700 leading-relaxed'>
+              Hear from business owners who've transformed their tax management
             </p>
           </ScrollReveal>
 
@@ -1973,7 +2185,7 @@ export default function Landing() {
                     <div className='text-sm sm:text-base font-bold text-gray-900'>
                       {t.name}
                     </div>
-                    <div className='font-body text-xs sm:text-[13px] text-gray-500'>
+                    <div className='font-body text-xs sm:text-[13px] text-gray-600 font-medium'>
                       {t.role}
                     </div>
                   </div>
@@ -1994,71 +2206,58 @@ export default function Landing() {
         <div className='absolute bottom-0 right-0 w-[400px] h-[400px] bg-fuchsia-300/10 blur-3xl rounded-full pointer-events-none' />
 
         <ScrollReveal className='relative mx-auto max-w-4xl px-4 sm:px-6 text-center'>
-          <span className='inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-4 py-1.5 mb-4 shadow-sm'>
-            <span className='relative flex h-2 w-2'>
-              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
-              <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
-            </span>
-            <span className='font-body text-xs sm:text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent'>
-              Free to start
+          <span className='inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-100 px-4 py-1.5 mb-4 sm:mb-5 shadow-sm'>
+            <Zap className='h-3.5 w-3.5 text-primary-600 fill-primary-600' />
+            <span className='font-body text-xs sm:text-sm font-semibold tracking-wide text-primary-700'>
+              Free To Start
             </span>
           </span>
-          <h2 className='text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight'>
-            Ready to simplify your{' '}
+          <h2 className='text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-bold text-gray-900 leading-snug'>
+            Ready to simplify how your business run and{' '}
             <span className='bg-gradient-to-r from-primary-600 via-purple-500 to-fuchsia-500 bg-clip-text text-transparent'>
-              tax management?
+              still stay compliant?
             </span>
           </h2>
-          <p className='mt-3 sm:mt-4 font-body text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed'>
-            Join thousands of Nigerian businesses that trust PayMyTax for FIRS
-            compliance — without the spreadsheets, the panic, or the late
-            penalties.
+          <p className='mt-3 sm:mt-4 font-body text-sm sm:text-base text-gray-600 max-w-3xl mx-auto leading-relaxed'>
+            Join thousands of African businesses that trust wallX-ERP to manage
+            their business in real-time from anywhere
           </p>
 
-          <div className='mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4'>
-            <Link to={isAuthenticated ? '/dashboard' : '/register'} className='w-full sm:w-auto'>
+          <div className='mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center'>
+            <Link
+              to={isAuthenticated ? '/dashboard' : '/register'}
+              className='w-full sm:w-auto'
+            >
               <button className='group w-full sm:w-auto px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 text-white text-sm sm:text-base font-semibold shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/50 transition-all duration-300 hover:-translate-y-0.5'>
                 <span className='flex items-center justify-center gap-2'>
-                  {isAuthenticated ? 'Go to Dashboard' : 'Start Your Free Trial'}
+                  {isAuthenticated
+                    ? 'Go to Dashboard'
+                    : 'Start Your Free Trial'}
                   <ArrowRight className='h-4.5 w-4.5 group-hover:translate-x-1 transition-transform' />
                 </span>
-              </button>
-            </Link>
-            <Link to={isAuthenticated ? '/account' : '/login'} className='w-full sm:w-auto'>
-              <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full border border-gray-300 bg-white/80 backdrop-blur text-gray-700 text-sm sm:text-base font-semibold hover:border-primary-400 hover:bg-white hover:text-primary-700 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5'>
-                {isAuthenticated ? (
-                  <>
-                    <Wallet className='h-4 w-4' /> Dedicated Account
-                  </>
-                ) : (
-                  <>
-                    <Play className='h-4 w-4 fill-current' />
-                    Schedule Demo
-                  </>
-                )}
               </button>
             </Link>
           </div>
 
           {/* Trust line below CTAs */}
-          <div className='mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs sm:text-sm text-gray-500'>
+          <div className='mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs sm:text-sm text-gray-600 font-medium'>
             <span className='inline-flex items-center gap-1.5'>
               <CheckCircle2
-                className='h-4 w-4 text-green-500'
+                className='h-4 w-4 text-emerald-600'
                 strokeWidth={2.5}
               />
               No credit card required
             </span>
             <span className='inline-flex items-center gap-1.5'>
-              <Lock className='h-4 w-4 text-primary-500' strokeWidth={2} />
+              <Lock className='h-4 w-4 text-primary-600' strokeWidth={2} />
               Bank-grade security
             </span>
             <span className='inline-flex items-center gap-1.5'>
               <BadgeCheck
-                className='h-4 w-4 text-fuchsia-500'
+                className='h-4 w-4 text-fuchsia-600'
                 strokeWidth={2}
               />
-              FIRS-compliant
+              NRS-compliant
             </span>
           </div>
         </ScrollReveal>
@@ -2067,18 +2266,22 @@ export default function Landing() {
       {/* ── Footer ── */}
       <footer className='bg-gray-950 text-gray-400'>
         <div className='mx-auto max-w-7xl px-4 sm:px-6 pt-14 sm:pt-16 lg:pt-20 pb-8 sm:pb-10 lg:pb-12'>
-          <div className='grid grid-cols-1 gap-8 sm:gap-10 md:grid-cols-2 lg:grid-cols-4'>
-            <div className='md:col-span-2 lg:col-span-1'>
-              <Link to='/' className='inline-block'>
-                <img
-                  src='/logo.png'
-                  alt='PayMyTax'
+          <div className='grid grid-cols-1 gap-8 sm:gap-10 md:grid-cols-3 lg:grid-cols-4'>
+            <div className='md:col-span-3 lg:col-span-1'>
+              <Link
+                to='/'
+                aria-label='WallXERP by WallX — home'
+                className='inline-block rounded-sm opacity-80 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950'
+              >
+                <OptimizedLogo
+                  size='md'
                   className='h-8 sm:h-10 w-auto brightness-0 invert'
+                  loading='lazy'
                 />
               </Link>
-              <p className='mt-4 sm:mt-5 max-w-sm font-body text-sm sm:text-base leading-relaxed text-gray-500'>
+              <p className='mt-4 sm:mt-5 max-w-sm font-body text-sm sm:text-base leading-relaxed text-gray-400'>
                 The simplest way for Nigerian SMEs to track sales, compute
-                taxes, and stay FIRS-compliant.
+                taxes, and stay NRS-compliant.
               </p>
               {/* Social icons (inline SVGs — lucide-react drops brand icons) */}
               <div className='mt-6 flex items-center gap-3'>
@@ -2105,7 +2308,7 @@ export default function Landing() {
                     target='_blank'
                     rel='noopener noreferrer'
                     aria-label={s.label}
-                    className='h-11 w-11 min-h-[44px] min-w-[44px] rounded-full border border-gray-800 flex items-center justify-center text-gray-500 hover:text-white hover:bg-primary-600 hover:border-primary-600 transition-colors duration-200'
+                    className='flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-gray-800 text-gray-400 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-500/70 hover:bg-white/10 hover:text-white active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 motion-reduce:transition-none motion-reduce:hover:translate-y-0'
                   >
                     <svg
                       className='h-4 w-4'
@@ -2121,76 +2324,61 @@ export default function Landing() {
             </div>
 
             <div>
-              <h4 className='font-sans text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 sm:mb-6'>
+              <h3 className='font-sans text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 sm:mb-6'>
                 Product
-              </h4>
+              </h3>
               <div className='space-y-3 sm:space-y-4'>
-                {['Features', 'How It Works', 'Testimonials', 'FAQ'].map(
-                  (item) => (
-                    <a
-                      key={item}
-                      href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
-                      className='block font-body text-sm sm:text-[15px] text-gray-500 hover:text-white transition-colors duration-200'
-                    >
-                      {item}
-                    </a>
-                  ),
-                )}
+                {FOOTER_LINKS.map((item) => (
+                  <a key={item.label} href={item.href} className={FOOTER_LINK}>
+                    {item.label}
+                  </a>
+                ))}
               </div>
             </div>
 
             <div>
-              <h4 className='font-sans text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 sm:mb-6'>
+              <h3 className='font-sans text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 sm:mb-6'>
                 Account
-              </h4>
+              </h3>
               <div className='space-y-3 sm:space-y-4'>
-                {['Create Account', 'Sign In', 'Dashboard'].map((item) => (
-                  <Link
-                    key={item}
-                    to={
-                      item === 'Dashboard'
-                        ? '/dashboard'
-                        : `/${item.toLowerCase().replace(/\s+/g, '-')}`
-                    }
-                    className='block font-body text-sm sm:text-[15px] text-gray-500 hover:text-white transition-colors duration-200'
-                  >
-                    {item}
+                {FOOTER_ACCOUNT_LINKS.map((item) => (
+                  <Link key={item.label} to={item.to} className={FOOTER_LINK}>
+                    {item.label}
                   </Link>
                 ))}
               </div>
             </div>
 
             <div>
-              <h4 className='font-sans text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 sm:mb-6'>
+              <h3 className='font-sans text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-300 mb-4 sm:mb-6'>
                 Support
-              </h4>
+              </h3>
               <div className='space-y-3 sm:space-y-4'>
-                <a
-                  href='#faq'
-                  className='block font-body text-sm sm:text-[15px] text-gray-500 hover:text-white transition-colors duration-200'
-                >
-                  Help & FAQ
-                </a>
-                <a
-                  href='mailto:support@paymytax.com'
-                  className='block font-body text-sm sm:text-[15px] text-gray-500 hover:text-white transition-colors duration-200'
-                >
-                  Contact Us
-                </a>
+                {FOOTER_SUPPORT_LINKS.map((item) => (
+                  <a key={item.label} href={item.href} className={FOOTER_LINK}>
+                    {item.label}
+                  </a>
+                ))}
               </div>
             </div>
           </div>
 
           <div className='mt-10 sm:mt-14 lg:mt-16 pt-6 sm:pt-8 border-t border-gray-800 flex flex-col items-center gap-4 sm:flex-row sm:justify-between'>
-            <p className='font-body text-xs sm:text-[15px] text-gray-600 text-center sm:text-left'>
-              © {new Date().getFullYear()} PayMyTax by WallX. All rights
+            <p className='font-body text-xs sm:text-[15px] text-gray-400 text-center sm:text-left'>
+              © {new Date().getFullYear()} WallXERP by WallX. All rights
               reserved.
             </p>
-            <div className='flex items-center gap-1.5 font-body text-xs sm:text-[15px] text-gray-600'>
-              <span>Made with</span>
-              <span className='text-red-500'>♥</span>
-              <span>in Lagos, Nigeria</span>
-            </div>
+            <p className='flex items-center gap-1.5 font-body text-xs sm:text-[15px] text-gray-400 group'>
+              <span className='transition-colors duration-200 group-hover:text-gray-300'>
+                Made with
+              </span>
+              <span className='text-red-500 transition-transform duration-200 ease-out group-hover:scale-125 motion-reduce:transition-none motion-reduce:group-hover:scale-100'>
+                ♥
+              </span>
+              <span className='transition-colors duration-200 group-hover:text-gray-300'>
+                in Lagos, Nigeria
+              </span>
+            </p>
           </div>
         </div>
       </footer>

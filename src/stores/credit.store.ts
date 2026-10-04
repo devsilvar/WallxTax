@@ -24,6 +24,13 @@ interface CreditState {
   pagination: Pagination | null;
   listLoading: boolean;
   listError: string | null;
+  /**
+   * Set when the summary request fails. Distinct from `summary === null`,
+   * which legitimately means "no credit accounts yet" — collapsing the two is
+   * what made a network blip render as ₦0 owed.
+   */
+  summaryError: string | null;
+  summaryLoading: boolean;
 
   // Active / Selected Credit
   activeCredit: CustomerCredit | null;
@@ -70,6 +77,8 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   pagination: null,
   listLoading: false,
   listError: null,
+  summaryError: null,
+  summaryLoading: false,
 
   activeCredit: null,
   detailLoading: false,
@@ -96,6 +105,10 @@ export const useCreditStore = create<CreditState>((set, get) => ({
       set({
         credits: data,
         summary: summary || get().summary,
+        // The list response can carry the summary too. When it does, any
+        // earlier summary failure is stale — clear it so the UI stops
+        // reporting an error we have since recovered from.
+        ...(summary ? { summaryError: null } : {}),
         pagination,
         listLoading: false,
       });
@@ -110,6 +123,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
 
   fetchSummary: async (businessId) => {
     const seq = ++fetchSummarySeq;
+    set({ summaryLoading: true, summaryError: null });
     try {
       const res = await api.get(`${basePath(businessId)}/summary`);
       if (seq !== fetchSummarySeq) return null; // a newer fetchSummary call superseded this one
@@ -119,7 +133,18 @@ export const useCreditStore = create<CreditState>((set, get) => ({
       }
       return summary;
     } catch (err) {
+      if (seq !== fetchSummarySeq) return null;
+      // Deliberately not swallowed: the dashboard renders these figures, and a
+      // silent null reads as "₦0 outstanding" when the truth is "we never
+      // reached the server".
+      set({
+        summaryError: getErrorMessage(err, 'Failed to load receivables summary'),
+      });
       return null;
+    } finally {
+      // Guarded by seq so a superseded request can't switch off the spinner
+      // belonging to the request that replaced it.
+      if (seq === fetchSummarySeq) set({ summaryLoading: false });
     }
   },
 
@@ -219,6 +244,8 @@ export const useCreditStore = create<CreditState>((set, get) => ({
       pagination: null,
       listLoading: false,
       listError: null,
+      summaryError: null,
+      summaryLoading: false,
       activeCredit: null,
       detailLoading: false,
       detailError: null,

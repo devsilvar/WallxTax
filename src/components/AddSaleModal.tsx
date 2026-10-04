@@ -237,7 +237,7 @@ export default function AddSaleModal({
 
       try {
         await useCreditStore.getState().createCredit(businessId, creditPayload);
-        toast.success('Credit sale recorded in Debtors Book (FIRS Cash-Basis)');
+        toast.success('Credit sale recorded — revenue counted, debt tracked in Debtors Book');
         invalidateDashboard('sale_created');
         onSaved('created');
         onClose();
@@ -352,17 +352,17 @@ export default function AddSaleModal({
       >
         {/* Transaction Type Mode Toggle */}
         <div className='sm:col-span-2 space-y-1.5'>
-          <label className='block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400'>
+          <label className='block text-xs font-semibold uppercase tracking-wider text-slate-500'>
             Transaction Type
           </label>
-          <div className='grid grid-cols-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-none border border-gray-200 dark:border-slate-700 gap-1'>
+          <div className='grid grid-cols-2 p-1 bg-gray-100 rounded-none border border-gray-200 gap-1'>
             <button
               type='button'
               onClick={() => setMode('items')}
               className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-none transition-all ${
                 mode === 'items'
-                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm border border-gray-200 dark:border-slate-600'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-white text-primary-700 shadow-sm border border-gray-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Package className='w-4 h-4' />
@@ -373,15 +373,15 @@ export default function AddSaleModal({
               onClick={() => setMode('single')}
               className={`flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold rounded-none transition-all ${
                 mode === 'single'
-                  ? 'bg-white dark:bg-slate-700 text-primary-700 dark:text-primary-300 shadow-sm border border-gray-200 dark:border-slate-600'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-white text-primary-700 shadow-sm border border-gray-200'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Banknote className='w-4 h-4' />
-              <span>Proffessional Service</span>
+              <span>Professional Service</span>
             </button>
           </div>
-          <p className='text-[11px] text-slate-500 dark:text-slate-400 px-0.5'>
+          <p className='text-[11px] text-slate-500 px-0.5'>
             {mode === 'items'
               ? 'For physical goods sold by quantity and unit price (1 product or many).'
               : 'For services, repairs, consulting, or lump-sum daily totals without item quantities.'}
@@ -432,17 +432,17 @@ export default function AddSaleModal({
         </div>
 
         {isCredit && (
-          <div className='sm:col-span-2 space-y-3 p-3.5 bg-amber-50/70 border border-amber-200'>
+          <div className='sm:col-span-2 space-y-3 p-3.5 bg-emerald-50/70 border border-emerald-200'>
             <div className='flex items-start gap-2.5'>
-              <HandCoins className='h-4 w-4 text-amber-700 shrink-0 mt-0.5' />
+              <HandCoins className='h-4 w-4 text-emerald-700 shrink-0 mt-0.5' />
               <div>
-                <p className='text-xs font-bold text-amber-900'>
-                  FIRS Cash-Basis Guarantee (Debtors Book)
+                <p className='text-xs font-bold text-emerald-900'>
+                  ✓ Revenue Counted at Point of Sale
                 </p>
-                <p className='text-[11px] text-amber-800 leading-relaxed mt-0.5'>
-                  This credit sale will be recorded in your Debtors Book without
-                  triggering tax liability. FIRS revenue is recognized strictly
-                  when repayment is recorded.
+                <p className='text-[11px] text-emerald-800 leading-relaxed mt-0.5'>
+                  This credit sale will be recorded as revenue for the issue
+                  date's month and tracked in your Debtors Book. Repayments
+                  will only update the debt balance — no duplicate sales.
                 </p>
               </div>
             </div>

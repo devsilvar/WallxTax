@@ -39,42 +39,47 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-900 px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-600 text-white">
-            <Shield className="h-6 w-6" />
+    <div className='flex min-h-screen items-center justify-center bg-gray-900 px-4'>
+      <div className='w-full max-w-md'>
+        <div className='mb-8 text-center'>
+          <div className='mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-600 text-white'>
+            <Shield className='h-6 w-6' />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-white">Admin Portal</h1>
-          <p className="mt-1 font-body text-sm text-gray-400">
-            PayMyTax administration panel
+          <h1 className='mt-4 text-2xl font-bold text-white'>Admin Portal</h1>
+          <p className='mt-1 font-body text-sm text-gray-400'>
+            WallXERP administration panel
           </p>
         </div>
         <Card>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Admin Sign In</h2>
+          <form onSubmit={handleSubmit} className='space-y-4'>
+            <h2 className='text-xl font-semibold text-gray-900'>
+              Admin Sign In
+            </h2>
             <Input
-              label="Email"
-              type="email"
+              label='Email'
+              type='email'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@paymytax.com"
+              placeholder='admin@paymytax.com'
               required
             />
             <Input
-              label="Password"
-              type="password"
+              label='Password'
+              type='password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder='••••••••'
               required
             />
-            <Button type="submit" isLoading={isLoading} className="w-full">
+            <Button type='submit' isLoading={isLoading} className='w-full'>
               Sign in to Admin
             </Button>
-            <p className="text-center text-sm text-gray-500">
+            <p className='text-center text-sm text-gray-500'>
               Not an admin?{' '}
-              <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+              <Link
+                to='/login'
+                className='font-medium text-primary-600 hover:text-primary-500'
+              >
                 Go to customer login
               </Link>
             </p>

@@ -62,7 +62,7 @@ export default function SaleItemsEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
           <Package className="w-4 h-4 text-primary-500" />
           <span>Product Items ({items.length})</span>
         </div>
@@ -70,7 +70,7 @@ export default function SaleItemsEditor({
           type="button"
           onClick={handleAddItem}
           disabled={disabled || items.length >= 50}
-          className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 disabled:opacity-50 transition-colors rounded-none"
+          className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50 transition-colors rounded-none"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Item</span>
@@ -84,7 +84,7 @@ export default function SaleItemsEditor({
           return (
             <div
               key={index}
-              className="p-2.5 rounded-none border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-2"
+              className="p-2.5 rounded-none border border-slate-200 bg-slate-50/50 space-y-2"
             >
               <div className="flex items-center gap-2">
                 <input
@@ -94,14 +94,14 @@ export default function SaleItemsEditor({
                   onChange={(e) => handleItemChange(index, 'name', e.target.value)}
                   disabled={disabled}
                   required
-                  className="flex-1 min-w-0 text-sm px-2.5 py-1.5 rounded-none border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-gray-900"
+                  className="flex-1 min-w-0 text-sm px-2.5 py-1.5 rounded-none border border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-gray-900"
                 />
                 {items.length > 1 && (
                   <button
                     type="button"
                     onClick={() => handleRemoveItem(index)}
                     disabled={disabled}
-                    className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-none transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-red-500 rounded-none transition-colors"
                     title="Remove item"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -111,7 +111,7 @@ export default function SaleItemsEditor({
 
               <div className="grid grid-cols-12 gap-2 items-center">
                 <div className="col-span-4">
-                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">
                     Qty
                   </label>
                   <input
@@ -124,12 +124,12 @@ export default function SaleItemsEditor({
                     }
                     disabled={disabled}
                     required
-                    className="w-full text-sm px-2 py-1 rounded-none border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-gray-900"
+                    className="w-full text-sm px-2 py-1 rounded-none border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-gray-900"
                   />
                 </div>
 
                 <div className="col-span-4">
-                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">
                     Unit Price (₦)
                   </label>
                   <input
@@ -143,15 +143,15 @@ export default function SaleItemsEditor({
                     }
                     disabled={disabled}
                     required
-                    className="w-full text-sm px-2 py-1 rounded-none border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-gray-900"
+                    className="w-full text-sm px-2 py-1 rounded-none border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-gray-900"
                   />
                 </div>
 
                 <div className="col-span-4 text-right">
-                  <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-0.5">
+                  <span className="block text-[11px] font-medium text-slate-500 mb-0.5">
                     Total
                   </span>
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  <span className="text-sm font-semibold text-slate-800">
                     ₦{lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -162,11 +162,11 @@ export default function SaleItemsEditor({
       </div>
 
       {/* Items total summary */}
-      <div className="flex items-center justify-between p-2.5 rounded-none bg-primary-50 dark:bg-primary-950/40 border border-primary-100 dark:border-primary-900/50">
-        <span className="text-xs font-medium text-primary-900 dark:text-primary-200">
+      <div className="flex items-center justify-between p-2.5 rounded-none bg-primary-50 border border-primary-100">
+        <span className="text-xs font-medium text-primary-900">
           Total Amount:
         </span>
-        <span className="text-base font-bold text-primary-700 dark:text-primary-300">
+        <span className="text-base font-bold text-primary-700">
           ₦{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       </div>

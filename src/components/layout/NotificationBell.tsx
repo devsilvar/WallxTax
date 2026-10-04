@@ -38,6 +38,7 @@ const TYPE_COLOR: Record<ReminderType, string> = {
   payout_completed: 'bg-emerald-100 text-emerald-700',
   payout_failed: 'bg-red-100 text-red-700',
   credit_overdue: 'bg-rose-100 text-rose-700',
+  pnl_statement_ready: 'bg-purple-100 text-purple-700',
 };
 
 /** Where each reminder type deep-links to. Kept as a map (not a hard-coded
@@ -61,6 +62,7 @@ const ROUTE_FOR_REMINDER: Record<ReminderType, string> = {
   payout_completed: '/account?tab=withdrawals',
   payout_failed: '/account?tab=withdrawals',
   credit_overdue: '/debtors',
+  pnl_statement_ready: '/tax',
 };
 
 const ACTION_LABEL_FOR_REMINDER: Record<ReminderType, string> = {
@@ -82,6 +84,7 @@ const ACTION_LABEL_FOR_REMINDER: Record<ReminderType, string> = {
   payout_completed: 'View Withdrawals',
   payout_failed: 'View Withdrawals',
   credit_overdue: 'View Debtors Book',
+  pnl_statement_ready: 'Download P&L Statement',
 };
 
 function typeLabel(t: ReminderType) {

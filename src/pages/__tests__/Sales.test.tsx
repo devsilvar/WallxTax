@@ -144,9 +144,11 @@ describe('Sales Page - Race Condition & Sequence Guard Tests (Phase 3)', () => {
       fireEvent.click(rightBtn!);
     });
 
-    // Wait for fast Call 2 to settle on screen
+    // Wait for fast Call 2 to settle on screen. Both "Total Sales" and
+    // "Collected (Cash)" render this figure (empty sourceBreakdown => no
+    // credit portion), so assert on presence, not a single node.
     await waitFor(() => {
-      expect(screen.getByText('₦75,000')).toBeInTheDocument();
+      expect(screen.getAllByText('₦75,000').length).toBeGreaterThan(0);
     });
 
     // Now let the older Call 1 finish late with ₦999,999
@@ -165,6 +167,6 @@ describe('Sales Page - Race Condition & Sequence Guard Tests (Phase 3)', () => {
 
     // The display MUST NOT be overwritten by the stale ₦999,999!
     expect(screen.queryByText('₦999,999')).not.toBeInTheDocument();
-    expect(screen.getByText('₦75,000')).toBeInTheDocument();
+    expect(screen.getAllByText('₦75,000').length).toBeGreaterThan(0);
   });
 });

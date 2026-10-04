@@ -16,6 +16,8 @@ import {
   Receipt,
   Smartphone,
   Landmark,
+  Mail,
+  MapPin,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -44,21 +46,45 @@ function formatDate(d: string | null | undefined) {
   });
 }
 
+const STATUS_LABEL: Record<InvoiceStatus, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  paid: 'Paid',
+  overdue: 'Overdue',
+  cancelled: 'Cancelled',
+};
+
 function statusPill(s: InvoiceStatus) {
   const m: Record<InvoiceStatus, string> = {
-    draft: 'bg-amber-100 text-amber-700',
-    sent: 'bg-blue-100 text-blue-700',
-    paid: 'bg-green-100 text-green-700',
-    overdue: 'bg-red-100 text-red-700',
-    cancelled: 'bg-gray-200 text-gray-600',
+    draft: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
+    sent: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20',
+    paid: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
+    overdue: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
+    cancelled: 'bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-500/20',
+  };
+  const dot: Record<InvoiceStatus, string> = {
+    draft: 'bg-amber-500',
+    sent: 'bg-blue-500',
+    paid: 'bg-emerald-500',
+    overdue: 'bg-rose-500',
+    cancelled: 'bg-gray-400',
   };
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${m[s]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${m[s]}`}
     >
-      {s}
+      <span className={`h-1.5 w-1.5 rounded-full ${dot[s]}`} />
+      {STATUS_LABEL[s]}
     </span>
   );
+}
+
+function daysPastDue(dueDate: string) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
 function effectiveStatus(s: InvoiceStatus, dueDate: string): InvoiceStatus {
@@ -116,24 +142,61 @@ export default function InvoiceDetail() {
 
   if (detailLoading && !activeInvoice) {
     return (
-      <div className='flex items-center justify-center py-20 text-gray-400'>
-        <Loader2 className='mr-2 h-5 w-5 animate-spin' /> Loading invoice...
+      <div className='space-y-5 animate-in fade-in duration-200'>
+        <div className='h-3 w-20 animate-pulse rounded bg-gray-200' />
+        <div className='overflow-hidden rounded-xl bg-white ring-1 ring-gray-200'>
+          <div className='flex flex-col gap-6 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between'>
+            <div className='flex-1 space-y-3'>
+              <div className='h-3 w-40 animate-pulse rounded bg-gray-200' />
+              <div className='h-6 w-56 animate-pulse rounded bg-gray-200' />
+              <div className='h-3 w-64 animate-pulse rounded bg-gray-100' />
+            </div>
+            <div className='space-y-2 lg:w-48'>
+              <div className='h-3 w-20 animate-pulse rounded bg-gray-100' />
+              <div className='h-9 w-40 animate-pulse rounded bg-gray-200' />
+            </div>
+          </div>
+          <div className='grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-4'>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className='space-y-2 bg-white px-4 py-2.5'>
+                <div className='h-2.5 w-14 animate-pulse rounded bg-gray-100' />
+                <div className='h-3 w-20 animate-pulse rounded bg-gray-200' />
+              </div>
+            ))}
+          </div>
+          <div className='border-t border-gray-100 bg-gray-50/60 px-4 py-3 sm:px-5'>
+            <div className='h-8 w-72 animate-pulse rounded-lg bg-gray-200' />
+          </div>
+        </div>
+        <div className='overflow-hidden rounded-xl bg-white ring-1 ring-gray-200'>
+          <div className='space-y-3 px-4 py-4 sm:px-6'>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className='h-3.5 animate-pulse rounded bg-gray-100' />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (detailError || !activeInvoice) {
     return (
-      <Card className='py-12 text-center'>
-        <p className='text-sm text-red-600'>
-          {detailError || 'Invoice not found'}
-        </p>
-        <Link
-          to='/invoices'
-          className='mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700'
-        >
-          <ArrowLeft className='h-4 w-4' /> Back to invoices
-        </Link>
+      <Card noPadding className='overflow-hidden ring-1 ring-gray-200'>
+        <div className='flex flex-col items-center gap-3 px-6 py-16 text-center'>
+          <div className='flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400'>
+            <Receipt className='h-5 w-5' />
+          </div>
+          <p className='text-sm font-medium text-gray-900'>Invoice unavailable</p>
+          <p className='max-w-sm text-sm text-gray-500'>
+            {detailError || 'We could not find this invoice. It may have been deleted.'}
+          </p>
+          <Link
+            to='/invoices'
+            className='mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700'
+          >
+            <ArrowLeft className='h-4 w-4' /> Back to invoices
+          </Link>
+        </div>
       </Card>
     );
   }
@@ -338,208 +401,192 @@ export default function InvoiceDetail() {
   };
 
   return (
-    <div className='space-y-6'>
-      {/* Header */}
-      <div className='flex flex-col gap-4'>
-        <Link
-          to='/invoices'
-          className='inline-flex w-fit items-center gap-1 text-sm text-gray-500 hover:text-gray-700'
-        >
-          <ArrowLeft className='h-4 w-4' /> All invoices
-        </Link>
-        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-          <div className='flex items-center gap-3'>
-            <h1 className='text-xl sm:text-2xl font-bold text-gray-900'>
-              {inv.invoiceNumber}
+    <div className='space-y-5 animate-in fade-in duration-200'>
+      <Link
+        to='/invoices'
+        className='inline-flex w-fit items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900'
+      >
+        <ArrowLeft className='h-3.5 w-3.5' /> All invoices
+      </Link>
+
+      {/* ── Hero ───────────────────────────────────────────── */}
+      <div className='overflow-hidden rounded-xl bg-white ring-1 ring-gray-200'>
+        <div className='flex flex-col gap-6 p-4 sm:p-5 lg:flex-row lg:items-start lg:justify-between'>
+          <div className='min-w-0'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='font-mono text-xs font-semibold text-gray-500'>
+                {inv.invoiceNumber}
+              </span>
+              {statusPill(eff)}
+              {isPaid && inv.paymentMethod && (
+                <span className='inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-600'>
+                  <Receipt className='h-3 w-3' />
+                  {invoicePaymentMethodLabel(inv.paymentMethod)}
+                </span>
+              )}
+              {eff === 'overdue' && (
+                <span className='text-[11px] font-semibold text-rose-600'>
+                  {daysPastDue(inv.dueDate)} {daysPastDue(inv.dueDate) === 1 ? 'day' : 'days'} past due
+                </span>
+              )}
+            </div>
+            <h1 className='mt-2 truncate text-xl font-bold tracking-tight text-gray-900 sm:text-2xl'>
+              {inv.customerName}
             </h1>
-            {statusPill(eff)}
+            <div className='mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500'>
+              {inv.customerPhone && (
+                <a
+                  href={`tel:${inv.customerPhone}`}
+                  className='inline-flex items-center gap-1.5 transition-colors hover:text-gray-900'
+                >
+                  <Phone className='h-3.5 w-3.5 text-gray-400' />
+                  {inv.customerPhone}
+                </a>
+              )}
+              {inv.customerEmail && (
+                <a
+                  href={`mailto:${inv.customerEmail}`}
+                  className='inline-flex min-w-0 items-center gap-1.5 transition-colors hover:text-gray-900'
+                >
+                  <Mail className='h-3.5 w-3.5 shrink-0 text-gray-400' />
+                  <span className='truncate'>{inv.customerEmail}</span>
+                </a>
+              )}
+              {inv.customerAddress && (
+                <span className='inline-flex min-w-0 items-center gap-1.5'>
+                  <MapPin className='h-3.5 w-3.5 shrink-0 text-gray-400' />
+                  <span className='truncate'>{inv.customerAddress}</span>
+                </span>
+              )}
+              {inv.customerTaxId && (
+                <span className='inline-flex items-center gap-1.5 tabular-nums'>
+                  TIN {inv.customerTaxId}
+                </span>
+              )}
+            </div>
           </div>
-          <div className='flex flex-wrap items-center gap-2'>
+
+          {/* Total — the number this page exists to communicate */}
+          <div className='shrink-0 lg:text-right'>
+            <p className='text-[10px] font-semibold uppercase tracking-wider text-gray-400'>
+              {isPaid ? 'Amount paid' : 'Total due'}
+            </p>
+            <p
+              className={`text-3xl font-bold tabular-nums tracking-tight sm:text-4xl ${
+                isPaid ? 'text-emerald-600' : eff === 'overdue' ? 'text-rose-600' : 'text-gray-900'
+              }`}
+            >
+              {formatNaira(Number(inv.total))}
+            </p>
+            <div className='mt-2.5 space-y-0.5 text-xs'>
+              <div className='flex justify-between gap-6 lg:justify-end'>
+                <span className='text-gray-500'>Subtotal</span>
+                <span className='tabular-nums text-gray-700'>{formatNaira(Number(inv.subtotal))}</span>
+              </div>
+              {Number(inv.discount) > 0 && (
+                <div className='flex justify-between gap-6 lg:justify-end'>
+                  <span className='text-gray-500'>Discount</span>
+                  <span className='tabular-nums text-gray-700'>
+                    -{formatNaira(Number(inv.discount))}
+                  </span>
+                </div>
+              )}
+              <div className='flex justify-between gap-6 lg:justify-end'>
+                <span className='text-gray-500'>VAT ({Number(inv.vatRate)}%)</span>
+                <span className='tabular-nums text-gray-700'>{formatNaira(Number(inv.vatAmount))}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Lifecycle — a quiet timeline of what has happened so far */}
+        <div className='grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-4'>
+          {[
+            { label: 'Issued', value: formatDate(inv.issueDate) },
+            { label: 'Due', value: formatDate(inv.dueDate), tone: eff === 'overdue' ? 'text-rose-600' : undefined },
+            { label: 'Sent', value: inv.sentAt ? formatDate(inv.sentAt) : '—' },
+            {
+              label: inv.status === 'paid' ? 'Paid' : 'Status',
+              value:
+                inv.status === 'paid'
+                  ? inv.paidAt
+                    ? formatDate(inv.paidAt)
+                    : '—'
+                  : STATUS_LABEL[eff],
+              tone: inv.status === 'paid' ? 'text-emerald-600' : undefined,
+            },
+          ].map((cell) => (
+            <div key={cell.label} className='bg-white px-4 py-2.5'>
+              <p className='text-[10px] font-semibold uppercase tracking-wider text-gray-400'>{cell.label}</p>
+              <p className={`mt-0.5 truncate text-xs font-semibold ${cell.tone ?? 'text-gray-900'}`}>{cell.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions — secondary on the left, destructive right, primary far right */}
+        <div className='flex flex-wrap items-center gap-2 border-t border-gray-100 bg-gray-50/60 px-4 py-3 sm:px-5'>
+          <Button
+            variant='secondary'
+            size='sm'
+            onClick={handleDownload}
+            isLoading={actionLoading === 'pdf'}
+          >
+            <Download className='h-3.5 w-3.5' /> PDF
+          </Button>
+          {canEdit && (
             <Button
               variant='secondary'
               size='sm'
-              onClick={handleDownload}
-              isLoading={actionLoading === 'pdf'}
+              onClick={() => navigate(`/invoices/${inv.id}/edit`)}
             >
-              <Download className='h-4 w-4' /> PDF
+              <Pencil className='h-3.5 w-3.5' /> Edit
             </Button>
-            {canEdit && (
-              <Button
-                variant='secondary'
-                size='sm'
-                onClick={() => navigate(`/invoices/${inv.id}/edit`)}
-              >
-                <Pencil className='h-4 w-4' /> Edit
-              </Button>
-            )}
-            {canSend && (
-              <Button
-                size='sm'
-                variant='ghost'
-                onClick={handleSend}
-                isLoading={actionLoading === 'send'}
-                title='Already sent this invoice another way (printed, delivered in person)? Mark it as sent manually.'
-              >
-                <Send className='h-4 w-4' /> Mark as sent
-              </Button>
-            )}
-            {canMarkPaid && (
-              <>
-                <Button size='sm' onClick={() => setPayOpen(true)}>
-                  <CheckCircle2 className='h-4 w-4' /> Mark as paid
-                </Button>
-                <Button
-                  variant='secondary'
-                  size='sm'
-                  onClick={() => setDvaMatchOpen(true)}
-                  title='Match an incoming wallet (DVA) bank transfer directly to this invoice'
-                >
-                  <Landmark className='h-4 w-4' /> Match bank transfer
-                </Button>
-              </>
-            )}
-            {canCancel && !canSend && (
-              <Button
-                variant='secondary'
-                size='sm'
-                onClick={() => setCancelOpen(true)}
-              >
-                <XCircle className='h-4 w-4' /> Cancel
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant='danger'
-                size='sm'
-                onClick={handleDelete}
-                isLoading={actionLoading === 'delete'}
-              >
-                <Trash2 className='h-4 w-4' /> Delete
-              </Button>
-            )}
-          </div>
+          )}
+          {canSend && (
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleSend}
+              isLoading={actionLoading === 'send'}
+              title='Already sent this invoice another way (printed, delivered in person)? Mark it as sent manually.'
+            >
+              <Send className='h-3.5 w-3.5' /> Mark as sent
+            </Button>
+          )}
+          {canMarkPaid && (
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={() => setDvaMatchOpen(true)}
+              title='Match an incoming wallet (DVA) bank transfer directly to this invoice'
+            >
+              <Landmark className='h-3.5 w-3.5' /> Match transfer
+            </Button>
+          )}
+
+          <span className='flex-1' />
+
+          {canCancel && !canSend && (
+            <Button variant='ghost' size='sm' onClick={() => setCancelOpen(true)} className='text-gray-500'>
+              <XCircle className='h-3.5 w-3.5' /> Cancel
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant='danger'
+              size='sm'
+              onClick={handleDelete}
+              isLoading={actionLoading === 'delete'}
+            >
+              <Trash2 className='h-3.5 w-3.5' /> Delete
+            </Button>
+          )}
+          {canMarkPaid && (
+            <Button size='sm' onClick={() => setPayOpen(true)}>
+              <CheckCircle2 className='h-3.5 w-3.5' /> Mark as paid
+            </Button>
+          )}
         </div>
-      </div>
-
-      {/* ─── Paid banner ──────────────────────────── */}
-      {inv.status === 'paid' && (
-        <Card className='overflow-hidden border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50/40'>
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-            <div className='flex items-center gap-3'>
-              <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm'>
-                <CheckCircle2 className='h-5 w-5' />
-              </div>
-              <div>
-                <p className='text-sm font-semibold text-emerald-800'>
-                  Payment received
-                </p>
-                <p className='font-body text-sm text-emerald-600'>
-                  {formatNaira(Number(inv.total))}
-                  {inv.paymentMethod
-                    ? ` via ${invoicePaymentMethodLabel(inv.paymentMethod)}`
-                    : ''}
-                  {inv.paidAt ? ` on ${formatDate(inv.paidAt)}` : ''}
-                </p>
-              </div>
-            </div>
-            <div className='flex items-center gap-2 pl-13 sm:pl-0'>
-              <span className='inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-200/50'>
-                <Receipt className='h-3.5 w-3.5' />
-                {inv.paymentMethod
-                  ? invoicePaymentMethodLabel(inv.paymentMethod)
-                  : 'Payment recorded'}
-              </span>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Meta grid */}
-      <div className='grid grid-cols-1 gap-4 lg:grid-cols-3'>
-        <Card>
-          <p className='text-xs font-semibold uppercase tracking-wider text-gray-500'>
-            Bill to
-          </p>
-          <p className='mt-2 text-base font-semibold text-gray-900'>
-            {inv.customerName}
-          </p>
-          <div className='mt-1 space-y-0.5 font-body text-sm text-gray-600'>
-            {inv.customerAddress && <p>{inv.customerAddress}</p>}
-            {inv.customerEmail && <p>{inv.customerEmail}</p>}
-            {inv.customerPhone && <p>{inv.customerPhone}</p>}
-            {inv.customerTaxId && <p>TIN: {inv.customerTaxId}</p>}
-          </div>
-        </Card>
-        <Card>
-          <p className='text-xs font-semibold uppercase tracking-wider text-gray-500'>
-            Dates
-          </p>
-          <div className='mt-2 space-y-1 font-body text-sm'>
-            <div className='flex justify-between'>
-              <span className='text-gray-500'>Issued</span>
-              <span className='font-medium text-gray-900'>
-                {formatDate(inv.issueDate)}
-              </span>
-            </div>
-            <div className='flex justify-between'>
-              <span className='text-gray-500'>Due</span>
-              <span className='font-medium text-gray-900'>
-                {formatDate(inv.dueDate)}
-              </span>
-            </div>
-            {inv.sentAt && (
-              <div className='flex justify-between'>
-                <span className='text-gray-500'>Sent</span>
-                <span className='font-medium text-gray-900'>
-                  {formatDate(inv.sentAt)}
-                </span>
-              </div>
-            )}
-            {inv.paidAt && (
-              <div className='flex justify-between'>
-                <span className='text-gray-500'>Paid</span>
-                <span className='font-medium text-green-700'>
-                  {formatDate(inv.paidAt)}
-                </span>
-              </div>
-            )}
-            {inv.status === 'paid' && (
-              <div className='flex justify-between'>
-                <span className='text-gray-500'>Method</span>
-                <span className='font-medium text-gray-900'>
-                  {inv.paymentMethod
-                    ? invoicePaymentMethodLabel(inv.paymentMethod)
-                    : '—'}
-                </span>
-              </div>
-            )}
-          </div>
-        </Card>
-        <Card>
-          <p className='text-xs font-semibold uppercase tracking-wider text-gray-500'>
-            Summary
-          </p>
-          <div className='mt-2 space-y-1 font-body text-sm'>
-            <div className='flex justify-between text-gray-600'>
-              <span>Subtotal</span>
-              <span>{formatNaira(Number(inv.subtotal))}</span>
-            </div>
-            {Number(inv.discount) > 0 && (
-              <div className='flex justify-between text-gray-600'>
-                <span>Discount</span>
-                <span>-{formatNaira(Number(inv.discount))}</span>
-              </div>
-            )}
-            <div className='flex justify-between text-gray-600'>
-              <span>VAT ({Number(inv.vatRate)}%)</span>
-              <span>{formatNaira(Number(inv.vatAmount))}</span>
-            </div>
-            <div className='mt-1 flex justify-between border-t border-gray-100 pt-2 text-base font-bold text-gray-900'>
-              <span>Total</span>
-              <span>{formatNaira(Number(inv.total))}</span>
-            </div>
-          </div>
-        </Card>
       </div>
 
       {/* ── Share with customer ───────────────────── */}
@@ -558,9 +605,13 @@ export default function InvoiceDetail() {
       )}
 
       {/* Lines */}
-      <Card noPadding>
-        <div className='px-4 py-3 sm:px-6'>
+      <Card noPadding className='overflow-hidden ring-1 ring-gray-200'>
+        <div className='flex items-baseline justify-between gap-3 px-4 py-3 sm:px-6'>
           <h2 className='text-base font-semibold text-gray-900'>Line items</h2>
+          <span className='text-xs tabular-nums text-gray-400'>
+            {(inv.lines ?? []).length}{' '}
+            {(inv.lines ?? []).length === 1 ? 'item' : 'items'}
+          </span>
         </div>
         <div className='overflow-x-auto border-t border-gray-100'>
           <table className='w-full'>
@@ -574,17 +625,22 @@ export default function InvoiceDetail() {
             </thead>
             <tbody className='font-body text-sm'>
               {(inv.lines ?? []).map((line, idx) => (
-                <tr key={line.id ?? idx} className='border-b border-gray-50'>
+                <tr
+                  key={line.id ?? idx}
+                  className={`border-b border-gray-50 last:border-0 ${
+                    idx % 2 === 1 ? 'bg-gray-50/50' : ''
+                  }`}
+                >
                   <td className='px-4 py-3 text-gray-700 sm:px-6'>
                     {line.description}
                   </td>
-                  <td className='px-4 py-3 text-right text-gray-600'>
+                  <td className='px-4 py-3 text-right tabular-nums text-gray-600'>
                     {Number(line.quantity)}
                   </td>
-                  <td className='px-4 py-3 text-right text-gray-600'>
+                  <td className='px-4 py-3 text-right tabular-nums text-gray-600'>
                     {formatNaira(Number(line.unitPrice))}
                   </td>
-                  <td className='px-4 py-3 text-right font-semibold text-gray-900 sm:px-6'>
+                  <td className='px-4 py-3 text-right font-semibold tabular-nums text-gray-900 sm:px-6'>
                     {formatNaira(
                       Number(
                         line.lineTotal ??
@@ -627,10 +683,10 @@ export default function InvoiceDetail() {
 
       {/* Linked sale */}
       {inv.linkedSaleId && (
-        <Card className='border-green-200 bg-green-50/40'>
+        <Card className='border-emerald-200 bg-emerald-50/50'>
           <div className='flex items-start justify-between gap-3'>
             <div>
-              <p className='text-xs font-semibold uppercase tracking-wider text-green-700'>
+              <p className='text-xs font-semibold uppercase tracking-wider text-emerald-700'>
                 Linked sale
               </p>
               <p className='mt-1 font-body text-sm text-gray-700'>
@@ -640,7 +696,7 @@ export default function InvoiceDetail() {
             </div>
             <Link
               to='/sales'
-              className='inline-flex shrink-0 items-center gap-1 text-sm font-medium text-green-700 hover:text-green-800'
+              className='inline-flex shrink-0 items-center gap-1 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800'
             >
               View sales <ExternalLink className='h-3.5 w-3.5' />
             </Link>
@@ -859,7 +915,7 @@ function ShareCard(props: {
             title='Copy public PDF link'
           >
             {copied ? (
-              <CheckCircle2 className='h-4 w-4 text-green-600' />
+              <CheckCircle2 className='h-4 w-4 text-emerald-600' />
             ) : (
               <Copy className='h-4 w-4' />
             )}

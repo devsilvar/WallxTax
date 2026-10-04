@@ -61,14 +61,22 @@ export default function Register() {
     }
     setIsLoading(true);
     try {
-      await register(email, phone, password);
-      toast.success('Account created! Please sign in.');
-      navigate('/login');
+      const result = await register(email, phone, password);
+      const userEmail = result.email || email;
+      sessionStorage.setItem('pendingVerificationEmail', userEmail);
+      toast.success('Account created! Please check your email.');
+      navigate(`/verify-email-pending?email=${encodeURIComponent(userEmail)}`, {
+        state: {
+          email: userEmail,
+          verificationLink: result.verificationLink,
+        },
+      });
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
+
   };
 
   return (

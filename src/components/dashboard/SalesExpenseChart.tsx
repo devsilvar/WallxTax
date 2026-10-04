@@ -18,10 +18,12 @@ import {
   Calendar,
   SlidersHorizontal,
   RefreshCw,
+  Lock,
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type {
@@ -136,6 +138,10 @@ export default function SalesExpenseChart({
   defaultPeriod?: OverviewPeriodKey;
 }) {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  // This endpoint is sales data. Without the gate, a team member whose role
+  // excludes sales.read got a 403 on every dashboard visit, surfaced as an
+  // error toast — and an empty chart that looked like a quiet month.
+  const canReadSales = hasPerm('sales.read', biz);
   const [period, setPeriod] = useState<OverviewPeriodKey>(defaultPeriod);
   const [chartMode, setChartMode] = useState<'bars' | 'area'>('bars');
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -150,7 +156,10 @@ export default function SalesExpenseChart({
   const [error, setError] = useState<string | null>(null);
 
   const fetchOverview = useCallback(async () => {
-    if (!biz) return;
+    if (!biz || !canReadSales) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -176,7 +185,7 @@ export default function SalesExpenseChart({
     } finally {
       setIsLoading(false);
     }
-  }, [biz, period, customFrom, customTo]);
+  }, [biz, canReadSales, period, customFrom, customTo]);
 
   useEffect(() => {
     fetchOverview();
@@ -208,6 +217,35 @@ export default function SalesExpenseChart({
   const kpis = data?.kpis;
   const timeline = data?.timeline || [];
   const hasData = timeline.some((t) => t.sales > 0 || t.expenses > 0);
+
+  // Restricted role — don't fetch, and don't dress the absence up as "no
+  // transactions recorded". Period controls are meaningless without data, so
+  // they aren't rendered either.
+  if (!canReadSales) {
+    return (
+      <Card
+        noPadding
+        className={`overflow-hidden rounded-t-none rounded-b-xl border-gray-200/80 bg-white shadow-xs ${className}`}
+      >
+        <div className='flex items-center gap-2 border-b border-purple-800/40 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 px-4 py-3 text-white'>
+          <BarChart3 className='h-4 w-4 text-purple-200 stroke-[2]' />
+          <h2 className='text-sm font-semibold text-white tracking-wide'>
+            Sales &amp; Expenses Overview
+          </h2>
+        </div>
+        <div className='flex h-48 flex-col items-center justify-center px-5 py-5 text-center'>
+          <Lock className='h-7 w-7 text-gray-300' />
+          <p className='mt-2 text-sm font-semibold text-gray-700'>
+            Sales analytics unavailable
+          </p>
+          <p className='mt-1 max-w-sm text-xs text-gray-400 font-body'>
+            Your role on this business doesn&apos;t include permission to view
+            sales data, so this overview is hidden.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card

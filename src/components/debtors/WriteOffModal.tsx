@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, AlertTriangle, Ban } from 'lucide-react';
+import { X, ShieldCheck, Ban } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CustomerCredit } from '@/types/index.ts';
@@ -60,7 +60,7 @@ export default function WriteOffModal({
     setLoading(true);
     try {
       await writeOffCredit(businessId, credit.id, { reason: reason.trim() });
-      toast.success(`Bad debt written off for ${credit.customerName}`);
+      toast.success(`Bad debt written off for ${credit.customerName}. A tax deduction of ${formatNaira(credit.balance)} has been auto-created.`);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -109,13 +109,15 @@ export default function WriteOffModal({
             <p className="text-base font-bold text-rose-600 tabular-nums">{formatNaira(credit.balance)}</p>
           </div>
 
-          <div className="rounded-none bg-amber-50/80 p-3 border border-amber-200 text-xs text-amber-900 leading-relaxed space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-amber-950 text-[11px]">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-              Accounting & FIRS Cash-Basis Impact
+          <div className="rounded-none bg-emerald-50/80 p-3 border border-emerald-200 text-xs text-emerald-900 leading-relaxed space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-950 text-[11px]">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+              Automatic Tax Deduction (CITA §25)
             </div>
-            <p className="text-[11px] text-amber-800">
-              Writing off this credit closes active recovery. Under FIRS Cash-Basis rules, no tax or sales liability was ever booked for this unpaid principal, so no VAT adjustments are needed.
+            <p className="text-[11px] text-emerald-800">
+              A deductible expense of <span className="font-bold">{formatNaira(credit.balance)}</span> will
+              be automatically created for this month. This reduces your taxable gross profit — you
+              won't pay 7.5% VAT on money you never collected.
             </p>
           </div>
 

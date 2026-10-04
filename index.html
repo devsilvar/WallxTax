@@ -2,22 +2,72 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    
-    <!-- Favicons - PayMyTax by WallX -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon-16x16.svg" />
+
+    <!-- Favicons - WallXERP by WallX -->
+    <link rel="icon" type="image/svg+xml" href="/logo.png" />
+    <link rel="icon" type="image/svg+xml" sizes="16x16" href="/logo.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/logo.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
+
     <!-- Title and Meta -->
-    <title>PMT by Wallx — SME Tax & Compliance</title>
+    <title>PMT by Wallx — A Smart Tool For African MSMEs</title>
     <meta name="application-name" content="PMT by Wallx" />
     <meta name="apple-mobile-web-app-title" content="PMT by Wallx" />
     <meta property="og:title" content="PMT by Wallx — SME Tax & Compliance" />
     <meta property="og:site_name" content="PMT by Wallx" />
-    <meta name="description" content="Automated SME tax calculation, reporting, and FIRS remittance platform for Nigerian businesses." />
+    <meta
+      name="description"
+      content="Automated SME tax calculation, reporting, and NRS remittance platform for Nigerian businesses."
+    />
+
+    <!-- Preload critical assets -->
+    <link rel="preload" as="image" href="/logo.png" fetchpriority="high" />
+
+    <!-- Critical Path Inline CSS (Guarantees zero FOUC & zero CLS while async styles load) -->
+    <style>
+      :root {
+        --font-sans:
+          'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Helvetica, Arial, sans-serif;
+        --font-body:
+          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #faf5ff;
+        color: #0f172a;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      /* Prevent layout shift by reserving space */
+      body {
+        min-height: 100vh;
+      }
+      #root {
+        min-height: 100vh;
+      }
+    </style>
+
+    <!-- SEO -->
+    <meta name="robots" content="index, follow" />
+    <meta
+      name="keywords"
+      content="Nigeria tax, NRS calculator, business accounting, SME compliance"
+    />
   </head>
   <body>
     <div id="root"></div>

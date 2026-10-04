@@ -26,8 +26,27 @@ import api, { getErrorMessage } from '@/lib/axios.ts';
 import type { Expense, Pagination } from '@/types/index.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
-// Backend enum has 8 values — 'gift'/'subscription' were never valid categories
-const CATEGORIES = ['rent', 'inventory', 'salary', 'utility', 'fuel', 'logistics', 'marketing', 'other'] as const;
+// Core and system expense categories
+const CATEGORIES = [
+  'rent',
+  'inventory',
+  'salary',
+  'utility',
+  'fuel',
+  'logistics',
+  'marketing',
+  'bad_debt',
+  'other',
+] as const;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  bad_debt: 'Bad Debt',
+};
+
+function formatCategoryLabel(cat: string): string {
+  if (CATEGORY_LABELS[cat]) return CATEGORY_LABELS[cat];
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
 
 // Fixed box order for the daily strip — every category always has a home,
 // even at ₦0 (dimmed), so the layout doesn't reshuffle through the day.
@@ -105,6 +124,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   fuel: 'bg-orange-500',
   logistics: 'bg-cyan-500',
   marketing: 'bg-pink-500',
+  bad_debt: 'bg-rose-500',
   other: 'bg-gray-400',
 };
 
@@ -394,7 +414,7 @@ export default function Expenses() {
                   {summary.categoryBreakdown.map((cb) => (
                     <div key={cb.category} className="flex items-center gap-2">
                       <span className={`h-2.5 w-2.5 rounded-full ${CATEGORY_COLORS[cb.category] || 'bg-gray-400'}`} />
-                      <span className="font-body text-sm text-gray-600 capitalize">{cb.category}</span>
+                      <span className="font-body text-sm text-gray-600">{formatCategoryLabel(cb.category)}</span>
                       <span className="ml-auto font-body text-sm font-medium text-gray-700">{formatNaira(Number(cb.total))}</span>
                     </div>
                   ))}
@@ -439,7 +459,7 @@ export default function Expenses() {
                 <label className="block text-xs font-medium text-gray-500">Category</label>
                 <select value={filterCat} onChange={(e) => { setFilterCat(e.target.value); setPage(1); }} className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                   <option value="">All Categories</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{formatCategoryLabel(c)}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
@@ -483,8 +503,8 @@ export default function Expenses() {
                 <tr key={exp.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-600">{formatDate(exp.expenseDate)}</td>
                   <td className="px-4 py-3 text-gray-700">{exp.description || '—'}</td>
-                  <td className="px-4 py-3 capitalize text-gray-600">
-                    {exp.category}
+                  <td className="px-4 py-3 text-gray-600">
+                    {formatCategoryLabel(exp.category)}
                     {exp.categoryDetail && (
                       <div className="text-xs font-normal normal-case text-gray-400">{exp.categoryDetail}</div>
                     )}
@@ -500,10 +520,16 @@ export default function Expenses() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(exp)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><Pencil className="h-4 w-4" /></button>
-                      {/* <button onClick={() => handleDelete(exp.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */}
-                    </div>
+                    {exp.linkedCreditId ? (
+                      <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 border border-rose-200">
+                        Auto · CITA §25
+                      </span>
+                    ) : (
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => openEdit(exp)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit expense"><Pencil className="h-4 w-4" /></button>
+                        {/* <button onClick={() => handleDelete(exp.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -526,7 +552,7 @@ export default function Expenses() {
                         </span>
                       )}
                     </div>
-                    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium capitalize text-gray-600">{exp.category}</span>
+                    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{formatCategoryLabel(exp.category)}</span>
                   </div>
                   <p className="mt-1 text-sm text-gray-600 truncate">{exp.description || '—'}</p>
                   {exp.categoryDetail && (
@@ -535,8 +561,14 @@ export default function Expenses() {
                   <p className="mt-1 text-xs text-gray-400">{formatDate(exp.expenseDate)}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => openEdit(exp)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><Pencil className="h-4 w-4" /></button>
-                  {/* <button onClick={() => handleDelete(exp.id)} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */}
+                  {exp.linkedCreditId ? (
+                    <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 border border-rose-200">
+                      Auto · CITA §25
+                    </span>
+                  ) : (
+                    <button onClick={() => openEdit(exp)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit expense"><Pencil className="h-4 w-4" /></button>
+                    /* <button onClick={() => handleDelete(exp.id)} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */
+                  )}
                 </div>
               </div>
             </Card>
@@ -626,10 +658,10 @@ export default function Expenses() {
                     <div
                       key={cat}
                       className={`rounded-lg bg-gray-50 px-4 py-3 ${dim ? 'opacity-60' : ''}`}
-                      title={`${cat.charAt(0).toUpperCase() + cat.slice(1)} — ${count} entr${count === 1 ? 'y' : 'ies'}`}
+                      title={`${formatCategoryLabel(cat)} — ${count} entr${count === 1 ? 'y' : 'ies'}`}
                     >
                       <p className="truncate font-body text-xs uppercase tracking-wider text-gray-500">
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        {formatCategoryLabel(cat)}
                       </p>
                       <p className={`mt-1 text-base font-bold sm:text-lg ${dim ? 'text-gray-400' : 'text-gray-800'}`}>
                         {formatNaira(total)}

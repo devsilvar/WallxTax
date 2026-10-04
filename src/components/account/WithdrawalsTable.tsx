@@ -5,14 +5,13 @@ import {
   Loader2,
   CheckCheck,
   XCircle,
-  Copy,
   AlertTriangle,
   ArrowRight,
   Search,
+  ChevronRight,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
-import toast from 'react-hot-toast';
 import { formatNaira } from './WalletBalanceCard.tsx';
 
 export interface PayoutItem {
@@ -46,6 +45,7 @@ export interface WithdrawalsTableProps {
   onSearchChange?: (search: string) => void;
   onStatusFilterChange?: (status: 'all' | 'completed' | 'pending' | 'failed') => void;
   onRequestWithdrawal?: () => void;
+  onSelectPayout?: (payout: PayoutItem) => void;
   statusFilter?: 'all' | 'completed' | 'pending' | 'failed';
   searchQuery?: string;
   className?: string;
@@ -67,18 +67,12 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
   onSearchChange,
   onStatusFilterChange,
   onRequestWithdrawal,
+  onSelectPayout,
   statusFilter = 'all',
   searchQuery = '',
   className = '',
 }) => {
   const [internalSearch, setInternalSearch] = useState(searchQuery);
-
-  const handleCopy = (value: string) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(value);
-      toast.success('Reference copied');
-    }
-  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +86,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
       data-testid="withdrawals-table"
       className={`divide-y divide-gray-100 ${className}`}
     >
-      {/* Dual Header & Filters */}
+      {/* Header & Filter Controls */}
       <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white">
         <div>
           <h4 className="text-sm font-bold text-gray-900">Withdrawals History</h4>
@@ -119,10 +113,10 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Input */}
       <form
         onSubmit={handleSearchSubmit}
-        className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2"
+        className="px-4 sm:px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2"
       >
         <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
         <input
@@ -132,7 +126,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
             setInternalSearch(e.target.value);
             if (onSearchChange) onSearchChange(e.target.value);
           }}
-          placeholder="Search by reference, bank, account, or note…"
+          placeholder="Search by reference, bank, account, or narration…"
           className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 focus:outline-none"
           aria-label="Search withdrawals"
         />
@@ -150,24 +144,24 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
         )}
       </form>
 
-      {/* Rows */}
+      {/* Payout Feed Content */}
       <div className="divide-y divide-gray-100">
         {isLoading ? (
-          <div className="p-6 space-y-3" data-testid="withdrawals-loading">
+          <div className="p-5 space-y-3" data-testid="withdrawals-loading">
             <div className="flex items-center justify-between mb-1">
               <Skeleton width={140} height={16} />
               <Skeleton width={80} height={16} />
             </div>
-            <Skeleton width="100%" height={52} rounded="lg" />
-            <Skeleton width="100%" height={52} rounded="lg" />
-            <Skeleton width="100%" height={52} rounded="lg" />
+            <Skeleton width="100%" height={74} rounded="xl" />
+            <Skeleton width="100%" height={74} rounded="xl" />
+            <Skeleton width="100%" height={74} rounded="xl" />
           </div>
         ) : payouts.length === 0 ? (
           <div
             data-testid="withdrawals-empty-state"
             className="flex flex-col items-center py-14 text-center px-6"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-600 mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-900 mb-3 border border-purple-100">
               <ArrowUpRight className="h-5 w-5 stroke-[2]" />
             </div>
             <p className="text-sm font-semibold text-gray-900">
@@ -190,115 +184,106 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
             )}
           </div>
         ) : (
-          payouts.map((payout) => {
-            const isPending = payout.status === 'pending';
-            const isProcessing = payout.status === 'processing';
-            const isCompleted = payout.status === 'completed';
-            const isFailed = payout.status === 'failed';
+          <div className="p-2 sm:p-3 space-y-2">
+            {payouts.map((payout) => {
+              const isPending = payout.status === 'pending';
+              const isProcessing = payout.status === 'processing';
+              const isCompleted = payout.status === 'completed';
+              const isFailed = payout.status === 'failed';
 
-            return (
-              <div
-                key={payout.id}
-                data-testid={`payout-row-${payout.id}`}
-                className="px-5 py-4 hover:bg-gray-50/80 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border mt-0.5 ${
-                        isCompleted
-                          ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
-                          : isFailed
-                          ? 'bg-rose-50 border-rose-100 text-rose-600'
-                          : 'bg-amber-50 border-amber-100 text-amber-600'
-                      }`}
-                    >
-                      <ArrowUpRight className="h-4 w-4 stroke-[2]" />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs font-bold text-gray-900 truncate">
+              return (
+                <div
+                  key={payout.id}
+                  data-testid={`payout-row-${payout.id}`}
+                  onClick={() => onSelectPayout?.(payout)}
+                  className="p-3.5 sm:p-4 rounded-xl border border-gray-150 bg-white hover:border-purple-200 hover:bg-purple-50/20 transition-all cursor-pointer group shadow-2xs"
+                >
+                  {/* Top: Destination narration + Amount */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div
+                        className={`flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-xl border mt-0.5 ${
+                          isCompleted
+                            ? 'bg-emerald-50 border-emerald-200/80 text-emerald-700'
+                            : isFailed
+                            ? 'bg-rose-50 border-rose-200/80 text-rose-700'
+                            : isProcessing
+                            ? 'bg-blue-50 border-blue-200/80 text-blue-700'
+                            : 'bg-amber-50 border-amber-200/80 text-amber-700'
+                        }`}
+                      >
+                        <ArrowUpRight className="h-4 w-4 stroke-[2.2]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate group-hover:text-purple-950 transition-colors">
                           {payout.narration || `Payout to ${payout.destinationBankName}`}
                         </p>
-                        {isPending && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                            <Clock className="h-3 w-3" /> Awaiting Approval
-                          </span>
-                        )}
-                        {isProcessing && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-800">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Processing
-                          </span>
-                        )}
-                        {isCompleted && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                            <CheckCheck className="h-3 w-3" /> Sent to Bank
-                          </span>
-                        )}
-                        {isFailed && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-800">
-                            <XCircle className="h-3 w-3" /> Failed
-                          </span>
+                        <p className="text-[11px] text-gray-500 truncate mt-0.5 font-medium">
+                          {payout.destinationBankName} · •••• {payout.destinationAccountNum?.slice(-4)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold tabular-nums font-mono text-gray-950">
+                        −{formatNaira(payout.amount)}
+                      </p>
+                      <div className="text-[10px] text-gray-500 font-medium mt-0.5">
+                        <span>Net: {formatNaira(payout.netAmount)}</span>
+                        {payout.fee > 0 && (
+                          <span className="text-gray-400 ml-1">({formatNaira(payout.fee)} fee)</span>
                         )}
                       </div>
-
-                      <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-1 flex-wrap">
-                        <span>
-                          {payout.destinationBankName} · ••••{' '}
-                          {payout.destinationAccountNum?.slice(-4)}
-                        </span>
-                        <span>·</span>
-                        <span>{formatDate(payout.initiatedAt)}</span>
-                        <span>·</span>
-                        <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded flex items-center gap-1">
-                          {payout.transferReference}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopy(payout.transferReference);
-                            }}
-                            className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                            title="Copy Reference"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                        </span>
-                      </div>
-
-                      {isFailed && payout.failureReason && (
-                        <div className="mt-2 rounded-lg bg-rose-50 border border-rose-200/80 p-2 text-xs text-rose-800 flex items-start gap-1.5">
-                          <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0 mt-0.5" />
-                          <span className="text-[11px] font-medium">
-                            {payout.failureReason}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold tabular-nums font-mono text-gray-900">
-                      −{formatNaira(payout.amount)}
-                    </p>
-                    <div className="text-[11px] text-gray-500 mt-0.5">
-                      <span>Net: {formatNaira(payout.netAmount)}</span>
-                      {payout.fee > 0 && (
-                        <span className="text-gray-400 ml-1">
-                          ({formatNaira(payout.fee)} fee)
+                  {/* Bottom: Status Pill, Date, and Details Indicator */}
+                  <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2 text-[11px] text-gray-500">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      {isPending && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                          <Clock className="h-3 w-3" /> Awaiting Approval
                         </span>
                       )}
+                      {isProcessing && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Processing
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                          <CheckCheck className="h-3 w-3" /> Sent to Bank
+                        </span>
+                      )}
+                      {isFailed && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-800">
+                          <XCircle className="h-3 w-3" /> Failed
+                        </span>
+                      )}
+                      <span className="text-[10px] text-gray-300">·</span>
+                      <span className="text-[11px] text-gray-500 font-medium">{formatDate(payout.initiatedAt)}</span>
                     </div>
+
+                    <span className="text-[11px] text-purple-900 group-hover:text-purple-950 font-semibold inline-flex items-center gap-0.5 shrink-0">
+                      View Details <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
                   </div>
+
+                  {/* Failure Callout (if failed) */}
+                  {isFailed && payout.failureReason && (
+                    <div className="mt-2 rounded-lg bg-rose-50 border border-rose-200/80 p-2 text-xs text-rose-800 flex items-start gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0 mt-0.5" />
+                      <span className="text-[11px] font-medium">{payout.failureReason}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination Footer */}
       {pagination && pagination.totalPages > 1 && (
         <div className="p-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between text-xs text-gray-500">
           <span>

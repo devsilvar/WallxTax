@@ -17,6 +17,7 @@ import { formatNaira } from './WalletBalanceCard.tsx';
 
 export interface SettlementBankCardProps {
   isLinked: boolean;
+  isOwner?: boolean;
   bankName?: string;
   accountNumber?: string;
   accountName?: string;
@@ -24,9 +25,12 @@ export interface SettlementBankCardProps {
   pendingWithdrawn?: number;
   autoSplitEnabled?: boolean;
   updatingAutoSplit?: boolean;
+  autoPayoutEnabled?: boolean;
+  updatingAutoPayout?: boolean;
   isBalanceLoading?: boolean;
   onWithdraw?: () => void;
   onToggleAutoSplit?: () => void;
+  onToggleAutoPayout?: () => void;
   banks?: Bank[] | null;
   banksLoading?: boolean;
   banksError?: string;
@@ -35,6 +39,7 @@ export interface SettlementBankCardProps {
 
 export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   isLinked,
+  isOwner: isOwnerProp,
   bankName,
   accountNumber,
   accountName,
@@ -42,14 +47,18 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   pendingWithdrawn = 0,
   autoSplitEnabled: _autoSplitEnabled = false,
   updatingAutoSplit: _updatingAutoSplit = false,
+  autoPayoutEnabled = false,
+  updatingAutoPayout = false,
   isBalanceLoading = false,
   onWithdraw,
   onToggleAutoSplit: _onToggleAutoSplit,
+  onToggleAutoPayout,
   banks,
   banksLoading = false,
   banksError = '',
   onSettlementLinkedSuccess,
 }) => {
+  const isOwner = isOwnerProp ?? Boolean(onSettlementLinkedSuccess);
   const [showForm, setShowForm] = useState(false);
   const [settlementBank, setSettlementBank] = useState('');
   const [settlementAccount, setSettlementAccount] = useState('');
@@ -59,7 +68,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   const [settlementError, setSettlementError] = useState('');
 
   const handleResolveSettlement = async () => {
-    if (!/^d{10}$/.test(settlementAccount)) {
+    if (!/^\d{10}$/.test(settlementAccount)) {
       setSettlementError('Account number must be 10 digits');
       return;
     }
@@ -225,6 +234,48 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
             </button>
           </div> */}
 
+          {/* Instant Auto-Payout Mode Toggle */}
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+            <div className="pr-3">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-gray-900">Instant Payouts</p>
+                <span
+                  data-testid="auto-payout-mode-badge"
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    autoPayoutEnabled
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {autoPayoutEnabled ? 'Automatic' : 'Manual'}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                {autoPayoutEnabled
+                  ? 'Withdrawals process immediately without waiting for admin approval.'
+                  : 'When manual, funds accumulate in your wallet. Withdraw anytime with 1-2 hour review, or enable auto-payout for instant disbursement.'}
+              </p>
+            </div>
+            {onToggleAutoPayout && (
+              <button
+                type="button"
+                data-testid="auto-payout-toggle"
+                aria-label="Toggle instant automatic payouts"
+                disabled={updatingAutoPayout}
+                onClick={onToggleAutoPayout}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${
+                  autoPayoutEnabled ? 'bg-purple-900' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    autoPayoutEnabled ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            )}
+          </div>
+
           {/* Payout Bank Lock Notice */}
           <div
             data-testid="payout-bank-lock-notice"
@@ -244,11 +295,17 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
       ) : !isLinked && !showForm ? (
         <div className="text-center py-4">
           <p className="text-xs text-gray-500 mb-3">
-            Connect your Nigerian bank account to receive automatic transfers.
+            {isOwner
+              ? 'Connect your Nigerian bank account to receive automatic transfers.'
+              : 'No commercial bank account has been connected for automated payouts yet. Only the business owner can connect a settlement bank.'}
           </p>
           <Button
             size="sm"
-            onClick={() => setShowForm(true)}
+            disabled={!isOwner}
+            title={!isOwner ? 'Only business owners can connect bank accounts' : undefined}
+            onClick={() => {
+              if (isOwner) setShowForm(true);
+            }}
             className="w-full text-xs"
           >
             <Building2 className="h-3.5 w-3.5 mr-1" /> Connect Bank

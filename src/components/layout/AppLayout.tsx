@@ -1,23 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import Sidebar from './Sidebar.tsx';
 import NotificationBell from './NotificationBell.tsx';
 import UserMenu from './UserMenu.tsx';
 import CommandPalette from '@/components/CommandPalette.tsx';
+import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
+
+const isSimulatorEnabled = import.meta.env.VITE_ENABLE_TRANSFER_SIMULATOR === 'true';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/sales': 'Sales',
   '/sales/unverified': 'Unverified Transactions',
-  '/test/transfer-simulator': 'Test Transfer Simulator',
+  ...(isSimulatorEnabled ? { '/test/transfer-simulator': 'Test Transfer Simulator' } : {}),
   '/expenses': 'Expenses',
   '/invoices': 'Invoices',
   '/debtors': 'Debtors',
   '/tax': 'Tax Reports',
   '/payments': 'Payments',
   '/reminders': 'Reminders',
-  '/account': 'Bank Account',
+  '/account': 'Banking & Wallet',
   '/settings': 'Settings',
 };
 
@@ -29,12 +32,21 @@ const SHORTCUT_LABEL = IS_MAC ? '⌘K' : 'Ctrl K';
 
 export default function AppLayout() {
   const location = useLocation();
+  const mainContentRef = useRef<HTMLElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  useEffect(() => {
+  // When pathname or tab changes, close mobile sidebar and reset scroll to top
+  const currentTab = new URLSearchParams(location.search).get('tab');
+  useLayoutEffect(() => {
     setSidebarOpen(false);
-  }, [location.pathname]);
+
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      mainContentRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname, currentTab]);
 
   // Global Cmd/Ctrl+K → open palette. Escape inside the palette is handled there.
   useEffect(() => {
@@ -65,7 +77,7 @@ export default function AppLayout() {
             >
               <Menu className="h-5 w-5 text-gray-600" />
             </button>
-            <img src="/logo.png" alt="PayMyTax" className="h-6" />
+            <OptimizedLogo size="sm" className="h-6" />
             {pageTitle && (
               <h2 className="text-base font-semibold text-gray-900 hidden sm:block">{pageTitle}</h2>
             )}
@@ -98,7 +110,7 @@ export default function AppLayout() {
         </header>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
+        <main ref={mainContentRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-6">
             <Outlet />
           </div>

@@ -83,7 +83,7 @@ const RULES: Record<string, MappingRule> = {
     title: 'Your Paystack account needs activation',
     body:
       'Paystack has not finished activating the business account behind ' +
-      'PayMyTax. Email support@paymytax.ng so we can complete the KYC ' +
+      'WallXERP. Email support@paymytax.ng so we can complete the KYC ' +
       'checks — your tax records are unaffected.',
   },
 

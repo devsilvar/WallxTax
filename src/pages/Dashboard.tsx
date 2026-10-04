@@ -1,12 +1,18 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  lazy,
+  Suspense,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import PinModal from '@/components/PinModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
-import SalesExpenseChart from '@/components/dashboard/SalesExpenseChart.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
-
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import {
   TrendingUp,
@@ -33,6 +39,8 @@ import {
   Shield,
   BookOpen,
   Users,
+  ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button.tsx';
@@ -41,6 +49,15 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense } from '@/types/index.ts';
+
+// Recharts is ~100kB gzipped and this is the post-login landing page. Keeping
+// the chart out of the dashboard chunk lets the KPI strip, trends and activity
+// lists paint before the charting library has downloaded and parsed. Needs the
+// local <Suspense> at the render site — the only boundary above this is
+// App.tsx's, whose fallback is a full-screen loader that would blank the page.
+const SalesExpenseChart = lazy(
+  () => import('@/components/dashboard/SalesExpenseChart.tsx'),
+);
 
 // ─── Merchant ID display format ─────────────────────────────
 // Stored form (DB): `PMTW` + 7 digits, e.g. `PMTW0000001`.
@@ -403,10 +420,16 @@ function getHealthScore(
 // that's fine; the cache is a nicety, not durable state.
 
 interface DashboardBundle {
-  dashboard: DashboardData;
+  dashboard: DashboardData | null;
   recentSales: SalesTransaction[];
   recentExpenses: Expense[];
   recentReports: TaxReport[];
+  /**
+   * Labels for sections this user's role is allowed to read but whose request
+   * failed. A non-empty list means the numbers on screen are incomplete and
+   * must not be presented as a real balance.
+   */
+  failedSections: string[];
 }
 
 interface CachedBundle {
@@ -416,19 +439,62 @@ interface CachedBundle {
 
 const dashboardCache = new Map<string, CachedBundle>();
 
-async function fetchDashboardBundle(bid: string): Promise<DashboardBundle> {
-  const [dashRes, salesRes, expensesRes, reportsRes] = await Promise.all([
-    api.get(`/businesses/${bid}/tax/dashboard?months=6`),
-    api.get(`/businesses/${bid}/sales?limit=5`),
-    api.get(`/businesses/${bid}/expenses?limit=5`),
-    api.get(`/businesses/${bid}/tax/reports?limit=3`),
-  ]);
-  return {
-    dashboard: dashRes.data.data,
-    recentSales: salesRes.data.data,
-    recentExpenses: expensesRes.data.data,
-    recentReports: reportsRes.data.data,
-  };
+/**
+ * Monotonic token for dashboard bundle loads. A response may only be written to
+ * state while its token is still the newest — this is what stops a slow request
+ * belonging to a business the user has already navigated away from landing on
+ * top of the current one. Module-scoped, matching the sequence-guard idiom
+ * already used in credit.store.ts and business.store.ts.
+ */
+let bundleSeq = 0;
+
+/**
+ * axios surfaces an aborted request as ERR_CANCELED. We abort in-flight
+ * dashboard requests on business switch and unmount, so a cancellation is a
+ * consequence of navigation — never report it to the user as a load failure.
+ */
+function isCanceled(err: unknown): boolean {
+  const e = err as { code?: string; name?: string } | null;
+  return e?.code === 'ERR_CANCELED' || e?.name === 'CanceledError';
+}
+
+
+async function fetchDashboardBundle(
+  bid: string,
+  _perms?: Record<string, boolean>,
+  signal?: AbortSignal,
+): Promise<DashboardBundle> {
+  try {
+    const res = await api.get(`/businesses/${bid}/tax/dashboard-bundle?months=6`, { signal });
+    const bundle = res?.data?.data;
+    return {
+      dashboard: bundle?.dashboard ?? null,
+      recentSales: bundle?.recentSales ?? [],
+      recentExpenses: bundle?.recentExpenses ?? [],
+      recentReports: bundle?.recentReports ?? [],
+      failedSections: bundle?.failedSections ?? [],
+    };
+  } catch (err) {
+    if (isCanceled(err)) {
+      return {
+        dashboard: null,
+        recentSales: [],
+        recentExpenses: [],
+        recentReports: [],
+        failedSections: [],
+      };
+    }
+    if (import.meta.env.DEV) {
+      console.error('[Dashboard] bundle request failed', err);
+    }
+    return {
+      dashboard: null,
+      recentSales: [],
+      recentExpenses: [],
+      recentReports: [],
+      failedSections: ['tax summary', 'recent sales', 'recent expenses', 'recent reports'],
+    };
+  }
 }
 
 // ─── Component ──────────────────────────────────────────────
@@ -436,8 +502,14 @@ async function fetchDashboardBundle(bid: string): Promise<DashboardBundle> {
 export default function Dashboard() {
   const { t } = useTranslation('dashboard');
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
+  const businesses = useBusinessStore((s) => s.businesses);
   const businessStoreLoading = useBusinessStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
+
+  const isOwnerAccount =
+    businesses.length > 0
+      ? businesses.some((b) => b.myRole === 'owner' || b.userId === user?.id)
+      : user?.isOwnerAccount !== false;
 
   // Seed from cache so the first render has data on warm visits — no spinner.
   const seed = activeBusiness ? dashboardCache.get(activeBusiness.id) : null;
@@ -458,8 +530,20 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
 
+  // Sections the last load was permitted to read but failed to fetch. Drives
+  // the error banner and the fatal-error state — see fetchSection().
+  const [loadErrors, setLoadErrors] = useState<string[]>(
+    seed?.data.failedSections ?? [],
+  );
+  // Bumped by the retry button to re-run the mount effect. Paired with
+  // forceRefetchRef so a retry still refetches even when the cached frame is
+  // younger than STALE.short.
+  const [retryNonce, setRetryNonce] = useState(0);
+  const forceRefetchRef = useRef(false);
+
   // Credit / Debtors Store
   const creditSummary = useCreditStore((s) => s.summary);
+  const creditSummaryError = useCreditStore((s) => s.summaryError);
   const recentCredits = useCreditStore((s) => s.credits);
   const fetchCreditSummary = useCreditStore((s) => s.fetchSummary);
   const fetchCredits = useCreditStore((s) => s.fetchCredits);
@@ -510,11 +594,20 @@ export default function Dashboard() {
     undefined,
   );
 
+  // Controller for the bundle load currently in flight. Aborting it is what
+  // stops the previous business's responses from landing on this one — and
+  // saves the bandwidth, which matters on metered mobile connections.
+  const bundleAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (!activeBusiness) return;
 
     const bid = activeBusiness.id;
-    let cancelled = false;
+
+    // A retry must hit the network even if the cached frame is younger than
+    // STALE.short. Consume the flag once, on this run only.
+    const forced = forceRefetchRef.current;
+    forceRefetchRef.current = false;
 
     const cached = dashboardCache.get(bid);
     const hasFresh = cached && isFresh(cached.fetchedAt, STALE.short);
@@ -526,45 +619,61 @@ export default function Dashboard() {
       setRecentSales(cached.data.recentSales);
       setRecentExpenses(cached.data.recentExpenses);
       setRecentReports(cached.data.recentReports);
+      setLoadErrors(cached.data.failedSections);
       setIsLoading(false);
     } else {
       setIsLoading(true);
     }
 
     // Skip the network if we just fetched — the user is likely tab-flipping.
-    if (hasFresh) return;
+    if (hasFresh && !forced) return;
 
     // Cold load: full skeleton. Warm-but-stale: keep showing data, just hint
     // with the refreshing pill.
     if (cached) setIsRefreshing(true);
 
+    bundleAbortRef.current?.abort();
+    const controller = new AbortController();
+    bundleAbortRef.current = controller;
+    const seq = ++bundleSeq;
+
     fetchCreditSummary(bid);
     fetchCredits(bid, { limit: 5 });
 
-    fetchDashboardBundle(bid)
+    fetchDashboardBundle(bid, activeBusiness.myPermissions, controller.signal)
       .then((bundle) => {
-        if (cancelled) return;
+        // Drop the response if a newer load superseded it, or if the user
+        // navigated to a different business while it was in flight. Writing it
+        // anyway is how business A's figures used to overwrite business B's.
+        if (seq !== bundleSeq) return;
+        if (useBusinessStore.getState().activeBusiness?.id !== bid) return;
+
         dashboardCache.set(bid, { data: bundle, fetchedAt: Date.now() });
         setDashboard(bundle.dashboard);
         setRecentSales(bundle.recentSales);
         setRecentExpenses(bundle.recentExpenses);
         setRecentReports(bundle.recentReports);
+        setLoadErrors(bundle.failedSections);
       })
-      .catch(() => {
-        // Soft failure: keep the cached frame on screen rather than wiping
-        // it. The interceptor already retries transient 5xx; a final failure
-        // is surfaced by the empty data shapes if there was no cache.
+      .catch((err) => {
+        // fetchSection resolves rather than rejects, so this only fires on a
+        // defect in the bundler itself. Never blank the screen for it.
+        if (import.meta.env.DEV) {
+          console.error('[Dashboard] bundle failed:', err);
+        }
       })
       .finally(() => {
-        if (cancelled) return;
+        if (seq !== bundleSeq) return;
+        if (useBusinessStore.getState().activeBusiness?.id !== bid) return;
         setIsLoading(false);
         setIsRefreshing(false);
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
+      if (bundleAbortRef.current === controller) bundleAbortRef.current = null;
     };
-  }, [activeBusiness]);
+  }, [activeBusiness, retryNonce]);
 
   // Debounced refetch helper — prevents excessive API calls when multiple
   // mutations happen rapidly (e.g., bulk import, rapid manual entries).
@@ -577,32 +686,59 @@ export default function Dashboard() {
 
     // Schedule new refetch in 500ms
     refetchTimeoutRef.current = setTimeout(() => {
+      // The user may have switched businesses inside the debounce window.
+      // Refetching the old one would burn the request and raise a spinner for
+      // data we are not going to display.
+      const currentBiz = useBusinessStore.getState().activeBusiness;
+      if (currentBiz?.id !== bid) return;
+
       if (import.meta.env.DEV) {
         console.log('[Dashboard] Refetching due to invalidation');
       }
 
       setIsRefreshing(true);
+
+      bundleAbortRef.current?.abort();
+      const controller = new AbortController();
+      bundleAbortRef.current = controller;
+      const seq = ++bundleSeq;
+
       fetchCreditSummary(bid);
       fetchCredits(bid, { limit: 5 });
 
-      fetchDashboardBundle(bid)
+      fetchDashboardBundle(bid, currentBiz.myPermissions, controller.signal)
         .then((bundle) => {
+          if (seq !== bundleSeq) return;
+          if (useBusinessStore.getState().activeBusiness?.id !== bid) return;
+
           dashboardCache.set(bid, { data: bundle, fetchedAt: Date.now() });
           setDashboard(bundle.dashboard);
           setRecentSales(bundle.recentSales);
           setRecentExpenses(bundle.recentExpenses);
           setRecentReports(bundle.recentReports);
+          setLoadErrors(bundle.failedSections);
         })
         .catch((err) => {
           if (import.meta.env.DEV) {
             console.error('[Dashboard] Refetch failed:', err);
           }
-          // Soft failure — keep showing cached data
+          // Soft failure — keep showing cached data. fetchSection has already
+          // recorded which sections failed, so loadErrors drives the banner.
         })
         .finally(() => {
+          if (seq !== bundleSeq) return;
           setIsRefreshing(false);
         });
     }, 500);
+  }, []);
+
+  // Explicit user retry after a load failure. Forces the network even when the
+  // cached frame is still fresh, but keeps that frame on screen meanwhile so
+  // the page doesn't collapse back to a skeleton.
+  const handleRetry = useCallback(() => {
+    forceRefetchRef.current = true;
+    setLoadErrors([]);
+    setRetryNonce((n) => n + 1);
   }, []);
 
   // Refetch dashboard when invalidation counter changes (data mutations)
@@ -620,6 +756,22 @@ export default function Dashboard() {
     };
   }, [invalidationCounter, activeBusiness, debouncedRefetch]);
 
+  // Everything that failed to load this round, across the bundle and the
+  // receivables call. Empty means either everything loaded, or everything
+  // loaded that this role is allowed to read.
+  const failedLabels = useMemo(() => {
+    const failed = new Set(loadErrors);
+    if (creditSummaryError) failed.add('receivables');
+    return Array.from(failed);
+  }, [loadErrors, creditSummaryError]);
+
+  // A section that failed but rendered zeros is the dangerous case: it reads
+  // as "you owe nothing" to an SME deciding whether to file. These flags let
+  // each block say "unknown" instead.
+  const salesFailed = failedLabels.includes('recent sales');
+  const expensesFailed = failedLabels.includes('recent expenses');
+  const receivablesUnknown = creditSummary === null;
+
   // Wait for businesses to load first — don't show empty state before we know if any exist.
   if (businessStoreLoading) {
     return <DashboardSkeleton />;
@@ -635,16 +787,21 @@ export default function Dashboard() {
             <Plus className='h-10 w-10 text-primary-400' />
           </div>
         </div>
-        <p className='text-xl font-bold text-gray-900'>Welcome to PayMyTax</p>
+        <p className='text-xl font-bold text-gray-900'>Welcome to WallXERP</p>
         <p className='text-sm text-gray-400 mt-2 mb-8 text-center max-w-sm'>
-          Create your first business to start tracking sales, expenses, and tax
-          compliance.
+          {isOwnerAccount
+            ? 'Create your first business to start tracking sales, expenses, and tax compliance.'
+            : 'You do not have any active business invitations yet. Please contact your organization administrator.'}
         </p>
-        <Button onClick={() => setShowCreateBiz(true)}>Get Started</Button>
-        <CreateBusinessModal
-          isOpen={showCreateBiz}
-          onClose={() => setShowCreateBiz(false)}
-        />
+        {isOwnerAccount && (
+          <>
+            <Button onClick={() => setShowCreateBiz(true)}>Get Started</Button>
+            <CreateBusinessModal
+              isOpen={showCreateBiz}
+              onClose={() => setShowCreateBiz(false)}
+            />
+          </>
+        )}
       </div>
     );
   }
@@ -653,6 +810,39 @@ export default function Dashboard() {
   // stale), we render it and let the refreshing pill communicate freshness.
   if (isLoading && !dashboard) {
     return <DashboardSkeleton />;
+  }
+
+  // The load finished and we have nothing at all to show. Rendering the normal
+  // dashboard here would present every figure as a genuine zero, which for a
+  // tax product is worse than an honest error.
+  if (!dashboard && failedLabels.length > 0) {
+    return (
+      <div className='flex flex-col items-center justify-center py-24 animate-fade-in'>
+        <div className='relative mb-6'>
+          <div className='absolute inset-0 rounded-2xl bg-rose-200 blur-2xl opacity-40 animate-pulse-soft' />
+          <div className='relative rounded-2xl bg-gradient-to-br from-rose-50 to-white p-8 border border-rose-100 shadow-sm'>
+            <AlertCircle className='h-9 w-9 text-rose-400' />
+          </div>
+        </div>
+        <p className='text-lg font-bold text-gray-900'>
+          Couldn&apos;t load your dashboard
+        </p>
+        <p className='text-sm text-gray-500 mt-2 mb-8 text-center max-w-sm'>
+          We couldn&apos;t reach {activeBusiness.businessName}&apos;s records
+          {failedLabels.length > 0 ? ` (${failedLabels.join(', ')})` : ''}. Your
+          figures haven&apos;t changed — this is a connection problem, not an
+          empty account.
+        </p>
+        <div className='flex items-center gap-3'>
+          <Button onClick={handleRetry} isLoading={isRefreshing}>
+            Try again
+          </Button>
+          <Link to='/sales'>
+            <Button variant='secondary'>Go to Sales</Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const lt = dashboard?.lifetime;
@@ -674,6 +864,25 @@ export default function Dashboard() {
   const isOperatingLoss = currentSalesNum > 0 && currentProfitNum < 0;
   const clampedVisualMargin = Math.max(0, Math.min(100, currentMargin));
 
+  // Receivables figures. When the summary hasn't arrived — still in flight, or
+  // the request failed — every one of these reads "unknown" rather than zero.
+  // A genuine ₦0 outstanding is a real, reassuring fact; an unrendered one is
+  // a lie, and this is a screen people make tax decisions from.
+  const receivablesOutstanding = receivablesUnknown
+    ? '—'
+    : formatNaira(creditSummary?.totalOutstanding ?? 0);
+  const receivablesOverdue = receivablesUnknown
+    ? '—'
+    : formatNaira(creditSummary?.overdueAmount ?? 0);
+  const receivablesRecovered = receivablesUnknown
+    ? '—'
+    : formatNaira(creditSummary?.recoveredThisMonth ?? 0);
+  const receivablesDebtors = receivablesUnknown
+    ? '—'
+    : String(creditSummary?.activeDebtors ?? 0);
+  const hasOverdueReceivables =
+    !receivablesUnknown && (creditSummary?.overdueAmount ?? 0) > 0;
+
   // ─── Render ─────────────────────────────────────────────
 
   return (
@@ -692,6 +901,66 @@ export default function Dashboard() {
               Refreshing…
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Partial load failure — some sections came back empty. Say so, rather
+          than letting the blank ones read as real zeros. */}
+      {failedLabels.length > 0 && dashboard && (
+        <div
+          role='alert'
+          className='animate-scale-in flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-rose-200/70 bg-rose-50/70 px-4 py-3'
+        >
+          <div className='flex items-start gap-2.5 min-w-0'>
+            <div className='flex h-6 w-6 items-center justify-center rounded-md bg-rose-100/80 shrink-0'>
+              <AlertCircle className='h-3.5 w-3.5 text-rose-600' />
+            </div>
+            <div className='min-w-0'>
+              <p className='text-xs font-semibold text-rose-900'>
+                Couldn&apos;t load {failedLabels.join(', ')}
+              </p>
+              <p className='text-[11px] text-rose-700/90 mt-0.5'>
+                Figures marked &ldquo;&mdash;&rdquo; are unknown, not zero.
+                Retry before relying on this page for tax.
+              </p>
+            </div>
+          </div>
+          <Button
+            size='sm'
+            variant='secondary'
+            onClick={handleRetry}
+            isLoading={isRefreshing}
+            className='self-start sm:self-auto shrink-0'
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* Pending Team Invitations Alert Banner */}
+      {!!user?.pendingInvitationCount && user.pendingInvitationCount > 0 && (
+        <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-200/80 shadow-xs animate-fade-in'>
+          <div className='flex items-center gap-3'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs shrink-0'>
+              <Users className='h-5 w-5' />
+            </div>
+            <div>
+              <p className='text-xs font-bold text-amber-900'>
+                You have {user.pendingInvitationCount} pending team invitation
+                {user.pendingInvitationCount > 1 ? 's' : ''}
+              </p>
+              <p className='text-[11px] text-amber-700 mt-0.5'>
+                Another business has invited you to collaborate. Review and
+                accept to join their team.
+              </p>
+            </div>
+          </div>
+          <Link
+            to='/invite'
+            className='inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 active:scale-[0.98] transition-all self-start sm:self-auto shrink-0 shadow-xs'
+          >
+            Review & Accept <ChevronRight className='h-3.5 w-3.5' />
+          </Link>
         </div>
       )}
 
@@ -755,44 +1024,45 @@ export default function Dashboard() {
                   <Copy className='h-3 w-3 text-purple-200/70 opacity-60 group-hover:opacity-100 transition-opacity' />
                 </button>
 
-                {/* BVN display chip */}
-                {user?.bvnVerifiedAt ? (
-                  <button
-                    type='button'
-                    onClick={handleToggleBvn}
-                    disabled={revealingBvn}
-                    title={
-                      bvnRevealed
-                        ? 'Click to hide BVN'
-                        : 'Click to reveal BVN (PIN required)'
-                    }
-                    className='group flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white hover:bg-white/20 transition-all cursor-pointer'
-                  >
-                    <Shield className='h-3.5 w-3.5 text-emerald-300' />
-                    <span className='text-purple-200 text-[11px] font-medium'>
-                      BVN:
-                    </span>
-                    <span className='font-mono font-medium tabular-nums text-white'>
-                      {maskBvn(fullBvn, bvnRevealed)}
-                    </span>
-                    {bvnRevealed ? (
-                      <EyeOff className='h-3 w-3 text-purple-200/70 group-hover:text-white transition-colors' />
-                    ) : (
-                      <Eye className='h-3 w-3 text-purple-200/70 group-hover:text-white transition-colors' />
-                    )}
-                  </button>
-                ) : (
-                  <Link
-                    to='/account'
-                    className='flex items-center gap-1.5 rounded-full bg-amber-400/15 backdrop-blur-md border border-amber-300/30 px-3 py-1 text-xs text-amber-200 hover:bg-amber-400/25 transition-all'
-                    title='Verify your identity'
-                  >
-                    <Shield className='h-3.5 w-3.5 text-amber-300' />
-                    <span className='font-medium text-[11px]'>
-                      BVN Unverified
-                    </span>
-                  </Link>
-                )}
+                {/* BVN display chip — owners only */}
+                {isOwnerAccount &&
+                  (user?.bvnVerifiedAt ? (
+                    <button
+                      type='button'
+                      onClick={handleToggleBvn}
+                      disabled={revealingBvn}
+                      title={
+                        bvnRevealed
+                          ? 'Click to hide BVN'
+                          : 'Click to reveal BVN (PIN required)'
+                      }
+                      className='group flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white hover:bg-white/20 transition-all cursor-pointer'
+                    >
+                      <Shield className='h-3.5 w-3.5 text-emerald-300' />
+                      <span className='text-purple-200 text-[11px] font-medium'>
+                        BVN:
+                      </span>
+                      <span className='font-mono font-medium tabular-nums text-white'>
+                        {maskBvn(fullBvn, bvnRevealed)}
+                      </span>
+                      {bvnRevealed ? (
+                        <EyeOff className='h-3 w-3 text-purple-200/70 group-hover:text-white transition-colors' />
+                      ) : (
+                        <Eye className='h-3 w-3 text-purple-200/70 group-hover:text-white transition-colors' />
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      to='/account'
+                      className='flex items-center gap-1.5 rounded-full bg-amber-400/15 backdrop-blur-md border border-amber-300/30 px-3 py-1 text-xs text-amber-200 hover:bg-amber-400/25 transition-all'
+                      title='Verify your identity'
+                    >
+                      <Shield className='h-3.5 w-3.5 text-amber-300' />
+                      <span className='font-medium text-[11px]'>
+                        BVN Unverified
+                      </span>
+                    </Link>
+                  ))}
 
                 {/* Tax Health chip */}
                 <div className='flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white'>
@@ -937,7 +1207,7 @@ export default function Dashboard() {
             {String(lt?.reportsCount ?? 0)}
           </p>
           <p className='mt-1 text-[11px] text-gray-400 font-body'>
-            FIRS compliant reports
+            NRS compliant reports
           </p>
         </div>
 
@@ -955,7 +1225,7 @@ export default function Dashboard() {
             </span>
           </p>
           <p className='mt-1 text-[11px] text-gray-400 font-body'>
-            FIRS VAT standard
+            NRS VAT standard
           </p>
         </div>
       </div>
@@ -973,7 +1243,7 @@ export default function Dashboard() {
                   Receivables & Debtors
                 </h3>
                 <span className='inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 border border-indigo-100/80'>
-                  {creditSummary?.activeDebtors ?? 0} active
+                  {receivablesDebtors} active
                 </span>
               </div>
               <p className='text-[11px] text-gray-400 mt-0.5'>
@@ -1000,7 +1270,7 @@ export default function Dashboard() {
               <CircleDollarSign className='h-3.5 w-3.5 text-amber-600' />
             </div>
             <p className='mt-1 text-base sm:text-lg font-bold text-gray-900 tabular-nums leading-none'>
-              {formatNaira(creditSummary?.totalOutstanding ?? 0)}
+              {receivablesOutstanding}
             </p>
             <span className='text-[10px] text-gray-400 block mt-1'>
               Unpaid balance
@@ -1010,7 +1280,7 @@ export default function Dashboard() {
           {/* Overdue */}
           <div
             className={`rounded-xl p-3 border transition-colors ${
-              (creditSummary?.overdueAmount ?? 0) > 0
+              hasOverdueReceivables
                 ? 'bg-rose-50/50 border-rose-200/70'
                 : 'bg-gray-50/70 border-gray-100/80'
             }`}
@@ -1018,36 +1288,34 @@ export default function Dashboard() {
             <div className='flex items-center justify-between'>
               <span
                 className={`text-[10px] font-medium uppercase tracking-wider ${
-                  (creditSummary?.overdueAmount ?? 0) > 0
-                    ? 'text-rose-700'
-                    : 'text-gray-500'
+                  hasOverdueReceivables ? 'text-rose-700' : 'text-gray-500'
                 }`}
               >
                 Overdue
               </span>
               <Clock
-                className={`h-3.5 w-3.5 ${(creditSummary?.overdueAmount ?? 0) > 0 ? 'text-rose-600' : 'text-gray-400'}`}
+                className={`h-3.5 w-3.5 ${hasOverdueReceivables ? 'text-rose-600' : 'text-gray-400'}`}
               />
             </div>
             <p
               className={`mt-1 text-base sm:text-lg font-bold tabular-nums leading-none ${
-                (creditSummary?.overdueAmount ?? 0) > 0
-                  ? 'text-rose-600'
-                  : 'text-gray-900'
+                hasOverdueReceivables ? 'text-rose-600' : 'text-gray-900'
               }`}
             >
-              {formatNaira(creditSummary?.overdueAmount ?? 0)}
+              {receivablesOverdue}
             </p>
             <span
               className={`text-[10px] block mt-1 ${
-                (creditSummary?.overdueAmount ?? 0) > 0
+                hasOverdueReceivables
                   ? 'text-rose-600 font-medium'
                   : 'text-gray-400'
               }`}
             >
-              {(creditSummary?.overdueAmount ?? 0) > 0
-                ? 'Needs urgent collection'
-                : 'None overdue'}
+              {receivablesUnknown
+                ? 'Could not load'
+                : hasOverdueReceivables
+                  ? 'Needs urgent collection'
+                  : 'None overdue'}
             </span>
           </div>
 
@@ -1060,7 +1328,7 @@ export default function Dashboard() {
               <TrendingUp className='h-3.5 w-3.5 text-emerald-600' />
             </div>
             <p className='mt-1 text-base sm:text-lg font-bold text-emerald-600 tabular-nums leading-none'>
-              {formatNaira(creditSummary?.recoveredThisMonth ?? 0)}
+              {receivablesRecovered}
             </p>
             <span className='text-[10px] text-emerald-700/80 block mt-1'>
               Tax recognized
@@ -1076,7 +1344,7 @@ export default function Dashboard() {
               <Users className='h-3.5 w-3.5 text-indigo-600' />
             </div>
             <p className='mt-1 text-base sm:text-lg font-bold text-indigo-900 tabular-nums leading-none'>
-              {creditSummary?.activeDebtors ?? 0}
+              {receivablesDebtors}
             </p>
             <span className='text-[10px] text-indigo-700/80 block mt-1'>
               Total owing customers
@@ -1086,7 +1354,13 @@ export default function Dashboard() {
       </div>
 
       {/* ── Financial Overview & Cashflow Trends ─────── */}
-      <SalesExpenseChart className='stagger-children' />
+      {/* Local Suspense on purpose: the boundary above this is App.tsx's,
+          whose fallback is a full-screen loader. The chart is the most
+          expensive thing on the page, so it gets a height-matched placeholder
+          and lets the rest of the dashboard paint first. */}
+      <Suspense fallback={<SalesExpenseChartSkeleton />}>
+        <SalesExpenseChart className='stagger-children' />
+      </Suspense>
 
       {/* ── Current Month + Trends ──────────────────── */}
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-5 stagger-children'>
@@ -1452,6 +1726,10 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          ) : salesFailed ? (
+            <div className='px-5 py-8'>
+              <LoadFailureMini label='Recent sales' onRetry={handleRetry} />
+            </div>
           ) : (
             <div className='px-5 py-8'>
               <EmptyMini
@@ -1513,6 +1791,10 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : expensesFailed ? (
+            <div className='px-5 py-8'>
+              <LoadFailureMini label='Recent expenses' onRetry={handleRetry} />
             </div>
           ) : (
             <div className='px-5 py-8'>
@@ -1737,6 +2019,67 @@ export default function Dashboard() {
 }
 
 // ─── Sub-components ─────────────────────────────────────────
+
+/**
+ * Placeholder for the lazily-loaded chart. Mirrors the real card's header,
+ * KPI strip and chart height so nothing on the page jumps when Recharts lands.
+ */
+function SalesExpenseChartSkeleton() {
+  return (
+    <div className='overflow-hidden rounded-t-none rounded-b-xl border border-gray-200/80 bg-white shadow-xs'>
+      <div className='flex items-center gap-2 border-b border-purple-800/40 bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 px-4 py-3'>
+        <div className='h-4 w-4 rounded bg-white/20' />
+        <div className='h-3 w-44 rounded bg-white/20' />
+      </div>
+      <div className='grid grid-cols-2 gap-3 border-b border-gray-100 px-4 py-4 sm:grid-cols-4'>
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className='space-y-2'>
+            <div className='h-2.5 w-20 animate-pulse rounded bg-gray-100' />
+            <div className='h-5 w-24 animate-pulse rounded bg-gray-100' />
+            <div className='h-2 w-14 animate-pulse rounded bg-gray-50' />
+          </div>
+        ))}
+      </div>
+      <div className='flex h-[21.5rem] items-center justify-center'>
+        <RefreshCw className='h-5 w-5 animate-spin text-gray-300' />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shown in place of EmptyMini when a section's request failed. The distinction
+ * matters: "no sales recorded yet" invites the user to start recording, while
+ * "couldn't load" is a connection problem — telling them the wrong one sends
+ * them off doing work that is already done.
+ */
+function LoadFailureMini({
+  label,
+  onRetry,
+}: {
+  label: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className='rounded-xl bg-rose-50/40 py-8 text-center border border-rose-100/70'>
+      <AlertCircle className='mx-auto h-7 w-7 text-rose-300' />
+      <p className='mt-3 text-sm text-rose-700 font-medium'>
+        {label} couldn&apos;t be loaded
+      </p>
+      <p className='text-[11px] text-rose-500/80 mt-1'>
+        This is a connection problem, not an empty list.
+      </p>
+      <button
+        type='button'
+        onClick={onRetry}
+        className='mt-3 inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100'
+      >
+        <RefreshCw className='h-3 w-3' />
+        Retry
+      </button>
+    </div>
+  );
+}
 
 function MetricRow({
   label,

@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
+import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useState } from 'react';
 
@@ -13,10 +14,16 @@ export default function NoBusinessPrompt({
   title = 'No business selected', 
   message = 'Create or select a business to access this feature.' 
 }: NoBusinessPromptProps) {
+  const user = useAuthStore((s) => s.user);
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
+  const businesses = useBusinessStore((s) => s.businesses);
   const [showModal, setShowModal] = useState(false);
 
   if (activeBusiness) return null;
+
+  const isOwnerAccount = businesses.length > 0
+    ? businesses.some((b) => b.myRole === 'owner' || b.userId === user?.id)
+    : user?.isOwnerAccount !== false;
 
   return (
     <>
@@ -29,15 +36,21 @@ export default function NoBusinessPrompt({
         </div>
         <p className='text-xl font-bold text-gray-900'>{title}</p>
         <p className='text-sm text-gray-400 mt-2 mb-8 text-center max-w-sm'>
-          {message}
+          {isOwnerAccount
+            ? message
+            : 'Please select an invited business from the sidebar or contact your administrator.'}
         </p>
-        <Button onClick={() => setShowModal(true)}>Create Business</Button>
+        {isOwnerAccount && (
+          <Button onClick={() => setShowModal(true)}>Create Business</Button>
+        )}
       </div>
-      <CreateBusinessModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        required
-      />
+      {isOwnerAccount && (
+        <CreateBusinessModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          required
+        />
+      )}
     </>
   );
 }

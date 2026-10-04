@@ -17,7 +17,8 @@ export interface AccountFeedSectionProps {
   onStatusFilterChange: (status: 'all' | 'completed' | 'pending' | 'failed') => void;
   onSearchChange: (search: string) => void;
   onPageChange: (page: number) => void;
-  onRequestWithdrawal: () => void;
+  onRequestWithdrawal?: () => void;
+  onSelectPayout?: (payout: PayoutItem) => void;
 }
 
 export const AccountFeedSection: React.FC<AccountFeedSectionProps> = ({
@@ -36,6 +37,7 @@ export const AccountFeedSection: React.FC<AccountFeedSectionProps> = ({
   onSearchChange,
   onPageChange,
   onRequestWithdrawal,
+  onSelectPayout,
 }) => {
   return (
     <div data-testid="account-feed-section" className="lg:col-span-2 rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
@@ -85,6 +87,7 @@ export const AccountFeedSection: React.FC<AccountFeedSectionProps> = ({
           onSearchChange={onSearchChange}
           onPageChange={onPageChange}
           onRequestWithdrawal={onRequestWithdrawal}
+          onSelectPayout={onSelectPayout}
         />
       )}
     </div>

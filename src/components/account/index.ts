@@ -12,3 +12,5 @@ export { AccountSkeleton } from './AccountSkeleton.tsx';
 export { AccountModals, type AccountModalsProps } from './AccountModals.tsx';
 export { AccountHeader, type AccountHeaderProps } from './AccountHeader.tsx';
 export { AccountFeedSection, type AccountFeedSectionProps } from './AccountFeedSection.tsx';
+export { PayoutDetailPanel, type PayoutDetailPanelProps } from './PayoutDetailPanel.tsx';
+

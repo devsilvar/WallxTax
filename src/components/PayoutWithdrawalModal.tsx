@@ -9,6 +9,7 @@ import {
   Lock,
   AlertTriangle,
   Clock,
+  Zap,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -514,12 +515,21 @@ export default function PayoutWithdrawalModal({
               </div>
 
               {/* Admin Approval Notice */}
-              <div className="rounded-none bg-amber-50 border border-amber-300 p-2.5 flex items-start gap-2 text-[11px] text-amber-900">
-                <Clock className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
-                <span>
-                  Admin approval required (~1-2 business hours). Funds are reserved immediately upon submission.
-                </span>
-              </div>
+              {preview.autoPayoutEnabled ? (
+                <div className="rounded-none bg-emerald-50 border border-emerald-300 p-2.5 flex items-start gap-2 text-[11px] text-emerald-900">
+                  <Zap className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+                  <span>
+                    ⚡ Automatic payout enabled. Transfer will process immediately upon submission.
+                  </span>
+                </div>
+              ) : (
+                <div className="rounded-none bg-amber-50 border border-amber-300 p-2.5 flex items-start gap-2 text-[11px] text-amber-900">
+                  <Clock className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                  <span>
+                    Admin approval required (~1-2 business hours). Funds are reserved immediately upon submission.
+                  </span>
+                </div>
+              )}
 
               {/* 4-Digit PIN Entry */}
               <div className="space-y-2 pt-1 text-center">

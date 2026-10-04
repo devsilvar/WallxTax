@@ -26,15 +26,19 @@ import {
   ShieldCheck,
   LogOut,
   Trash2,
+  Users,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PinModal from '@/components/PinModal.tsx';
 import UpdateBvnModal from '@/components/UpdateBvnModal.tsx';
+import TeamSettingsTab from '@/components/settings/TeamSettingsTab.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { usePinStore } from '@/stores/pin.store.ts';
+import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 
@@ -48,29 +52,133 @@ const businessTypeLabel = (value?: string | null) =>
   BUSINESS_TYPES.find((t) => t.value === value)?.label ?? value ?? '—';
 
 const NIGERIAN_STATES = [
-  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue',
-  'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu',
-  'FCT - Abuja', 'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina',
-  'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo',
-  'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
+  'Abia',
+  'Adamawa',
+  'Akwa Ibom',
+  'Anambra',
+  'Bauchi',
+  'Bayelsa',
+  'Benue',
+  'Borno',
+  'Cross River',
+  'Delta',
+  'Ebonyi',
+  'Edo',
+  'Ekiti',
+  'Enugu',
+  'FCT - Abuja',
+  'Gombe',
+  'Imo',
+  'Jigawa',
+  'Kaduna',
+  'Kano',
+  'Katsina',
+  'Kebbi',
+  'Kogi',
+  'Kwara',
+  'Lagos',
+  'Nasarawa',
+  'Niger',
+  'Ogun',
+  'Ondo',
+  'Osun',
+  'Oyo',
+  'Plateau',
+  'Rivers',
+  'Sokoto',
+  'Taraba',
+  'Yobe',
+  'Zamfara',
 ];
 
-type TabId = 'profile' | 'business' | 'security';
+type TabId = 'profile' | 'business' | 'team' | 'security';
 
-const TABS: Array<{ id: TabId; label: string; description: string; icon: typeof User }> = [
-  { id: 'profile', label: 'Profile', description: 'Your account details', icon: User },
-  { id: 'business', label: 'Business', description: 'Company & tax setup', icon: Building2 },
-  { id: 'security', label: 'Security', description: 'Password & sessions', icon: Lock },
+const TABS: Array<{
+  id: TabId;
+  label: string;
+  description: string;
+  icon: typeof User;
+}> = [
+  {
+    id: 'profile',
+    label: 'Profile',
+    description: 'Your account details',
+    icon: User,
+  },
+  {
+    id: 'business',
+    label: 'Business',
+    description: 'Company & tax setup',
+    icon: Building2,
+  },
+  {
+    id: 'team',
+    label: 'Team & Roles',
+    description: 'Members & access',
+    icon: Users,
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    description: 'Password & sessions',
+    icon: Lock,
+  },
 ];
 
 export default function Settings() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as TabId | null;
+
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const businesses = useBusinessStore((s) => s.businesses);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
 
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  // Team & Roles tab is restricted to owners and managers (or members with explicit team.manage permission)
+  const canManageTeam = Boolean(
+    biz &&
+    (biz.myRole === 'owner' ||
+      biz.myRole === 'manager' ||
+      hasPerm('team.manage', biz, user?.id)),
+  );
+
+  // Financial PIN is strictly owner-only
+  const isOwner = Boolean(
+    biz
+      ? biz.myRole === 'owner' || biz.userId === user?.id
+      : user?.isOwnerAccount !== false,
+  );
+
+  const visibleTabs = TABS.filter((t) => t.id !== 'team' || canManageTeam);
+
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    if (tabFromUrl === 'team' && !canManageTeam) return 'profile';
+    return tabFromUrl &&
+      ['profile', 'business', 'team', 'security'].includes(tabFromUrl)
+      ? tabFromUrl
+      : 'profile';
+  });
+
+  useEffect(() => {
+    if (tabFromUrl === 'team' && !canManageTeam) {
+      setActiveTab('profile');
+      setSearchParams({ tab: 'profile' }, { replace: true });
+    } else if (
+      tabFromUrl &&
+      ['profile', 'business', 'team', 'security'].includes(tabFromUrl) &&
+      tabFromUrl !== activeTab
+    ) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl, canManageTeam]);
+
+  const handleTabChange = (id: TabId) => {
+    if (id === 'team' && !canManageTeam) return;
+    setActiveTab(id);
+    setSearchParams({ tab: id });
+  };
 
   // Business form
   const [bizName, setBizName] = useState('');
@@ -100,11 +208,15 @@ export default function Settings() {
   const hasPin = usePinStore((s) => s.hasPin);
 
   const handleStartBvnUpdate = () => {
+    if (!isOwner) return;
     if (!hasPin) {
-      toast('Please configure your 4-digit transaction PIN in the Security tab first.', {
-        icon: '🔒',
-        duration: 5000,
-      });
+      toast(
+        'Please configure your 4-digit transaction PIN in the Security tab first.',
+        {
+          icon: '🔒',
+          duration: 5000,
+        },
+      );
       setActiveTab('security');
       return;
     }
@@ -132,7 +244,7 @@ export default function Settings() {
             taxReminderDay: Number(biz.taxReminderDay ?? 25),
           }
         : null,
-    [biz]
+    [biz],
   );
 
   useEffect(() => {
@@ -202,7 +314,6 @@ export default function Settings() {
   };
 
   const handleBusinessUpdate = async (e: FormEvent) => {
-
     e.preventDefault();
     if (!biz) return;
     setSavingBiz(true);
@@ -222,9 +333,10 @@ export default function Settings() {
       fetchBusinesses();
     } catch (err: any) {
       const apiErr = err.response?.data?.error;
-      const fieldMsg = Array.isArray(apiErr?.details) && apiErr.details[0]
-        ? `${apiErr.details[0].field}: ${apiErr.details[0].message}`
-        : null;
+      const fieldMsg =
+        Array.isArray(apiErr?.details) && apiErr.details[0]
+          ? `${apiErr.details[0].field}: ${apiErr.details[0].message}`
+          : null;
       toast.error(fieldMsg || apiErr?.message || 'Update failed');
     } finally {
       setSavingBiz(false);
@@ -250,7 +362,11 @@ export default function Settings() {
       toast.error('Password must be at least 8 characters');
       return;
     }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+    if (
+      !/[A-Z]/.test(newPassword) ||
+      !/[a-z]/.test(newPassword) ||
+      !/\d/.test(newPassword)
+    ) {
       toast.error('Password must contain uppercase, lowercase, and a number');
       return;
     }
@@ -267,65 +383,65 @@ export default function Settings() {
       setConfirmPassword('');
       fetchMe();
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Password change failed');
+      toast.error(
+        err.response?.data?.error?.message || 'Password change failed',
+      );
     } finally {
       setSavingPw(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500">
-          Manage your account, business profile, and security preferences.
+    <div className='space-y-7 pb-8'>
+      {/* Minimal header with breadcrumb feel */}
+      <header className='border-b border-gray-100 pb-4'>
+        <div className='flex items-baseline gap-2 mb-1'>
+          <span className='text-xs font-medium text-gray-400 tracking-wide'>
+            ACCOUNT
+          </span>
+          <span className='text-gray-300'>/</span>
+          <h1 className='text-xl font-semibold text-gray-900'>Settings</h1>
+        </div>
+        <p className='text-[13px] text-gray-600 leading-relaxed max-w-2xl'>
+          Manage account details, business information, and security controls
         </p>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        {/* Vertical tabs (desktop) */}
-        <nav aria-label="Settings sections" className="hidden lg:block">
-          <ul className="space-y-1 sticky top-2">
-            {TABS.map(({ id, label, description, icon: Icon }) => {
+      {/* Offset split-screen layout (asymmetric) */}
+      <div className='grid gap-8 lg:grid-cols-[220px_1fr] lg:gap-12'>
+        {/* Minimal sidebar nav (desktop) - no boxes, just text */}
+        <nav aria-label='Settings sections' className='hidden lg:block'>
+          <ul className='space-y-0.5 sticky top-4'>
+            {visibleTabs.map(({ id, label, icon: Icon }) => {
               const isActive = activeTab === id;
               return (
                 <li key={id}>
                   <button
-                    onClick={() => setActiveTab(id)}
+                    onClick={() => handleTabChange(id)}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`group flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${
+                    className={`group flex w-full items-center gap-2.5 px-0 py-2 text-left border-l-2 transition-all ${
                       isActive
-                        ? 'bg-primary-50 ring-1 ring-inset ring-primary-100'
-                        : 'hover:bg-gray-50'
+                        ? 'border-gray-900 pl-3'
+                        : 'border-transparent pl-3 hover:border-gray-200 hover:pl-4'
                     }`}
                   >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    <Icon
+                      className={`h-[15px] w-[15px] transition-all ${
                         isActive
-                          ? 'bg-primary-500 text-white'
-                          : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
+                          ? 'text-gray-900'
+                          : 'text-gray-400 group-hover:text-gray-600'
+                      }`}
+                      strokeWidth={isActive ? 2.5 : 2}
+                    />
+                    <span
+                      className={`text-[14px] leading-none font-medium tracking-tight transition-all ${
+                        isActive
+                          ? 'text-gray-900'
+                          : 'text-gray-500 group-hover:text-gray-700'
                       }`}
                     >
-                      <Icon className="h-4 w-4" strokeWidth={2} />
+                      {label}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={`block text-sm font-semibold ${
-                          isActive ? 'text-primary-700' : 'text-gray-800'
-                        }`}
-                      >
-                        {label}
-                      </span>
-                      <span className="mt-0.5 block text-[11px] text-gray-500">{description}</span>
-                    </span>
-                    <ChevronRight
-                      className={`mt-1 h-3.5 w-3.5 shrink-0 transition-all ${
-                        isActive
-                          ? 'text-primary-500 opacity-100'
-                          : 'text-gray-300 opacity-0 group-hover:opacity-100'
-                      }`}
-                    />
                   </button>
                 </li>
               );
@@ -333,20 +449,25 @@ export default function Settings() {
           </ul>
         </nav>
 
-        {/* Horizontal tabs (mobile) */}
-        <div className="lg:hidden -mb-2">
-          <div className="flex gap-1 rounded-xl bg-gray-100/80 p-1">
-            {TABS.map(({ id, label, icon: Icon }) => {
+        {/* Mobile nav - underline style instead of pills */}
+        <div className='lg:hidden -mx-4 sm:mx-0 border-b border-gray-200'>
+          <div className='flex px-4 sm:px-0'>
+            {visibleTabs.map(({ id, label, icon: Icon }) => {
               const isActive = activeTab === id;
               return (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-                    isActive ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  onClick={() => handleTabChange(id)}
+                  className={`relative flex items-center gap-1.5 px-3 py-2.5 text-[13px] font-medium transition-colors border-b-2 -mb-px ${
+                    isActive
+                      ? 'text-gray-900 border-gray-900'
+                      : 'text-gray-500 border-transparent hover:text-gray-700'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon
+                    className='h-[14px] w-[14px]'
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
                   {label}
                 </button>
               );
@@ -355,11 +476,13 @@ export default function Settings() {
         </div>
 
         {/* Content panel */}
-        <section className="min-w-0">
+        <section className='min-w-0'>
           {activeTab === 'profile' && (
             <ProfilePanel
               user={user}
               biz={biz}
+              businesses={businesses}
+              isOwner={isOwner}
               onEditBusiness={() => setActiveTab('business')}
               onUpdateBvn={handleStartBvnUpdate}
             />
@@ -396,16 +519,36 @@ export default function Settings() {
             />
           )}
 
-
           {activeTab === 'business' && !biz && (
             <Card>
-              <div className="px-6 py-12 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                  <Building2 className="h-6 w-6 text-gray-400" />
+              <div className='px-6 py-12 text-center'>
+                <div className='mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100'>
+                  <Building2 className='h-6 w-6 text-gray-400' />
                 </div>
-                <p className="mt-3 text-sm font-medium text-gray-700">No business selected</p>
-                <p className="mt-1 text-[13px] text-gray-500">
-                  Create or select a business from the sidebar to edit its details.
+                <p className='mt-3 text-sm font-medium text-gray-700'>
+                  No business selected
+                </p>
+                <p className='mt-1 text-[13px] text-gray-500'>
+                  Create or select a business from the sidebar to edit its
+                  details.
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'team' && canManageTeam && biz && <TeamSettingsTab />}
+
+          {activeTab === 'team' && canManageTeam && !biz && (
+            <Card>
+              <div className='px-6 py-12 text-center'>
+                <div className='mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100'>
+                  <Users className='h-6 w-6 text-gray-400' />
+                </div>
+                <p className='mt-3 text-sm font-medium text-gray-700'>
+                  No business selected
+                </p>
+                <p className='mt-1 text-[13px] text-gray-500'>
+                  Create or select a business to view and manage its team.
                 </p>
               </div>
             </Card>
@@ -414,6 +557,7 @@ export default function Settings() {
           {activeTab === 'security' && (
             <SecurityPanel
               user={user}
+              isOwner={isOwner}
               currentPassword={currentPassword}
               setCurrentPassword={setCurrentPassword}
               newPassword={newPassword}
@@ -436,8 +580,8 @@ export default function Settings() {
         isOpen={showBvnPinModal}
         onClose={() => setShowBvnPinModal(false)}
         onSuccess={handleBvnPinSuccess}
-        title="Authorize BVN Update"
-        subtitle="Enter your 4-digit transaction PIN to link or change your BVN."
+        title='Authorize BVN Update'
+        subtitle='Enter your 4-digit transaction PIN to link or change your BVN.'
       />
 
       {/* BVN Entry Form Modal */}
@@ -459,38 +603,72 @@ export default function Settings() {
 function ProfilePanel({
   user,
   biz,
+  businesses = [],
+  isOwner,
   onEditBusiness,
   onUpdateBvn,
 }: {
   user: any;
   biz: any;
+  businesses?: any[];
+  isOwner: boolean;
   onEditBusiness: () => void;
   onUpdateBvn: () => void;
 }) {
   const initial = user?.email?.charAt(0).toUpperCase() || 'U';
   const displayName = user?.email?.split('@')[0] ?? 'Account';
+  const [selectedPrimaryId, setSelectedPrimaryId] = useState<string>(
+    user?.primaryBusinessId || '',
+  );
+  const [savingPrimary, setSavingPrimary] = useState(false);
+
+  useEffect(() => {
+    setSelectedPrimaryId(user?.primaryBusinessId || '');
+  }, [user?.primaryBusinessId]);
+
+  const handleSavePrimaryBusiness = async () => {
+    setSavingPrimary(true);
+    try {
+      await api.patch('/auth/me/primary-business', {
+        primaryBusinessId: selectedPrimaryId || null,
+      });
+      toast.success('Default receiving business updated');
+      useAuthStore.getState().fetchMe();
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.error?.message ||
+          'Failed to update default business',
+      );
+    } finally {
+      setSavingPrimary(false);
+    }
+  };
+
+  const isPrimaryDirty = (user?.primaryBusinessId || '') !== selectedPrimaryId;
 
   return (
-    <div className="space-y-5">
-      {/* Identity hero */}
+    <div className='space-y-7'>
+      {/* Identity — minimalist with offset layout */}
       <Card>
-        <div className="flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 text-2xl font-bold text-white shadow-lg shadow-primary-500/20">
+        <div className='flex flex-col gap-5 px-5 pb-6 sm:flex-row sm:items-start'>
+          <div className='flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xl font-medium text-white ring-4 ring-gray-100'>
             {initial}
           </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-bold text-gray-900">{displayName}</h2>
-            <p className="truncate text-sm text-gray-500">{user?.email}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className='min-w-0 flex-1 pt-1'>
+            <h2 className='text-[15px] font-semibold text-gray-900 leading-none'>
+              {displayName}
+            </h2>
+            <p className='mt-1.5 text-[13px] text-gray-600'>{user?.email}</p>
+            <div className='mt-3 flex flex-wrap items-center gap-1.5'>
               <Badge tone={user?.isActive ? 'emerald' : 'red'}>
                 {user?.isActive ? 'Active' : 'Inactive'}
               </Badge>
-              <Badge tone="slate" capitalize>
+              <Badge tone='slate' capitalize>
                 {user?.role ?? 'user'}
               </Badge>
               {user?.isVerified && (
-                <Badge tone="emerald">
-                  <CheckCircle2 className="h-3 w-3" /> Verified
+                <Badge tone='emerald'>
+                  <CheckCircle2 className='h-2.5 w-2.5' /> Verified
                 </Badge>
               )}
             </div>
@@ -498,96 +676,181 @@ function ProfilePanel({
         </div>
       </Card>
 
-      {/* Account info grid */}
-      <Card title="Account information" subtitle="How we identify and contact you.">
-        <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-          <DetailRow icon={Mail} label="Email address" value={user?.email || '—'} />
-          <DetailRow icon={Shield} label="Role" value={user?.role || 'user'} capitalize />
-        </dl>
-      </Card>
-
-      {/* Identity & Verification (BVN) Card */}
+      {/* Account info — no nested borders */}
       <Card
-        title="Identity & Verification (BVN)"
-        subtitle="Your Bank Verification Number is used for FIRS tax compliance and virtual account provisioning."
-        action={
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={onUpdateBvn}
-            className="text-xs font-semibold"
-          >
-            {user?.bvnLast4 ? 'Update BVN' : 'Link BVN'}
-          </Button>
-        }
+        title='Account information'
+        subtitle='Core identity and contact details'
       >
-        <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-          <DetailRow
-            icon={ShieldCheck}
-            label="Compliance Status"
-            value={user?.bvnVerifiedAt ? 'Verified Tier 2' : 'Pending Verification'}
-          />
+        <div className='grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-2'>
+          <DetailRow icon={Mail} label='Email' value={user?.email || '—'} />
           <DetailRow
             icon={Shield}
-            label="Linked BVN"
-            value={user?.bvnLast4 ? `•••••••${user.bvnLast4.slice(-4)}` : 'No BVN linked'}
+            label='Role'
+            value={user?.role || 'user'}
+            capitalize
           />
-        </dl>
+        </div>
       </Card>
 
-      {/* Business summary */}
-      {biz && (
+      {/* BVN — owners only */}
+      {isOwner && (
         <Card
-          title="Active business"
-          subtitle="The business you are currently working in."
+          title='Identity verification'
+          subtitle='Bank Verification Number for NRS compliance'
           action={
             <button
-              onClick={onEditBusiness}
-              className="text-[13px] font-semibold text-primary-600 hover:text-primary-700"
+              onClick={onUpdateBvn}
+              className='text-[13px] font-medium text-gray-900 hover:text-gray-700 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500 transition-colors'
             >
-              Edit details →
+              {user?.bvnLast4 ? 'Update' : 'Link BVN'}
             </button>
           }
         >
-          <div className="px-6 pt-4 pb-2 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center shrink-0 shadow-sm">
+          <div className='grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-2'>
+            <DetailRow
+              icon={ShieldCheck}
+              label='Status'
+              value={user?.bvnVerifiedAt ? 'Tier 2 Verified' : 'Pending'}
+            />
+            <DetailRow
+              icon={Shield}
+              label='Linked BVN'
+              value={user?.bvnLast4 ? `•••••${user.bvnLast4}` : 'Not linked'}
+            />
+          </div>
+        </Card>
+      )}
+
+      {/* Business summary — editorial feel */}
+      {biz && (
+        <Card
+          title='Current workspace'
+          subtitle="The business context you're operating in"
+          action={
+            <button
+              onClick={onEditBusiness}
+              className='text-[13px] font-medium text-gray-900 hover:text-gray-700 transition-colors flex items-center gap-1'
+            >
+              Edit <ChevronRight className='h-3.5 w-3.5' />
+            </button>
+          }
+        >
+          <div className='px-5 pt-2 pb-4 flex items-start gap-4 border-b border-gray-100'>
+            <div className='h-11 w-11 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center shrink-0'>
               {biz.logoUrl ? (
-                <img src={biz.logoUrl} alt={biz.businessName} className="h-full w-full object-cover" />
+                <img
+                  src={biz.logoUrl}
+                  alt={biz.businessName}
+                  className='h-full w-full object-cover'
+                />
               ) : (
-                <Building2 className="h-6 w-6 text-gray-400" />
+                <Building2 className='h-5 w-5 text-gray-400' />
               )}
             </div>
-            <div className="min-w-0">
-              <h3 className="text-base font-bold text-gray-900 truncate">{biz.businessName}</h3>
-              <p className="text-xs text-gray-500">{businessTypeLabel(biz.businessType)}</p>
+            <div className='min-w-0 flex-1 pt-0.5'>
+              <h3 className='text-[15px] font-semibold text-gray-900 truncate leading-tight'>
+                {biz.businessName}
+              </h3>
+              <p className='text-xs text-gray-500 mt-1'>
+                {businessTypeLabel(biz.businessType)}
+              </p>
             </div>
           </div>
 
-          <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-            <DetailRow icon={Building2} label="Business name" value={biz.businessName} />
-            <DetailRow icon={User} label="Owner" value={biz.ownerName} />
-            <DetailRow icon={Briefcase} label="Type" value={businessTypeLabel(biz.businessType)} />
-            {biz.taxId && <DetailRow icon={FileText} label="Tax ID / TIN" value={biz.taxId} />}
-            {biz.city && <DetailRow icon={MapPin} label="City" value={biz.city} />}
-            {biz.state && <DetailRow icon={MapPin} label="State" value={biz.state} />}
-          </dl>
+          <div className='grid grid-cols-1 gap-px bg-gray-100 sm:grid-cols-2 mt-5'>
+            <DetailRow icon={User} label='Owner' value={biz.ownerName} />
+            <DetailRow
+              icon={Briefcase}
+              label='Type'
+              value={businessTypeLabel(biz.businessType)}
+            />
+            {biz.taxId && (
+              <DetailRow icon={FileText} label='Tax ID' value={biz.taxId} />
+            )}
+            {biz.city && (
+              <DetailRow
+                icon={MapPin}
+                label='Location'
+                value={`${biz.city}${biz.state ? ', ' + biz.state : ''}`}
+              />
+            )}
+          </div>
 
           {biz.virtualAccountNumber && (
-            <div className="mx-6 mb-6 mt-2 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                <CheckCircle2 className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-blue-600">
-                  Virtual account
+            <div className='mx-5 mb-5 mt-4 flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3'>
+              <CheckCircle2 className='h-4 w-4 text-blue-600 mt-0.5 shrink-0' />
+              <div className='min-w-0 flex-1'>
+                <p className='text-[11px] font-semibold text-blue-900 tracking-wide leading-none'>
+                  VIRTUAL ACCOUNT
                 </p>
                 <CopyRow text={biz.virtualAccountNumber} />
                 {biz.virtualAccountBank && (
-                  <p className="mt-0.5 text-[12px] text-blue-700/80">{biz.virtualAccountBank}</p>
+                  <p className='mt-1 text-[11px] text-blue-700'>
+                    {biz.virtualAccountBank}
+                  </p>
                 )}
               </div>
             </div>
           )}
+        </Card>
+      )}
+
+      {/* Primary Receiving Business — multiple businesses only */}
+      {businesses.length > 1 && (
+        <Card
+          title='Default Inflow Business'
+          subtitle='Choose which business automatically receives incoming DVA bank transfers when not specified'
+        >
+          <div className='p-5 space-y-4'>
+            <div className='max-w-md'>
+              <label
+                htmlFor='primary-business-select'
+                className='block text-xs font-medium text-gray-700 mb-1.5'
+              >
+                Primary Business
+              </label>
+              <select
+                id='primary-business-select'
+                value={selectedPrimaryId}
+                onChange={(e) => setSelectedPrimaryId(e.target.value)}
+                className='w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-gray-900 focus:outline-hidden focus:ring-1 focus:ring-gray-900'
+              >
+                <option value=''>
+                  No preference (auto-assign to first business)
+                </option>
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.businessName} {b.merchantId ? `(${b.merchantId})` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className='mt-1.5 text-[11px] text-gray-500'>
+                Incoming bank transfers to your dedicated virtual account will
+                be routed to this business by default.
+              </p>
+            </div>
+            {isPrimaryDirty && (
+              <div className='flex items-center gap-2 pt-2'>
+                <Button
+                  size='sm'
+                  onClick={handleSavePrimaryBusiness}
+                  isLoading={savingPrimary}
+                >
+                  Save Preference
+                </Button>
+                <Button
+                  size='sm'
+                  variant='secondary'
+                  disabled={savingPrimary}
+                  onClick={() =>
+                    setSelectedPrimaryId(user?.primaryBusinessId || '')
+                  }
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
         </Card>
       )}
     </div>
@@ -618,19 +881,20 @@ function LogoUploadCard({
   const handleFile = (f: File) => {
     const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'svg', 'jfif'];
     const ext = f.name.split('.').pop()?.toLowerCase() || '';
-    const isMimeValid = f.type.startsWith('image/') || f.type === 'image/svg+xml';
+    const isMimeValid =
+      f.type.startsWith('image/') || f.type === 'image/svg+xml';
     const isExtValid = validExtensions.includes(ext);
 
     if (!isMimeValid && !isExtValid) {
-      toast.error('Only JPEG, PNG, WebP or SVG images are accepted.');
+      toast.error('Only JPEG, PNG, WebP or SVG images accepted');
       return;
     }
     if (f.size > 5 * 1024 * 1024) {
-      toast.error('Image must be 5 MB or smaller.');
+      toast.error('Image must be 5 MB or smaller');
       return;
     }
     if (f.type === 'image/svg+xml' || ext === 'svg') {
-      toast('SVG logo detected — will be optimized for web and PDF invoices.', {
+      toast('SVG detected — will be optimized for invoices and statements', {
         icon: '✨',
       });
     }
@@ -638,29 +902,32 @@ function LogoUploadCard({
   };
 
   return (
-    <Card title="Company logo" subtitle="Shown on invoices, statements, and your dashboard banner.">
-      <div className="flex flex-col sm:flex-row items-center gap-6 px-6 pb-6">
-        {/* Preview Circle */}
-        <div className="relative shrink-0 h-20 w-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 shadow-sm">
+    <Card
+      title='Company logo'
+      subtitle='Appears on invoices, statements, and dashboard'
+    >
+      <div className='flex flex-col sm:flex-row items-start gap-6 px-5 pb-6'>
+        {/* Preview */}
+        <div className='relative shrink-0 h-16 w-16 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50'>
           {logoUrl && !imgErr ? (
             <img
               src={logoUrl}
-              alt="Company logo"
-              className="h-full w-full object-contain p-1"
+              alt='Company logo'
+              className='h-full w-full object-contain p-2'
               onError={() => setImgErr(true)}
             />
           ) : (
-            <Building2 className="h-8 w-8 text-gray-300" />
+            <Building2 className='h-6 w-6 text-gray-300' strokeWidth={1.5} />
           )}
         </div>
 
-        {/* Dropzone & Actions */}
-        <div className="flex-1 w-full space-y-2">
+        {/* Upload area */}
+        <div className='flex-1 w-full space-y-2.5'>
           <div
-            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 cursor-pointer transition-colors ${
+            className={`flex flex-col items-center justify-center rounded-lg border p-5 cursor-pointer transition-all ${
               dragActive
-                ? 'border-primary-500 bg-primary-50'
-                : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                ? 'border-gray-900 bg-gray-50'
+                : 'border-gray-200 hover:border-gray-400 bg-white'
             }`}
             onClick={() => inputRef.current?.click()}
             onDragOver={(e) => {
@@ -675,19 +942,19 @@ function LogoUploadCard({
               if (f) handleFile(f);
             }}
           >
-            <Upload className="h-5 w-5 text-gray-400 mb-1" />
-            <p className="text-xs font-medium text-gray-600">
-              {uploading ? 'Uploading company logo…' : 'Click or drag company logo to upload'}
+            <Upload className='h-5 w-5 text-gray-400 mb-2' strokeWidth={1.5} />
+            <p className='text-xs font-medium text-gray-700'>
+              {uploading ? 'Uploading…' : 'Click or drag to upload'}
             </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              PNG, JPEG, WebP, SVG • Maximum 5 MB
+            <p className='text-[11px] text-gray-500 mt-1'>
+              PNG, JPEG, WebP, SVG • Max 5 MB
             </p>
           </div>
           <input
             ref={inputRef}
-            type="file"
-            accept="image/*,.png,.jpg,.jpeg,.webp,.svg"
-            className="hidden"
+            type='file'
+            accept='image/*,.png,.jpg,.jpeg,.webp,.svg'
+            className='hidden'
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) handleFile(f);
@@ -696,10 +963,10 @@ function LogoUploadCard({
           />
           {logoUrl && (
             <button
-              type="button"
+              type='button'
               onClick={onRemove}
               disabled={uploading}
-              className="text-[12px] font-medium text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+              className='text-[12px] font-medium text-gray-500 hover:text-gray-900 transition-colors underline underline-offset-2 decoration-gray-300 hover:decoration-gray-500'
             >
               Remove logo
             </button>
@@ -743,7 +1010,7 @@ interface BusinessPanelProps {
 
 function BusinessPanel(props: BusinessPanelProps) {
   return (
-    <div className="space-y-5">
+    <div className='space-y-7'>
       <LogoUploadCard
         logoUrl={props.logoUrl}
         uploading={props.logoUploading}
@@ -751,162 +1018,181 @@ function BusinessPanel(props: BusinessPanelProps) {
         onRemove={props.onRemoveLogo}
       />
 
-      <form onSubmit={props.onSubmit} className="space-y-5">
+      <form onSubmit={props.onSubmit} className='space-y-7'>
         {/* Basic information */}
-        <Card title="Basic information" subtitle="Identifying details for this business.">
-          <div className="grid grid-cols-1 gap-4 px-6 pb-6 sm:grid-cols-2">
-
-          <Input
-            label="Business name"
-            value={props.bizName}
-            onChange={(e) => props.setBizName(e.target.value)}
-            required
-          />
-          <Input
-            label="Owner name"
-            value={props.ownerName}
-            onChange={(e) => props.setOwnerName(e.target.value)}
-            required
-          />
-          <FieldShell label="Business type" required>
-            <Select value={props.bizType} onChange={(v) => props.setBizType(v)} required>
-              <option value="">Select a type</option>
-              {BUSINESS_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
-          </FieldShell>
-          <Input
-            label="Tax ID / TIN"
-            value={props.taxId}
-            onChange={(e) => props.setTaxId(e.target.value)}
-            placeholder="Optional"
-            maxLength={50}
-          />
-        </div>
-      </Card>
-
-      {/* Location */}
-      <Card title="Location" subtitle="Where this business operates.">
-        <div className="grid grid-cols-1 gap-4 px-6 pb-6 sm:grid-cols-3">
-          <div className="sm:col-span-3">
+        <Card title='Basic information' subtitle='Core identifying details'>
+          <div className='grid grid-cols-1 gap-4 px-5 pb-6 sm:grid-cols-2'>
             <Input
-              label="Address"
-              value={props.address}
-              onChange={(e) => props.setAddress(e.target.value)}
-              placeholder="Street address (optional)"
+              label='Business name'
+              value={props.bizName}
+              onChange={(e) => props.setBizName(e.target.value)}
+              required
+            />
+            <Input
+              label='Owner name'
+              value={props.ownerName}
+              onChange={(e) => props.setOwnerName(e.target.value)}
+              required
+            />
+            <FieldShell label='Business type' required>
+              <Select
+                value={props.bizType}
+                onChange={(v) => props.setBizType(v)}
+                required
+              >
+                <option value=''>Select type</option>
+                {BUSINESS_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </Select>
+            </FieldShell>
+            <Input
+              label='Tax ID / TIN'
+              value={props.taxId}
+              onChange={(e) => props.setTaxId(e.target.value)}
+              placeholder='Optional'
+              maxLength={50}
             />
           </div>
-          <Input
-            label="City"
-            value={props.city}
-            onChange={(e) => props.setCity(e.target.value)}
-            placeholder="e.g. Lagos"
-          />
-          <FieldShell label="State">
-            <Select value={props.state} onChange={(v) => props.setState(v)}>
-              <option value="">Select a state</option>
-              {NIGERIAN_STATES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </Select>
-          </FieldShell>
-        </div>
-      </Card>
+        </Card>
 
-      {/* Tax configuration */}
-      <Card
-        title="Tax configuration"
-        subtitle="How PayMyTax checks your numbers and reminds you to file."
-      >
-        <div className="grid grid-cols-1 gap-4 px-6 pb-6 sm:grid-cols-2">
-          <FieldShell
-            label="Expected profit margin"
-            iconLeft={<Percent className="h-3.5 w-3.5 text-gray-400" />}
-            hint="Used to detect anomalies in your monthly numbers."
-          >
-            <div className="relative">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                value={props.profitMargin}
-                onChange={(e) => props.setProfitMargin(Number(e.target.value))}
-                className={fieldInputClass + ' pr-9'}
+        {/* Location */}
+        <Card title='Location' subtitle='Where this business operates'>
+          <div className='grid grid-cols-1 gap-4 px-5 pb-6 sm:grid-cols-3'>
+            <div className='sm:col-span-3'>
+              <Input
+                label='Address'
+                value={props.address}
+                onChange={(e) => props.setAddress(e.target.value)}
+                placeholder='Street address (optional)'
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-gray-400">
-                %
-              </span>
             </div>
-          </FieldShell>
-          <FieldShell
-            label="Tax reminder day"
-            iconLeft={<Calendar className="h-3.5 w-3.5 text-gray-400" />}
-            hint="Day of month to receive tax filing reminders (1–28)."
-          >
-            <input
-              type="number"
-              min={1}
-              max={28}
-              value={props.taxReminderDay}
-              onChange={(e) => props.setTaxReminderDay(Number(e.target.value))}
-              className={fieldInputClass}
+            <Input
+              label='City'
+              value={props.city}
+              onChange={(e) => props.setCity(e.target.value)}
+              placeholder='e.g. Lagos'
             />
-          </FieldShell>
-        </div>
-      </Card>
+            <FieldShell label='State'>
+              <Select value={props.state} onChange={(v) => props.setState(v)}>
+                <option value=''>Select state</option>
+                {NIGERIAN_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </Select>
+            </FieldShell>
+          </div>
+        </Card>
 
-      {/* Sticky save bar */}
-      <div className="sticky bottom-0 z-10 -mx-4 sm:mx-0">
-        <div
-          className={`mx-4 flex items-center justify-between gap-3 rounded-xl border bg-white/95 px-4 py-3 shadow-lg backdrop-blur transition-all sm:mx-0 ${
-            props.isDirty ? 'border-amber-200 ring-1 ring-amber-100' : 'border-gray-200'
-          }`}
+        {/* Tax configuration */}
+        <Card
+          title='Tax configuration'
+          subtitle='Anomaly detection and filing reminders'
         >
-          <div className="flex items-center gap-2 text-[13px]">
-            {props.isDirty ? (
-              <>
-                <span className="flex h-2 w-2 rounded-full bg-amber-400" />
-                <span className="text-amber-700">You have unsaved changes</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                <span className="text-gray-500">All changes saved</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={props.onReset}
-              disabled={!props.isDirty || props.savingBiz}
-              className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+          <div className='grid grid-cols-1 gap-4 px-5 pb-6 sm:grid-cols-2'>
+            <FieldShell
+              label='Expected profit margin'
+              iconLeft={<Percent className='h-3.5 w-3.5 text-gray-400' />}
+              hint='Used to detect anomalies in monthly numbers'
             >
-              Discard
-            </button>
-            <Button type="submit" size="sm" isLoading={props.savingBiz} disabled={!props.isDirty}>
-              <Save className="h-3.5 w-3.5" />
-              Save changes
-            </Button>
+              <div className='relative'>
+                <input
+                  type='number'
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={props.profitMargin}
+                  onChange={(e) =>
+                    props.setProfitMargin(Number(e.target.value))
+                  }
+                  className={fieldInputClass + ' pr-9'}
+                />
+                <span className='absolute right-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-gray-400'>
+                  %
+                </span>
+              </div>
+            </FieldShell>
+            <FieldShell
+              label='Tax reminder day'
+              iconLeft={<Calendar className='h-3.5 w-3.5 text-gray-400' />}
+              hint='Day of month for filing reminders (1–28)'
+            >
+              <input
+                type='number'
+                min={1}
+                max={28}
+                value={props.taxReminderDay}
+                onChange={(e) =>
+                  props.setTaxReminderDay(Number(e.target.value))
+                }
+                className={fieldInputClass}
+              />
+            </FieldShell>
+          </div>
+        </Card>
+
+        {/* Sticky save bar - editorial strip */}
+        <div className='sticky bottom-0 z-10 -mx-4 sm:mx-0'>
+          <div
+            className={`mx-4 flex items-center justify-between gap-3 bg-white border-y px-5 py-3.5 backdrop-blur transition-all sm:mx-0 ${
+              props.isDirty
+                ? 'border-amber-400 bg-amber-50/90'
+                : 'border-gray-200/80'
+            }`}
+          >
+            <div className='flex items-center gap-2.5 text-[13px]'>
+              {props.isDirty ? (
+                <>
+                  <span className='flex h-1.5 w-1.5 rounded-full bg-amber-500' />
+                  <span className='text-amber-900 font-medium'>
+                    Unsaved changes
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2
+                    className='h-[15px] w-[15px] text-emerald-600'
+                    strokeWidth={2}
+                  />
+                  <span className='text-gray-600'>Changes saved</span>
+                </>
+              )}
+            </div>
+            <div className='flex items-center gap-2'>
+              <button
+                type='button'
+                onClick={props.onReset}
+                disabled={!props.isDirty || props.savingBiz}
+                className='px-3 py-1.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-gray-700'
+              >
+                Discard
+              </button>
+              <Button
+                type='submit'
+                size='sm'
+                isLoading={props.savingBiz}
+                disabled={!props.isDirty}
+              >
+                <Save className='h-3.5 w-3.5' />
+                Save
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    </form>
-  </div>
+      </form>
+    </div>
   );
 }
-
 
 // ─── Security panel ────────────────────────────────────────
 
 function SecurityPanel({
   user,
+  isOwner,
   currentPassword,
   setCurrentPassword,
   newPassword,
@@ -921,6 +1207,7 @@ function SecurityPanel({
   onSubmit,
 }: {
   user: any;
+  isOwner: boolean;
   currentPassword: string;
   setCurrentPassword: (v: string) => void;
   newPassword: string;
@@ -969,9 +1256,11 @@ function SecurityPanel({
   const [changingPin, setChangingPin] = useState(false);
 
   useEffect(() => {
-    fetchStatus();
+    if (isOwner) {
+      fetchStatus();
+    }
     fetchSessions();
-  }, []);
+  }, [isOwner]);
 
   const handleSetupPin = async (e: FormEvent) => {
     e.preventDefault();
@@ -1009,189 +1298,245 @@ function SecurityPanel({
   };
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* ── Transaction PIN Card ────────────────────────────── */}
-      <Card
-        title="4-Digit Transaction PIN"
-        subtitle="Authorize tax payouts, settlement withdrawals, and sensitive financial mutations."
-      >
-        <div className="p-6">
-          {hasPin ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
-                    <ShieldCheck className="h-5 w-5" />
+      {isOwner && (
+        <Card
+          title='4-Digit Transaction PIN'
+          subtitle='Authorize tax payouts, settlement withdrawals, and sensitive financial mutations.'
+        >
+          <div className='p-6'>
+            {hasPin ? (
+              <div className='space-y-4'>
+                <div className='flex items-center justify-between p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-xl'>
+                  <div className='flex items-center gap-3'>
+                    <div className='p-2 rounded-lg bg-emerald-100 text-emerald-700'>
+                      <ShieldCheck className='h-5 w-5' />
+                    </div>
+                    <div>
+                      <h4 className='text-xs font-bold text-emerald-950'>
+                        Transaction PIN Active
+                      </h4>
+                      <p className='text-[11px] text-emerald-700 mt-0.5'>
+                        Your financial mutations are protected with a 4-digit
+                        bcrypt hash.
+                        {pinSetAt
+                          ? ` (Configured ${new Date(pinSetAt).toLocaleDateString('en-GB')})`
+                          : ''}
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    variant='secondary'
+                    size='sm'
+                    onClick={() => setShowChangePin(!showChangePin)}
+                    className='text-xs'
+                  >
+                    {showChangePin ? 'Cancel' : 'Change PIN'}
+                  </Button>
+                </div>
+
+                {showChangePin && (
+                  <form
+                    onSubmit={handleChangePin}
+                    className='p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3 animate-fade-in'
+                  >
+                    <h4 className='text-xs font-bold text-gray-900'>
+                      Change Transaction PIN
+                    </h4>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                      <div>
+                        <label className='block text-[11px] font-semibold text-gray-600 mb-1'>
+                          Current PIN
+                        </label>
+                        <Input
+                          type='password'
+                          inputMode='numeric'
+                          pattern='[0-9]*'
+                          maxLength={4}
+                          placeholder='Current 4-digit PIN'
+                          value={currentPinVal}
+                          onChange={(e) =>
+                            setCurrentPinVal(
+                              e.target.value.replace(/\D/g, '').slice(0, 4),
+                            )
+                          }
+                          required
+                          className='text-xs tracking-widest font-mono'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-[11px] font-semibold text-gray-600 mb-1'>
+                          New 4-Digit PIN
+                        </label>
+                        <Input
+                          type='password'
+                          inputMode='numeric'
+                          pattern='[0-9]*'
+                          maxLength={4}
+                          placeholder='New 4-digit PIN'
+                          value={updatedPinVal}
+                          onChange={(e) =>
+                            setUpdatedPinVal(
+                              e.target.value.replace(/\D/g, '').slice(0, 4),
+                            )
+                          }
+                          required
+                          className='text-xs tracking-widest font-mono'
+                        />
+                      </div>
+                    </div>
+                    <div className='flex justify-end pt-1'>
+                      <Button
+                        type='submit'
+                        size='sm'
+                        isLoading={changingPin}
+                        className='text-xs'
+                      >
+                        Update PIN
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <div className='space-y-4'>
+                <div className='flex items-start gap-3 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-amber-800 text-xs'>
+                  <AlertCircle className='h-4 w-4 shrink-0 text-amber-600 mt-0.5' />
+                  <p>
+                    You haven&apos;t configured a Transaction PIN yet. A 4-digit
+                    PIN is required before initiating tax remittances or
+                    modifying payout bank details.
+                  </p>
+                </div>
+
+                <form
+                  onSubmit={handleSetupPin}
+                  className='grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-xl'
+                >
                   <div>
-                    <h4 className="text-xs font-bold text-emerald-950">Transaction PIN Active</h4>
-                    <p className="text-[11px] text-emerald-700 mt-0.5">
-                      Your financial mutations are protected with a 4-digit bcrypt hash.
-                      {pinSetAt ? ` (Configured ${new Date(pinSetAt).toLocaleDateString('en-GB')})` : ''}
+                    <label className='block text-xs font-semibold text-gray-700 mb-1'>
+                      New 4-Digit PIN
+                    </label>
+                    <Input
+                      type='password'
+                      inputMode='numeric'
+                      pattern='[0-9]*'
+                      maxLength={4}
+                      placeholder='Enter 4 digits (e.g. 8492)'
+                      value={newPin}
+                      onChange={(e) =>
+                        setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                      }
+                      required
+                      className='text-xs tracking-widest font-mono'
+                    />
+                    <p className='text-[10px] text-gray-500 mt-1'>
+                      Avoid simple digits like 0000 or 1234.
                     </p>
                   </div>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowChangePin(!showChangePin)}
-                  className="text-xs"
-                >
-                  {showChangePin ? 'Cancel' : 'Change PIN'}
-                </Button>
-              </div>
-
-              {showChangePin && (
-                <form onSubmit={handleChangePin} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-3 animate-fade-in">
-                  <h4 className="text-xs font-bold text-gray-900">Change Transaction PIN</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
-                        Current PIN
-                      </label>
-                      <Input
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={4}
-                        placeholder="Current 4-digit PIN"
-                        value={currentPinVal}
-                        onChange={(e) => setCurrentPinVal(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                        required
-                        className="text-xs tracking-widest font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">
-                        New 4-Digit PIN
-                      </label>
-                      <Input
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={4}
-                        placeholder="New 4-digit PIN"
-                        value={updatedPinVal}
-                        onChange={(e) => setUpdatedPinVal(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                        required
-                        className="text-xs tracking-widest font-mono"
-                      />
-                    </div>
+                  <div>
+                    <label className='block text-xs font-semibold text-gray-700 mb-1'>
+                      Account Password (Confirm Identity)
+                    </label>
+                    <Input
+                      type='password'
+                      placeholder='Enter login password'
+                      value={pinPassword}
+                      onChange={(e) => setPinPassword(e.target.value)}
+                      required
+                      className='text-xs'
+                    />
                   </div>
-                  <div className="flex justify-end pt-1">
-                    <Button type="submit" size="sm" isLoading={changingPin} className="text-xs">
-                      Update PIN
+                  <div className='sm:col-span-2 pt-1'>
+                    <Button
+                      type='submit'
+                      size='sm'
+                      isLoading={savingPin}
+                      className='text-xs'
+                    >
+                      <ShieldCheck className='h-3.5 w-3.5' /> Configure
+                      Transaction PIN
                     </Button>
                   </div>
                 </form>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-amber-800 text-xs">
-                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                <p>
-                  You haven&apos;t configured a Transaction PIN yet. A 4-digit PIN is required before initiating tax remittances or modifying payout bank details.
-                </p>
               </div>
-
-              <form onSubmit={handleSetupPin} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-xl">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    New 4-Digit PIN
-                  </label>
-                  <Input
-                    type="password"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    placeholder="Enter 4 digits (e.g. 8492)"
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    required
-                    className="text-xs tracking-widest font-mono"
-                  />
-                  <p className="text-[10px] text-gray-500 mt-1">Avoid simple digits like 0000 or 1234.</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Account Password (Confirm Identity)
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Enter login password"
-                    value={pinPassword}
-                    onChange={(e) => setPinPassword(e.target.value)}
-                    required
-                    className="text-xs"
-                  />
-                </div>
-                <div className="sm:col-span-2 pt-1">
-                  <Button type="submit" size="sm" isLoading={savingPin} className="text-xs">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Configure Transaction PIN
-                  </Button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      </Card>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* ── Active Device Sessions Card ──────────────────────── */}
       <Card
-        title="Active Device Sessions"
-        subtitle="Manage active devices and remote logins for this account."
+        title='Active Device Sessions'
+        subtitle='Manage active devices and remote logins for this account.'
         action={
           sessions.filter((s) => !s.isCurrent).length > 0 ? (
             <Button
-              variant="secondary"
-              size="sm"
+              variant='secondary'
+              size='sm'
               onClick={() => revokeOtherSessions()}
-              className="text-xs text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+              className='text-xs text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50'
             >
-              <LogOut className="h-3.5 w-3.5" /> Log Out All Other Devices
+              <LogOut className='h-3.5 w-3.5' /> Log Out All Other Devices
             </Button>
           ) : undefined
         }
       >
-        <div className="divide-y divide-gray-100">
+        <div className='divide-y divide-gray-100'>
           {loadingSessions ? (
-            <div className="p-6 text-center text-xs text-gray-500">Loading active sessions...</div>
+            <div className='p-6 text-center text-xs text-gray-500'>
+              Loading active sessions...
+            </div>
           ) : sessions.length === 0 ? (
-            <div className="p-6 text-center text-xs text-gray-500">No other active sessions detected.</div>
+            <div className='p-6 text-center text-xs text-gray-500'>
+              No other active sessions detected.
+            </div>
           ) : (
             sessions.map((s) => {
-              const isMobile = s.deviceInfo?.includes('iOS') || s.deviceInfo?.includes('Android');
+              const isMobile =
+                s.deviceInfo?.includes('iOS') ||
+                s.deviceInfo?.includes('Android');
               return (
-                <div key={s.id} className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
-                      {isMobile ? <Smartphone className="h-4 w-4" /> : <Laptop className="h-4 w-4" />}
+                <div
+                  key={s.id}
+                  className='p-4 flex items-center justify-between gap-3'
+                >
+                  <div className='flex items-center gap-3'>
+                    <div className='p-2 rounded-lg bg-gray-100 text-gray-600'>
+                      {isMobile ? (
+                        <Smartphone className='h-4 w-4' />
+                      ) : (
+                        <Laptop className='h-4 w-4' />
+                      )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-gray-900">{s.deviceInfo || 'Browser Session'}</h4>
+                      <div className='flex items-center gap-2'>
+                        <h4 className='text-xs font-bold text-gray-900'>
+                          {s.deviceInfo || 'Browser Session'}
+                        </h4>
                         {s.isCurrent && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                          <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700'>
                             Current Device
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
+                      <p className='text-[11px] text-gray-500 mt-0.5'>
                         {s.ipAddress ? `IP: ${s.ipAddress} • ` : ''}
-                        Last active: {new Date(s.lastActiveAt).toLocaleString('en-GB')}
+                        Last active:{' '}
+                        {new Date(s.lastActiveAt).toLocaleString('en-GB')}
                       </p>
                     </div>
                   </div>
 
                   {!s.isCurrent && (
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant='ghost'
+                      size='sm'
                       onClick={() => revokeSession(s.id)}
-                      className="text-xs text-gray-500 hover:text-red-600"
+                      className='text-xs text-gray-500 hover:text-red-600'
                     >
-                      <Trash2 className="h-3.5 w-3.5" /> Revoke
+                      <Trash2 className='h-3.5 w-3.5' /> Revoke
                     </Button>
                   )}
                 </div>
@@ -1203,58 +1548,70 @@ function SecurityPanel({
 
       {/* ── Change Password Card ─────────────────────────────── */}
       <Card
-        title="Change Password"
+        title='Change Password'
         subtitle="Choose a strong password you don't use anywhere else."
       >
-        <form onSubmit={onSubmit} className="grid gap-5 px-6 pb-6 lg:grid-cols-[1fr_280px]">
-          <div className="space-y-3.5">
+        <form
+          onSubmit={onSubmit}
+          className='grid gap-5 px-6 pb-6 lg:grid-cols-[1fr_280px]'
+        >
+          <div className='space-y-3.5'>
             <PasswordField
-              label="Current password"
+              label='Current password'
               value={currentPassword}
               onChange={setCurrentPassword}
               show={showCurrent}
               onToggle={() => setShowCurrent(!showCurrent)}
-              placeholder="Enter your current password"
+              placeholder='Enter your current password'
             />
             <PasswordField
-              label="New password"
+              label='New password'
               value={newPassword}
               onChange={setNewPassword}
               show={showNew}
               onToggle={() => setShowNew(!showNew)}
-              placeholder="At least 8 characters"
+              placeholder='At least 8 characters'
             />
             <Input
-              label="Confirm new password"
+              label='Confirm new password'
               type={showNew ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              placeholder="Re-enter the new password"
+              placeholder='Re-enter the new password'
             />
-            <div className="pt-1">
-              <Button type="submit" size="sm" isLoading={savingPw}>
-                <KeyRound className="h-3.5 w-3.5" /> Update password
+            <div className='pt-1'>
+              <Button type='submit' size='sm' isLoading={savingPw}>
+                <KeyRound className='h-3.5 w-3.5' /> Update password
               </Button>
             </div>
           </div>
 
           {/* Live requirements */}
-          <aside className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          <aside className='rounded-xl border border-gray-100 bg-gray-50/60 p-4'>
+            <p className='text-[11px] font-semibold uppercase tracking-wider text-gray-500'>
               Password requirements
             </p>
-            <ul className="mt-2.5 space-y-1.5">
+            <ul className='mt-2.5 space-y-1.5'>
               {checks.map((c) => (
-                <li key={c.label} className="flex items-center gap-2 text-[13px]">
+                <li
+                  key={c.label}
+                  className='flex items-center gap-2 text-[13px]'
+                >
                   <span
                     className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
-                      c.pass ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'
+                      c.pass
+                        ? 'bg-emerald-100 text-emerald-600'
+                        : 'bg-gray-200 text-gray-400'
                     }`}
                   >
-                    {c.pass ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
+                    {c.pass ? (
+                      <Check className='h-2.5 w-2.5' strokeWidth={3} />
+                    ) : null}
                   </span>
-                  <span className={c.pass ? 'text-gray-700' : 'text-gray-500'}>{c.label}</span>
+                  <span className={c.pass ? 'text-gray-700' : 'text-gray-500'}>
+                    {c.label}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -1262,12 +1619,19 @@ function SecurityPanel({
         </form>
       </Card>
 
-      <Card title="Account Overview" subtitle="User registration & status metadata.">
-        <dl className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-          <DetailRow icon={Mail} label="Signed in as" value={user?.email || '—'} />
+      <Card
+        title='Account Overview'
+        subtitle='User registration & status metadata.'
+      >
+        <dl className='grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0'>
+          <DetailRow
+            icon={Mail}
+            label='Signed in as'
+            value={user?.email || '—'}
+          />
           <DetailRow
             icon={Shield}
-            label="Account status"
+            label='Account status'
             value={user?.isActive ? 'Active' : 'Inactive'}
           />
         </dl>
@@ -1279,7 +1643,7 @@ function SecurityPanel({
 // ─── Reusable bits ─────────────────────────────────────────
 
 const fieldInputClass =
-  'block w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-[14px] text-gray-900 transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500';
+  'block w-full rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-[14px] text-gray-900 transition-all placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/5 focus:border-gray-400';
 
 function Card({
   title,
@@ -1293,17 +1657,25 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200/70 bg-white shadow-sm shadow-gray-200/50">
+    <section className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
       {(title || action) && (
-        <header className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
-          <div className="min-w-0">
-            {title && <h2 className="text-[15px] font-semibold text-gray-900">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-[13px] text-gray-500">{subtitle}</p>}
+        <header className='flex items-start justify-between gap-4 border-l-[3px] border-l-gray-900 bg-gray-50/50 px-5 py-4'>
+          <div className='min-w-0 max-w-md'>
+            {title && (
+              <h2 className='text-base font-semibold text-gray-900 tracking-tight leading-tight'>
+                {title}
+              </h2>
+            )}
+            {subtitle && (
+              <p className='mt-1 text-[13px] text-gray-600 leading-relaxed'>
+                {subtitle}
+              </p>
+            )}
           </div>
-          {action && <div className="shrink-0">{action}</div>}
+          {action && <div className='shrink-0 mt-0.5'>{action}</div>}
         </header>
       )}
-      <div className="pt-5">{children}</div>
+      <div className={title ? 'pt-2' : 'pt-5'}>{children}</div>
     </section>
   );
 }
@@ -1322,14 +1694,14 @@ function FieldShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+    <div className='space-y-1.5'>
+      <label className='flex items-center gap-1.5 text-sm font-medium text-gray-700'>
         {iconLeft}
         {label}
-        {required && <span className="text-red-500">*</span>}
+        {required && <span className='text-red-500'>*</span>}
       </label>
       {children}
-      {hint && <p className="text-[11px] text-gray-500">{hint}</p>}
+      {hint && <p className='text-[11px] text-gray-500'>{hint}</p>}
     </div>
   );
 }
@@ -1346,7 +1718,7 @@ function Select({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative">
+    <div className='relative'>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -1355,7 +1727,7 @@ function Select({
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <ChevronDown className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
     </div>
   );
 }
@@ -1376,9 +1748,9 @@ function PasswordField({
   placeholder?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <div className="relative">
+    <div className='space-y-1.5'>
+      <label className='block text-sm font-medium text-gray-700'>{label}</label>
+      <div className='relative'>
         <input
           type={show ? 'text' : 'password'}
           value={value}
@@ -1388,12 +1760,12 @@ function PasswordField({
           className={fieldInputClass + ' pr-10'}
         />
         <button
-          type="button"
+          type='button'
           onClick={onToggle}
           aria-label={show ? 'Hide password' : 'Show password'}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          className='absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600'
         >
-          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {show ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
         </button>
       </div>
     </div>
@@ -1412,16 +1784,14 @@ function DetailRow({
   capitalize?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3 px-6 py-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50">
-        <Icon className="h-4 w-4 text-gray-400" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+    <div className='flex items-start gap-3 bg-white px-5 py-4'>
+      <Icon className='h-[15px] w-[15px] text-gray-400 mt-[3px] shrink-0' />
+      <div className='min-w-0 flex-1'>
+        <dt className='text-[11px] font-medium text-gray-500 tracking-wide uppercase leading-none'>
           {label}
         </dt>
         <dd
-          className={`mt-0.5 truncate text-[13.5px] font-medium text-gray-800 ${
+          className={`mt-1.5 truncate text-[13.5px] font-medium text-gray-900 ${
             capitalize ? 'capitalize' : ''
           }`}
           title={value}
@@ -1443,13 +1813,13 @@ function Badge({
   children: React.ReactNode;
 }) {
   const tones: Record<string, string> = {
-    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    red: 'bg-red-50 text-red-700 ring-red-200',
-    slate: 'bg-slate-50 text-slate-700 ring-slate-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    red: 'bg-red-50 text-red-700 border-red-200',
+    slate: 'bg-slate-50 text-slate-700 border-slate-200',
   };
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${tones[tone]} ${capitalize ? 'capitalize' : ''}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tones[tone]} ${capitalize ? 'capitalize' : ''}`}
     >
       {children}
     </span>
@@ -1468,17 +1838,21 @@ function CopyRow({ text }: { text: string }) {
     }
   };
   return (
-    <div className="mt-0.5 flex items-center gap-2">
-      <span className="font-mono text-[13.5px] font-semibold tabular-nums text-blue-900">
+    <div className='mt-0.5 flex items-center gap-2'>
+      <span className='font-mono text-[13.5px] font-semibold tabular-nums text-blue-900'>
         {text}
       </span>
       <button
-        type="button"
+        type='button'
         onClick={onCopy}
-        className="rounded p-1 text-blue-600 transition-colors hover:bg-blue-100"
-        aria-label="Copy account number"
+        className='rounded p-1 text-blue-600 transition-colors hover:bg-blue-100'
+        aria-label='Copy account number'
       >
-        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        {copied ? (
+          <Check className='h-3.5 w-3.5' />
+        ) : (
+          <Copy className='h-3.5 w-3.5' />
+        )}
       </button>
     </div>
   );

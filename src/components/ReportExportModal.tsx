@@ -42,10 +42,12 @@ export default function ReportExportModal({
   function getDateRange(): { from: string; to: string } {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const toIso = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
     if (preset === 'custom') {
-      const from = customFrom || toIso(new Date(now.getFullYear(), now.getMonth(), 1));
+      const from =
+        customFrom || toIso(new Date(now.getFullYear(), now.getMonth(), 1));
       const to = customTo || toIso(now);
       return { from, to };
     }
@@ -75,9 +77,10 @@ export default function ReportExportModal({
     setDownloading(true);
     try {
       const { from, to } = getDateRange();
-      const endpoint = type === 'sales'
-        ? `/businesses/${businessId}/sales/report/pdf`
-        : `/businesses/${businessId}/expenses/report/pdf`;
+      const endpoint =
+        type === 'sales'
+          ? `/businesses/${businessId}/sales/report/pdf`
+          : `/businesses/${businessId}/expenses/report/pdf`;
 
       const res = await api.get(endpoint, {
         params: { from, to },
@@ -89,16 +92,23 @@ export default function ReportExportModal({
       const link = document.createElement('a');
       link.href = url;
       const label = type === 'sales' ? 'Sales-Report' : 'Expense-Report';
-      link.setAttribute('download', `${label}-${businessName.replace(/\s+/g, '_')}-${from}-to-${to}.pdf`);
+      link.setAttribute(
+        'download',
+        `${label}-${businessName.replace(/\s+/g, '_')}-${from}-to-${to}.pdf`,
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      toast.success(`${type === 'sales' ? 'Sales' : 'Expense'} report downloaded successfully`);
+      toast.success(
+        `${type === 'sales' ? 'Sales' : 'Expense'} report downloaded successfully`,
+      );
       onClose();
     } catch (err: unknown) {
-      const errorMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
+      const errorMsg = (
+        err as { response?: { data?: { error?: { message?: string } } } }
+      )?.response?.data?.error?.message;
       toast.error(errorMsg || 'Failed to download report');
     } finally {
       setDownloading(false);
@@ -108,36 +118,40 @@ export default function ReportExportModal({
   const isSales = type === 'sales';
 
   const modal = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150'>
+      <div className='bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150'>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2.5">
-            <div className={`p-2 rounded-lg ${isSales ? 'bg-primary-50 text-primary-600' : 'bg-rose-50 text-rose-600'}`}>
-              <FileText className="h-5 w-5" />
+        <div className='flex items-center justify-between px-6 py-4 border-b border-gray-100'>
+          <div className='flex items-center gap-2.5'>
+            <div
+              className={`p-2 rounded-lg ${isSales ? 'bg-primary-50 text-primary-600' : 'bg-rose-50 text-rose-600'}`}
+            >
+              <FileText className='h-5 w-5' />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900">
+              <h2 className='text-base font-semibold text-gray-900'>
                 Download {isSales ? 'Sales' : 'Expense'} Report
               </h2>
-              <p className="text-xs text-gray-400">PDF period export for {businessName}</p>
+              <p className='text-xs text-gray-400'>
+                PDF period export for {businessName}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+            className='p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer'
           >
-            <X className="h-4 w-4" />
+            <X className='h-4 w-4' />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className='p-6 space-y-4'>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+            <label className='block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2'>
               Select Period
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className='grid grid-cols-2 gap-2'>
               {[
                 { id: 'this_month', label: 'This Month' },
                 { id: '30d', label: 'Last 30 Days' },
@@ -146,7 +160,7 @@ export default function ReportExportModal({
               ].map((p) => (
                 <button
                   key={p.id}
-                  type="button"
+                  type='button'
                   onClick={() => setPreset(p.id as DatePreset)}
                   className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all cursor-pointer text-left ${
                     preset === p.id
@@ -163,7 +177,7 @@ export default function ReportExportModal({
 
             {/* Custom Range button */}
             <button
-              type="button"
+              type='button'
               onClick={() => setPreset('custom')}
               className={`w-full mt-2 px-3 py-2 text-xs font-medium rounded-lg border transition-all cursor-pointer text-left ${
                 preset === 'custom'
@@ -179,16 +193,16 @@ export default function ReportExportModal({
 
           {/* Custom Date Pickers */}
           {preset === 'custom' && (
-            <div className="grid grid-cols-2 gap-3 pt-1 animate-in fade-in duration-150">
+            <div className='grid grid-cols-2 gap-3 pt-1 animate-in fade-in duration-150'>
               <Input
-                label="From Date"
-                type="date"
+                label='From Date'
+                type='date'
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
               />
               <Input
-                label="To Date"
-                type="date"
+                label='To Date'
+                type='date'
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
               />
@@ -196,29 +210,31 @@ export default function ReportExportModal({
           )}
 
           {/* Info notice */}
-          <div className="rounded-lg bg-gray-50 border border-gray-100 p-3 text-[11px] text-gray-500">
-            Generates a printable A4 PDF report with itemized transactions, category/source breakdown, totals, and FIRS compliance headers.
+          <div className='rounded-lg bg-gray-50 border border-gray-100 p-3 text-[11px] text-gray-500'>
+            Generates a printable A4 PDF report with itemized transactions,
+            category/source breakdown, totals, and NRS compliance headers.
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2.5 px-6 py-4 bg-gray-50 border-t border-gray-100">
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={downloading}>
-            Cancel
-          </Button>
+        <div className='flex items-center justify-end gap-2.5 px-6 py-4 bg-gray-50 border-t border-gray-100'>
           <Button
-            size="sm"
-            onClick={handleDownload}
+            variant='secondary'
+            size='sm'
+            onClick={onClose}
             disabled={downloading}
           >
+            Cancel
+          </Button>
+          <Button size='sm' onClick={handleDownload} disabled={downloading}>
             {downloading ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className='h-3.5 w-3.5 animate-spin' />
                 Generating PDF...
               </>
             ) : (
               <>
-                <Download className="h-3.5 w-3.5" />
+                <Download className='h-3.5 w-3.5' />
                 Download PDF
               </>
             )}

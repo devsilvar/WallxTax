@@ -1,34 +1,43 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, ChevronLeft, ChevronRight, Eye, ToggleLeft, ToggleRight, ShieldCheck, ShieldAlert } from 'lucide-react';
-import Card from '@/components/ui/Card.tsx';
-import Button from '@/components/ui/Button.tsx';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Eye,
+  ShieldAlert,
+  ShieldCheck,
+  ToggleLeft,
+  ToggleRight,
+  Users,
+} from 'lucide-react';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { AdminUser, Pagination } from '@/types/index.ts';
+import PageHeader from './shared/PageHeader';
+import PaginationBar from './shared/Pagination';
+import { Panel, PanelEmpty } from './shared/Panel';
+import StatusPill from './shared/StatusPill';
+import { formatDate } from './shared/format';
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+const iconButton =
+  'rounded p-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none';
 
 export default function AdminUsers() {
-  const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [togglingPayout, setTogglingPayout] = useState<string | null>(null);
 
-  const fetchUsers = () => {
+  const fetchUsers = useCallback(() => {
     setIsLoading(true);
     api.get('/admin/users', { params: { page, limit: 15 } })
       .then((r) => { setUsers(r.data.data); setPagination(r.data.pagination); })
       .finally(() => setIsLoading(false));
-  };
+  }, [page]);
 
-  useEffect(() => { fetchUsers(); }, [page]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const handleToggleStatus = async (u: AdminUser) => {
     setToggling(u.id);
@@ -52,77 +61,145 @@ export default function AdminUsers() {
     } finally { setVerifying(null); }
   };
 
+  const handleToggleAutoPayout = async (u: AdminUser) => {
+    setTogglingPayout(u.id);
+    const newEnabled = !u.autoPayoutEnabled;
+    try {
+      await api.patch(`/admin/users/${u.id}/auto-payout`, { enabled: newEnabled });
+      toast.success(`User payout mode set to ${newEnabled ? 'Automatic' : 'Manual'}`);
+      setUsers((prev) =>
+        prev.map((usr) => (usr.id === u.id ? { ...usr, autoPayoutEnabled: newEnabled } : usr))
+      );
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to update payout mode');
+    } finally {
+      setTogglingPayout(null);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">Users Directory</h1>
-        <p className="mt-1 text-sm text-gray-500 font-body">Manage platform accounts, security clearance, and business associations.</p>
-      </div>
+    <div className='space-y-4'>
+      <PageHeader
+        title='Users Directory'
+        hint='Manage platform accounts, security clearance, and business associations.'
+        actions={
+          pagination && (
+            <span className='text-[11px] text-ink-muted'>
+              {pagination.total} registered {pagination.total === 1 ? 'account' : 'accounts'}
+            </span>
+          )
+        }
+      />
 
-      {isLoading && (
-        <TableSkeleton rows={8} columns={7} />
-      )}
-
-      {!isLoading && users.length === 0 && (
-        <Card className="py-16 text-center border border-gray-200/80 shadow-xs">
-          <Users className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-          <p className="text-base font-semibold text-gray-800">No users found</p>
-          <p className="mt-1 text-xs text-gray-400">No user accounts are registered matching the criteria.</p>
-        </Card>
-      )}
-
-      {!isLoading && users.length > 0 && (
-        <>
-          <Card className="p-0 overflow-hidden border border-gray-200/80 shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Role</th>
-                  <th className="px-6 py-4 hidden lg:table-cell">Businesses</th>
-                  <th className="px-6 py-4 hidden lg:table-cell">Verified</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Joined</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+      {isLoading ? (
+        <TableSkeleton rows={8} columns={8} />
+      ) : users.length === 0 ? (
+        <Panel>
+          <PanelEmpty icon={Users} title='No users found' hint='No user accounts are registered matching the criteria.' />
+        </Panel>
+      ) : (
+        <Panel className='overflow-hidden'>
+          <div className='overflow-x-auto'>
+            <table className='w-full min-w-[760px] text-left text-xs'>
+              <thead className='border-b border-hairline-strong bg-panel-subtle text-[10px] font-semibold uppercase tracking-wider text-ink-muted'>
+                <tr>
+                  <th scope='col' className='px-3 py-1.5'>Email</th>
+                  <th scope='col' className='px-3 py-1.5'>Role</th>
+                  <th scope='col' className='w-[70px] px-3 py-1.5 text-right'>Biz.</th>
+                  <th scope='col' className='px-3 py-1.5'>Payout Mode</th>
+                  <th scope='col' className='px-3 py-1.5'>Verified</th>
+                  <th scope='col' className='px-3 py-1.5'>Status</th>
+                  <th scope='col' className='px-3 py-1.5'>Joined</th>
+                  <th scope='col' className='w-[110px] px-3 py-1.5 text-right'>Actions</th>
                 </tr>
               </thead>
-              <tbody className="text-sm">
+              <tbody className='divide-y divide-hairline'>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{u.email}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                        {u.role}
-                      </span>
+                  <tr key={u.id} className='transition-colors hover:bg-panel-subtle'>
+                    <td className='px-3 py-1.5'>
+                      <Link
+                        to={`/admin/users/${u.id}`}
+                        className='font-medium text-ink hover:text-primary-600 hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
+                      >
+                        {u.email}
+                      </Link>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 hidden lg:table-cell">{u._count.businesses}</td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isVerified ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                        {u.isVerified ? 'Yes' : 'No'}
-                      </span>
+                    <td className='px-3 py-1.5'>
+                      {u.role === 'admin' ? (
+                        <StatusPill tone='neutral'>Admin</StatusPill>
+                      ) : (
+                        <span className='text-ink-muted'>User</span>
+                      )}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                        {u.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                    <td className='px-3 py-1.5 text-right font-mono tabular-nums text-ink-muted'>
+                      {u._count.businesses}
                     </td>
-                    <td className="px-6 py-4 text-gray-400">{formatDate(u.createdAt)}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button 
-                          onClick={() => handleToggleVerification(u)} 
-                          disabled={verifying === u.id} 
-                          className={`rounded-md p-2 ${u.isVerified ? 'text-green-400 hover:bg-green-50 hover:text-green-600' : 'text-yellow-400 hover:bg-yellow-50 hover:text-yellow-600'}`} 
-                          title={u.isVerified ? 'Unverify email' : 'Verify email'}
+                    <td className='px-3 py-1.5'>
+                      <div className='flex items-center gap-1.5'>
+                        <StatusPill tone={u.autoPayoutEnabled ? 'success' : 'neutral'}>
+                          {u.autoPayoutEnabled ? '⚡ Automatic' : '🔒 Manual'}
+                        </StatusPill>
+                        <button
+                          type='button'
+                          disabled={togglingPayout === u.id}
+                          onClick={() => handleToggleAutoPayout(u)}
+                          title={
+                            u.autoPayoutEnabled
+                              ? 'Switch user to manual withdrawal review'
+                              : 'Switch user to instant automatic payouts'
+                          }
+                          className='text-[11px] font-medium text-primary-600 hover:text-primary-700 hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
                         >
-                          {u.isVerified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                          {togglingPayout === u.id ? 'Saving…' : u.autoPayoutEnabled ? 'To Manual' : 'To Auto'}
                         </button>
-                        <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-md p-2 text-gray-300 hover:bg-gray-100 hover:text-gray-700" title="View details">
-                          <Eye className="h-4 w-4" />
+                      </div>
+                    </td>
+                    <td className='px-3 py-1.5'>
+                      <StatusPill tone={u.isVerified ? 'success' : 'warning'}>
+                        {u.isVerified ? 'Verified' : 'Unverified'}
+                      </StatusPill>
+                    </td>
+                    <td className='px-3 py-1.5'>
+                      <StatusPill tone={u.isActive ? 'success' : 'danger'}>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </StatusPill>
+                    </td>
+                    <td className='px-3 py-1.5 whitespace-nowrap text-ink-muted'>{formatDate(u.createdAt)}</td>
+                    <td className='px-3 py-1.5'>
+                      <div className='flex items-center justify-end gap-0.5'>
+                        <button
+                          onClick={() => handleToggleVerification(u)}
+                          disabled={verifying === u.id}
+                          aria-label={u.isVerified ? 'Unverify email' : 'Verify email'}
+                          title={u.isVerified ? 'Unverify email' : 'Verify email'}
+                          className={`${iconButton} ${
+                            u.isVerified
+                              ? 'text-success-600 hover:bg-success-50'
+                              : 'text-warning-600 hover:bg-warning-50'
+                          } disabled:opacity-40`}
+                        >
+                          {u.isVerified ? <ShieldCheck className='h-3.5 w-3.5' /> : <ShieldAlert className='h-3.5 w-3.5' />}
                         </button>
-                        <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded-md p-2 ${u.isActive ? 'text-gray-300 hover:bg-red-50 hover:text-red-600' : 'text-gray-300 hover:bg-green-50 hover:text-green-600'}`} title={u.isActive ? 'Deactivate' : 'Activate'}>
-                          {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                        <Link
+                          to={`/admin/users/${u.id}`}
+                          aria-label={`View ${u.email}`}
+                          title='View details'
+                          className={`${iconButton} text-ink-subtle hover:bg-panel-subtle hover:text-ink`}
+                        >
+                          <Eye className='h-3.5 w-3.5' />
+                        </Link>
+                        <button
+                          onClick={() => handleToggleStatus(u)}
+                          disabled={toggling === u.id}
+                          aria-label={u.isActive ? 'Deactivate user' : 'Activate user'}
+                          title={u.isActive ? 'Deactivate' : 'Activate'}
+                          className={`${iconButton} ${
+                            u.isActive
+                              ? 'text-ink-subtle hover:bg-danger-50 hover:text-danger-600'
+                              : 'text-success-600 hover:bg-success-50'
+                          } disabled:opacity-40`}
+                        >
+                          {u.isActive ? <ToggleRight className='h-3.5 w-3.5' /> : <ToggleLeft className='h-3.5 w-3.5' />}
                         </button>
                       </div>
                     </td>
@@ -130,54 +207,10 @@ export default function AdminUsers() {
                 ))}
               </tbody>
             </table>
-            </div>
-          </Card>
-
-        {/* Mobile card list */}
-        <div className="md:hidden space-y-3">
-          {users.map((u) => (
-            <Card key={u.id} className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 truncate">{u.email}</p>
-                  <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium capitalize ${u.role === 'admin' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{u.role}</span>
-                    <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${u.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{u.isActive ? 'Active' : 'Inactive'}</span>
-                    <span className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${u.isVerified ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                      {u.isVerified ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                      {u.isVerified ? 'Verified' : 'Unverified'}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-400">Joined {formatDate(u.createdAt)} · {u._count.businesses} business{u._count.businesses !== 1 ? 'es' : ''}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button 
-                    onClick={() => handleToggleVerification(u)} 
-                    disabled={verifying === u.id} 
-                    className={`rounded-md p-2 ${u.isVerified ? 'text-green-400 hover:bg-green-50 hover:text-green-600' : 'text-yellow-400 hover:bg-yellow-50 hover:text-yellow-600'}`}
-                  >
-                    {u.isVerified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-                  </button>
-                  <button onClick={() => navigate(`/admin/users/${u.id}`)} className="rounded-md p-2 text-gray-300 hover:bg-gray-100 hover:text-gray-700"><Eye className="h-4 w-4" /></button>
-                  <button onClick={() => handleToggleStatus(u)} disabled={toggling === u.id} className={`rounded-md p-2 ${u.isActive ? 'text-gray-300 hover:bg-red-50 hover:text-red-600' : 'text-gray-300 hover:bg-green-50 hover:text-green-600'}`}>
-                    {u.isActive ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-        </>
-      )}
-
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-400">Page {pagination.page} of {pagination.totalPages}</span>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" disabled={!pagination.hasPrev} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="secondary" size="sm" disabled={!pagination.hasNext} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
           </div>
-        </div>
+
+          {pagination && <PaginationBar pagination={pagination} onPageChange={setPage} noun='users' />}
+        </Panel>
       )}
     </div>
   );

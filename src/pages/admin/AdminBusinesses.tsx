@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Building2, ChevronLeft, ChevronRight } from 'lucide-react';
-import Card from '@/components/ui/Card.tsx';
-import Button from '@/components/ui/Button.tsx';
+import { Building2 } from 'lucide-react';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import type { AdminBusiness, Pagination } from '@/types/index.ts';
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+import PageHeader from './shared/PageHeader';
+import PaginationBar from './shared/Pagination';
+import { Panel, PanelEmpty } from './shared/Panel';
+import { formatDate } from './shared/format';
 
 export default function AdminBusinesses() {
   const [businesses, setBusinesses] = useState<AdminBusiness[]>([]);
@@ -24,87 +22,65 @@ export default function AdminBusinesses() {
   }, [page]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">Business Entities</h1>
-        <p className="mt-1 text-sm text-gray-500 font-body">All registered businesses filing taxes and holding dedicated virtual accounts.</p>
-      </div>
+    <div className='space-y-4'>
+      <PageHeader
+        title='Business Entities'
+        hint='All registered businesses filing taxes and holding dedicated virtual accounts.'
+        actions={
+          pagination && (
+            <span className='text-[11px] text-ink-muted'>
+              {pagination.total} registered {pagination.total === 1 ? 'entity' : 'entities'}
+            </span>
+          )
+        }
+      />
 
-      {isLoading && (
+      {isLoading ? (
         <TableSkeleton rows={8} columns={6} />
-      )}
-
-      {!isLoading && businesses.length === 0 && (
-        <Card className="py-16 text-center border border-gray-200/80 shadow-xs">
-          <Building2 className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-          <p className="text-base font-semibold text-gray-800">No businesses found</p>
-          <p className="mt-1 text-xs text-gray-400">No business entities registered on the platform.</p>
-        </Card>
-      )}
-
-      {!isLoading && businesses.length > 0 && (
-        <>
-          <Card className="p-0 overflow-hidden border border-gray-200/80 shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
-                  <th className="px-6 py-4">Business</th>
-                  <th className="px-6 py-4">Owner</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4 hidden lg:table-cell">Location</th>
-                  <th className="px-6 py-4">User</th>
-                  <th className="px-6 py-4 hidden lg:table-cell">Registered</th>
+      ) : businesses.length === 0 ? (
+        <Panel>
+          <PanelEmpty
+            icon={Building2}
+            title='No businesses found'
+            hint='No business entities registered on the platform.'
+          />
+        </Panel>
+      ) : (
+        <Panel className='overflow-hidden'>
+          <div className='overflow-x-auto'>
+            <table className='w-full min-w-[820px] text-left text-xs'>
+              <thead className='border-b border-hairline-strong bg-panel-subtle text-[10px] font-semibold uppercase tracking-wider text-ink-muted'>
+                <tr>
+                  <th scope='col' className='px-3 py-1.5'>Business</th>
+                  <th scope='col' className='px-3 py-1.5'>Owner</th>
+                  <th scope='col' className='px-3 py-1.5'>Type</th>
+                  <th scope='col' className='px-3 py-1.5'>Location</th>
+                  <th scope='col' className='px-3 py-1.5'>User</th>
+                  <th scope='col' className='px-3 py-1.5'>Registered</th>
                 </tr>
               </thead>
-              <tbody className="text-sm">
+              <tbody className='divide-y divide-hairline'>
                 {businesses.map((b) => (
-                  <tr key={b.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900">{b.businessName}</p>
-                      {b.taxId && <p className="text-xs text-gray-400">TIN: {b.taxId}</p>}
+                  <tr key={b.id} className='transition-colors hover:bg-panel-subtle'>
+                    <td className='px-3 py-1.5'>
+                      <p className='font-medium text-ink'>{b.businessName}</p>
+                      {b.taxId && <p className='font-mono text-[10px] text-ink-subtle'>TIN {b.taxId}</p>}
                     </td>
-                    <td className="px-6 py-4 text-gray-500">{b.ownerName}</td>
-                    <td className="px-6 py-4 capitalize text-gray-500">{b.businessType}</td>
-                    <td className="px-6 py-4 text-gray-400 hidden lg:table-cell">{[b.city, b.state].filter(Boolean).join(', ') || '—'}</td>
-                    <td className="px-6 py-4 text-gray-400">{b.user.email}</td>
-                    <td className="px-6 py-4 text-gray-400 hidden lg:table-cell">{formatDate(b.createdAt)}</td>
+                    <td className='px-3 py-1.5 text-ink'>{b.ownerName}</td>
+                    <td className='px-3 py-1.5 text-ink-muted'>{b.businessType}</td>
+                    <td className='px-3 py-1.5 text-ink-muted'>
+                      {[b.city, b.state].filter(Boolean).join(', ') || '—'}
+                    </td>
+                    <td className='px-3 py-1.5 text-ink-muted'>{b.user.email}</td>
+                    <td className='px-3 py-1.5 whitespace-nowrap text-ink-muted'>{formatDate(b.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            </div>
-          </Card>
-
-        {/* Mobile card list */}
-        <div className="md:hidden space-y-3">
-          {businesses.map((b) => (
-            <Card key={b.id} className="p-4">
-              <p className="font-medium text-gray-900">{b.businessName}</p>
-              {b.taxId && <p className="text-xs text-gray-400 mt-0.5">TIN: {b.taxId}</p>}
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className="inline-flex rounded-md bg-gray-50 px-2.5 py-1 text-xs font-medium capitalize text-gray-500">{b.businessType}</span>
-              </div>
-              <div className="mt-2 space-y-0.5 text-xs text-gray-400">
-                <p>Owner: <span className="text-gray-500">{b.ownerName}</span></p>
-                <p>User: <span className="text-gray-500">{b.user.email}</span></p>
-                {([b.city, b.state].filter(Boolean).join(', ')) && <p>Location: <span className="text-gray-500">{[b.city, b.state].filter(Boolean).join(', ')}</span></p>}
-                <p>Registered: <span className="text-gray-500">{formatDate(b.createdAt)}</span></p>
-              </div>
-            </Card>
-          ))}
-        </div>
-        </>
-      )}
-
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-400">Page {pagination.page} of {pagination.totalPages}</span>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" disabled={!pagination.hasPrev} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="secondary" size="sm" disabled={!pagination.hasNext} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
           </div>
-        </div>
+
+          {pagination && <PaginationBar pagination={pagination} onPageChange={setPage} noun='businesses' />}
+        </Panel>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 /**
- * Financial Formatting Utilities for PayMyTax Frontend
+ * Financial Formatting Utilities for WallXERP Frontend
  * Handles currency (NGN), compact numbers, and localized date presentation.
  */
 

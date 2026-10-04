@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Plus,
   Receipt,
+  AlertCircle,
   // Trash2 removed — delete buttons disabled per business rule
   Pencil,
   ChevronLeft,
@@ -15,6 +16,8 @@ import {
   CalendarDays,
   FileText,
   Download,
+  Wallet,
+  AlertTriangle,
 } from 'lucide-react';
 import SalesImportModal from '@/pages/SalesImportModal.tsx';
 import AddSaleModal from '@/components/AddSaleModal.tsx';
@@ -22,11 +25,14 @@ import ReportExportModal from '@/components/ReportExportModal.tsx';
 import Card from '@/components/ui/Card.tsx';
 import TransactionDetailPanel, { type TransactionDetailData } from '@/components/TransactionDetailPanel.tsx';
 
+const LazyUnverified = lazy(() => import('./UnverifiedTransactions.tsx'));
+
 import Button from '@/components/ui/Button.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import ErrorState from '@/components/ui/ErrorState.tsx';
 import EmptyState from '@/components/ui/EmptyState.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useCreditStore } from '@/stores/credit.store.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination } from '@/types/index.ts';
@@ -43,6 +49,7 @@ const SOURCES = [
   'online_store',
   'cash',
   'invoice',
+  'credit',
 ] as const;
 
 // Fixed box order for the daily strip — every payment type always has a home,
@@ -54,6 +61,7 @@ const DAILY_SOURCES = [
   'paycode',
   'online_store',
   'invoice',
+  'credit',
 ] as const;
 const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
 
@@ -133,12 +141,15 @@ const SOURCE_COLORS: Record<string, string> = {
   manual: 'bg-gray-400',
   cash: 'bg-green-600',
   invoice: 'bg-indigo-500',
+  credit: 'bg-amber-600',
 };
 
 // ─── Component ──────────────────────────────────────────────
 
 export default function Sales() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const creditSummary = useCreditStore((s) => s.summary);
+  const fetchCreditSummary = useCreditStore((s) => s.fetchSummary);
   const fetchSalesSeqRef = useRef(0);
   const fetchSummarySeqRef = useRef(0);
   const fetchDailySeqRef = useRef(0);
@@ -242,13 +253,17 @@ export default function Sales() {
   useEffect(() => {
     fetchSummary();
   }, [biz, summaryMonth, summaryYear]);
+  useEffect(() => {
+    if (biz?.id) fetchCreditSummary(biz.id);
+  }, [biz?.id, fetchCreditSummary]);
 
-  // ─── Daily tab (default) — URL-backed like TaxReports ?tab=analytics ──
+  // ─── Tabs (Daily, Monthly, Unverified Inflows) — URL-backed ──
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab: 'daily' | 'monthly' =
-    searchParams.get('tab') === 'monthly' ? 'monthly' : 'daily';
-  const setTab = (t: 'daily' | 'monthly') =>
-    setSearchParams(t === 'monthly' ? { tab: 'monthly' } : {}, { replace: true });
+  const rawTab = searchParams.get('tab');
+  const tab: 'daily' | 'monthly' | 'unverified' =
+    rawTab === 'unverified' ? 'unverified' : rawTab === 'monthly' ? 'monthly' : 'daily';
+  const setTab = (t: 'daily' | 'monthly' | 'unverified') =>
+    setSearchParams(t === 'daily' ? {} : { tab: t }, { replace: true });
 
   const fetchDaily = () => {
     if (!biz) return;
@@ -308,6 +323,7 @@ export default function Sales() {
     fetchSales();
     fetchSummary();
     fetchDaily();
+    if (biz?.id) fetchCreditSummary(biz.id);
   };
 
   // handleDelete disabled — sales entries are permanent per business rule
@@ -365,6 +381,10 @@ export default function Sales() {
       source: sale.source,
       businessId: biz!.id,
       items: sale.items,
+      invoice: sale.invoice,
+      creditOrigin: sale.creditOrigin,
+      creditPayment: sale.creditPayment,
+      accrualLinked: sale.accrualLinked,
     });
 
     if (biz && (sale.itemsCount ?? 0) > 0 && (!sale.items || sale.items.length === 0)) {
@@ -430,24 +450,111 @@ export default function Sales() {
         </div>
       </div>
 
-      {/* Daily / Monthly tabs — default is Daily (no URL param) */}
+      {/* ── Receivables & Debtors Alert Banner ─────────────── */}
+      {creditSummary && creditSummary.totalOutstanding > 0 && (
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+          <div className='flex items-center justify-between rounded-xl border border-amber-200/90 bg-amber-50/70 p-4'>
+            <div className='flex items-center gap-3'>
+              <div className='h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0'>
+                <Wallet className='h-5 w-5' />
+              </div>
+              <div>
+                <p className='text-xs font-semibold uppercase tracking-wider text-amber-800'>
+                  Outstanding Debt (Receivables)
+                </p>
+                <p className='text-lg sm:text-xl font-bold text-amber-900 tabular-nums'>
+                  {formatNaira(creditSummary.totalOutstanding)}
+                </p>
+                <p className='text-xs text-amber-700/80'>
+                  {creditSummary.activeDebtors} active debtor account{creditSummary.activeDebtors !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/debtors"
+              className='text-xs font-semibold text-amber-800 hover:text-amber-900 underline whitespace-nowrap'
+            >
+              View Debtors &rarr;
+            </Link>
+          </div>
+
+          {creditSummary.overdueAmount > 0 && (
+            <div className='flex items-center justify-between rounded-xl border border-rose-200/90 bg-rose-50/70 p-4'>
+              <div className='flex items-center gap-3'>
+                <div className='h-10 w-10 rounded-lg bg-rose-100 flex items-center justify-center text-rose-700 shrink-0'>
+                  <AlertTriangle className='h-5 w-5' />
+                </div>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-wider text-rose-800'>
+                    Past Due / Overdue Debt
+                  </p>
+                  <p className='text-lg sm:text-xl font-bold text-rose-900 tabular-nums'>
+                    {formatNaira(creditSummary.overdueAmount)}
+                  </p>
+                  <p className='text-xs text-rose-700/80'>
+                    Requires immediate collection / reminder
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/debtors?status=overdue"
+                className='text-xs font-semibold text-rose-800 hover:text-rose-900 underline whitespace-nowrap'
+              >
+                Send Reminders &rarr;
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Daily / Monthly / Unverified tabs — default is Daily (no URL param) */}
       <div className='flex w-fit gap-1 rounded-lg bg-gray-100 p-1'>
-        {(['daily', 'monthly'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
-              tab === t
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+        <button
+          onClick={() => setTab('daily')}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'daily'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Daily
+        </button>
+        <button
+          onClick={() => setTab('monthly')}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'monthly'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setTab('unverified')}
+          className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === 'unverified'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <AlertCircle className='h-4 w-4 text-amber-500' />
+          Unverified Inflows
+        </button>
       </div>
 
-      {tab === 'monthly' && (
+      {tab === 'unverified' ? (
+        <Suspense
+          fallback={
+            <div className='py-12 text-center text-sm font-body text-gray-400'>
+              Loading unverified transactions...
+            </div>
+          }
+        >
+          <LazyUnverified embedded={true} />
+        </Suspense>
+      ) : (
+        <>
+          {tab === 'monthly' && (
         <>
       {/* Monthly Summary */}
       <Card>
@@ -490,13 +597,34 @@ export default function Sales() {
         ) : (
           <div className='space-y-4'>
             {/* Totals row */}
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
               <div className='rounded-lg bg-green-50 px-4 py-3'>
                 <p className='font-body text-xs text-green-600 uppercase tracking-wider'>
                   Total Sales
                 </p>
                 <p className='mt-1 text-xl font-bold text-green-700'>
                   {formatNaira(Number(summary.totalSales))}
+                </p>
+              </div>
+              <div className='rounded-lg bg-emerald-50 px-4 py-3'>
+                <p className='font-body text-xs text-emerald-600 uppercase tracking-wider'>
+                  Collected (Cash)
+                </p>
+                <p className='mt-1 text-xl font-bold text-emerald-700'>
+                  {formatNaira(
+                    Number(summary.totalSales) -
+                    Number(summary.sourceBreakdown.find((s) => s.source === 'credit')?.total ?? 0)
+                  )}
+                </p>
+              </div>
+              <div className='rounded-lg bg-amber-50 px-4 py-3'>
+                <p className='font-body text-xs text-amber-600 uppercase tracking-wider'>
+                  Credit / Debt Issued
+                </p>
+                <p className='mt-1 text-xl font-bold text-amber-700'>
+                  {formatNaira(
+                    Number(summary.sourceBreakdown.find((s) => s.source === 'credit')?.total ?? 0)
+                  )}
                 </p>
               </div>
               <div className='rounded-lg bg-gray-50 px-4 py-3'>
@@ -709,7 +837,7 @@ export default function Sales() {
                       <div className='flex items-center gap-1.5 flex-wrap'>
                         <span>{s.description || '—'}</span>
                         {(s.itemsCount ?? 0) > 0 && (
-                          <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'>
+                          <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700'>
                             · {s.itemsCount} {s.itemsCount === 1 ? 'item type' : 'item types'}
                           </span>
                         )}
@@ -775,7 +903,7 @@ export default function Sales() {
                     <div className='mt-1 text-sm text-gray-600 truncate flex items-center gap-1.5'>
                       <span>{s.description || '—'}</span>
                       {(s.itemsCount ?? 0) > 0 && (
-                        <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'>
+                        <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700'>
                           · {s.itemsCount} {s.itemsCount === 1 ? 'item type' : 'item types'}
                         </span>
                       )}
@@ -876,7 +1004,7 @@ export default function Sales() {
             <div className='space-y-4'>
               {/* Boxes strip — Total Today + one box per payment type.
                   ₦0 types stay visible (dimmed) so the layout is stable. */}
-              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7'>
+              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8'>
                 <div className='col-span-2 rounded-lg bg-primary-50 px-4 py-3 sm:col-span-4 lg:col-span-1'>
                   <p className='font-body text-xs uppercase tracking-wider text-primary-600'>
                     Total {daily.date === todayStr ? 'Today' : ''}
@@ -955,7 +1083,7 @@ export default function Sales() {
                             <div className='flex items-center gap-1.5 flex-wrap'>
                               <span>{t.description || '—'}</span>
                               {(t.itemsCount ?? 0) > 0 && (
-                                <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'>
+                                <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700'>
                                   · {t.itemsCount} {t.itemsCount === 1 ? 'item type' : 'item types'}
                                 </span>
                               )}
@@ -1012,6 +1140,8 @@ export default function Sales() {
           )}
         </Card>
       )}
+        </>
+      )}
 
       {/* Import modal — mounted once per page so it retains step state
           between opens until explicitly closed. */}
@@ -1033,6 +1163,7 @@ export default function Sales() {
             fetchSales();
             fetchSummary();
             fetchDaily();
+            if (biz?.id) fetchCreditSummary(biz.id);
           }}
         />
       )}
@@ -1072,7 +1203,7 @@ export default function Sales() {
       )}
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
+      {tab !== 'unverified' && pagination && pagination.totalPages > 1 && (
         <div className='flex items-center justify-between'>
           <span className='font-body text-xs text-gray-400'>
             Page {pagination.page} of {pagination.totalPages}

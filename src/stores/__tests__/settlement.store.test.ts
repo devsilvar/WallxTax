@@ -12,7 +12,6 @@ describe('useSettlementStore - Race Condition & Sequence Guard Tests (Phase 2)',
       loadingPreview: false,
       loadingHistory: false,
       withdrawing: false,
-      connectingBank: false,
       updatingAutoSplit: false,
       pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
     });

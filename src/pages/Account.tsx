@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ShieldAlert } from 'lucide-react';
+import Button from '@/components/ui/Button.tsx';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useSettlementStore } from '@/stores/settlement.store.ts';
+import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import toast from 'react-hot-toast';
 import type { TransactionDetailData } from '@/components/TransactionDetailPanel';
 import { useAccountData } from '@/hooks/useAccountData.ts';
@@ -18,6 +21,7 @@ import {
   AccountModals,
   AccountHeader,
   AccountFeedSection,
+  type PayoutItem,
 } from '@/components/account';
 
 export default function Account() {
@@ -27,11 +31,26 @@ export default function Account() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const user = useAuthStore((s) => s.user);
 
+  const isOwner = Boolean(
+    biz ? (biz.myRole === 'owner' || biz.userId === user?.id) : user?.isOwnerAccount !== false
+  );
+
+  const canViewAccount = Boolean(
+    isOwner ||
+    hasPerm('wallet.read', biz, user?.id) ||
+    biz?.myRole === 'manager' ||
+    biz?.myRole === 'accountant'
+  );
+
+  const navigate = useNavigate();
+
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAutoSplitPinModal, setShowAutoSplitPinModal] = useState(false);
+  const [showAutoPayoutPinModal, setShowAutoPayoutPinModal] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
+  const [selectedPayout, setSelectedPayout] = useState<PayoutItem | null>(null);
 
   const settlementPreview = useSettlementStore((s) => s.preview);
   const regulatory = useSettlementStore((s) => s.regulatory);
@@ -39,6 +58,8 @@ export default function Account() {
   const fetchSettlementPreview = useSettlementStore((s) => s.fetchPreview);
   const toggleAutoSplit = useSettlementStore((s) => s.toggleAutoSplit);
   const updatingAutoSplit = useSettlementStore((s) => s.updatingAutoSplit);
+  const toggleAutoPayout = useSettlementStore((s) => s.toggleAutoPayout);
+  const updatingAutoPayout = useSettlementStore((s) => s.updatingAutoPayout);
   const payoutHistory = useSettlementStore((s) => s.history);
   const fetchPayoutHistory = useSettlementStore((s) => s.fetchHistory);
   const loadingPayoutHistory = useSettlementStore((s) => s.loadingHistory);
@@ -58,7 +79,7 @@ export default function Account() {
     loadingTransactions, moneyIn, isRefreshing, fetchDVA,
     fetchTransactions, refreshAccountData,
   } = useAccountData(
-    biz?.id, biz?.virtualAccountNumber || user?.virtualAccountNumber || undefined,
+    canViewAccount ? biz?.id : undefined, biz?.virtualAccountNumber || user?.virtualAccountNumber || undefined,
     biz?.virtualAccountBank || user?.virtualAccountBank || undefined,
     fetchBusinesses, fetchMe, fetchSettlementPreview,
     fetchPayoutHistory, payoutStatusFilter, payoutSearch
@@ -106,6 +127,25 @@ export default function Account() {
     );
   }
 
+  if (!canViewAccount) {
+    return (
+      <div className="mx-auto max-w-md py-16 px-4 text-center animate-fade-in">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 mb-4 shadow-xs">
+          <ShieldAlert className="h-7 w-7" />
+        </div>
+        <h2 className="text-base font-bold text-gray-900">Bank Account Access Restricted</h2>
+        <p className="mt-2 text-xs text-gray-600 leading-relaxed">
+          You do not have permission to view dedicated bank account details or wallet balances for <strong>{biz.businessName}</strong>. Access is restricted to the Business Owner, Manager, and Accountant.
+        </p>
+        <div className="mt-6 flex justify-center">
+          <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} className="text-xs">
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const isActive = dva?.status === 'active';
   const isVerifying = !isActive && (awaitingValidation || dva?.status === 'pending');
 
@@ -128,7 +168,7 @@ export default function Account() {
             isLoading={isBalanceLoading}
             isRefreshing={isRefreshing}
             onRefresh={() => refreshAccountData(true)}
-            onWithdraw={() => setShowPayoutModal(true)}
+            onWithdraw={isOwner ? () => setShowPayoutModal(true) : undefined}
             onExportStatement={() => setShowExportModal(true)}
             onShareDetails={handleShare}
             settlementConnected={isSettlementLinked}
@@ -177,12 +217,14 @@ export default function Account() {
               onStatusFilterChange={setPayoutStatusFilter}
               onSearchChange={setPayoutSearch}
               onPageChange={(page) => fetchPayoutHistory(biz.id, page, payoutStatusFilter !== 'all' ? payoutStatusFilter : undefined, payoutSearch)}
-              onRequestWithdrawal={() => setShowPayoutModal(true)}
+              onRequestWithdrawal={isOwner ? () => setShowPayoutModal(true) : undefined}
+              onSelectPayout={(payout) => setSelectedPayout(payout)}
             />
 
             <div className="space-y-6">
               <SettlementBankCard
                 isLinked={isSettlementLinked}
+                isOwner={isOwner}
                 bankName={resolvedBankName}
                 accountNumber={resolvedAccountNum || undefined}
                 accountName={resolvedAccountName || biz.ownerName}
@@ -190,23 +232,28 @@ export default function Account() {
                 pendingWithdrawn={settlementPreview?.pooledPendingWithdrawn ?? settlementPreview?.pendingWithdrawn ?? 0}
                 autoSplitEnabled={Boolean(settlementPreview?.autoSplit.enabled)}
                 updatingAutoSplit={updatingAutoSplit}
+                autoPayoutEnabled={Boolean(settlementPreview?.autoPayoutEnabled)}
+                updatingAutoPayout={updatingAutoPayout}
                 isBalanceLoading={isBalanceLoading}
-                onWithdraw={() => setShowPayoutModal(true)}
-                onToggleAutoSplit={() => setShowAutoSplitPinModal(true)}
+                onWithdraw={isOwner ? () => setShowPayoutModal(true) : undefined}
+                onToggleAutoSplit={isOwner ? () => setShowAutoSplitPinModal(true) : undefined}
+                onToggleAutoPayout={isOwner ? () => setShowAutoPayoutPinModal(true) : undefined}
                 banks={banks}
                 banksLoading={banksLoading}
                 banksError={banksError}
-                onSettlementLinkedSuccess={async () => {
+                onSettlementLinkedSuccess={isOwner ? async () => {
                   await fetchBusinesses(true);
                   if (biz?.id) await fetchSettlementPreview(biz.id);
-                }}
+                } : undefined}
               />
 
-              <ComplianceTierCard
-                businessName={biz.businessName}
-                bvnVerifiedAt={user?.bvnVerifiedAt}
-                regulatory={regulatory}
-              />
+              {isOwner && (
+                <ComplianceTierCard
+                  businessName={biz.businessName}
+                  bvnVerifiedAt={user?.bvnVerifiedAt}
+                  regulatory={regulatory}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -257,6 +304,10 @@ export default function Account() {
             }
           },
         }}
+        payoutDetailPanel={{
+          payout: selectedPayout,
+          onClose: () => setSelectedPayout(null),
+        }}
         payoutModal={{
           isOpen: showPayoutModal,
           onClose: () => setShowPayoutModal(false),
@@ -277,6 +328,20 @@ export default function Account() {
             if (biz?.id) {
               await toggleAutoSplit(biz.id, {
                 enabled: !settlementPreview?.autoSplit.enabled,
+                stepUpToken,
+              });
+            }
+          },
+        }}
+        autoPayoutPinModal={{
+          isOpen: showAutoPayoutPinModal,
+          onClose: () => setShowAutoPayoutPinModal(false),
+          enabled: Boolean(settlementPreview?.autoPayoutEnabled),
+          onSuccess: async (stepUpToken: string) => {
+            setShowAutoPayoutPinModal(false);
+            if (biz?.id) {
+              await toggleAutoPayout(biz.id, {
+                enabled: !Boolean(settlementPreview?.autoPayoutEnabled),
                 stepUpToken,
               });
             }

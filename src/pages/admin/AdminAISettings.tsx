@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react';
 import {
-  CheckCircle2,
   AlertCircle,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Eye,
   EyeOff,
   RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Bot,
 } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
+import PageHeader from './shared/PageHeader';
+import { Panel } from './shared/Panel';
+import StatusPill from './shared/StatusPill';
+import { formatStamp } from './shared/format';
 
 export interface AIModelSpec {
   slug: string;
@@ -154,6 +160,16 @@ const PROVIDER_PRESETS: AIProviderPreset[] = [
     suggestedModels: ['llama3:latest', 'mistral', 'qwen2.5:14b'],
   },
 ];
+
+const inputClass =
+  'h-8 w-full rounded border border-hairline-strong bg-panel px-2.5 font-mono text-xs text-ink placeholder:text-ink-subtle focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 focus:outline-none';
+
+const fieldLabel = 'mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-ink-muted';
+const inlineFieldLabel = 'text-[10px] font-semibold uppercase tracking-wider text-ink-muted';
+
+/** Matches SegmentedControl's pill shape; the badge is the only delta. */
+const pillBase =
+  'inline-flex h-7 items-center gap-1.5 rounded border px-2.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none';
 
 export default function AdminAISettings() {
   const [loading, setLoading] = useState(true);
@@ -339,61 +355,62 @@ export default function AdminAISettings() {
         ? { slug: matchedModelItem, free: matchedModelItem.includes(':free') }
         : null;
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-fade-in">
-      {/* Header — Clean, typography-first, no icons next to title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 font-sans">AI Settings</h1>
-          <p className="mt-1 text-sm text-gray-500 font-body">
-            Configure the AI provider, model, and credentials powering the SME assistant.
-          </p>
-        </div>
-
-        {/* Master Switch */}
-        <div className="flex items-center gap-2.5">
-          <span className="text-xs font-semibold text-gray-500">Status:</span>
-          <button
-            type="button"
-            onClick={() => setIsActive(!isActive)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              isActive
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 shadow-2xs'
-                : 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100 shadow-2xs'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-            {isActive ? 'Active (Live)' : 'Disabled'}
-          </button>
-        </div>
+  if (loading) {
+    return (
+      <div className='max-w-3xl space-y-4'>
+        <Skeleton width={200} height={26} rounded='lg' />
+        <Skeleton width='100%' height={56} rounded='lg' />
+        <Skeleton width='100%' height={420} rounded='lg' />
       </div>
+    );
+  }
 
-      {/* 1-Click Provider Selector (Minimalist Pills) */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-          Choose Provider Preset
-        </label>
-        <div className="flex flex-wrap gap-2">
+  return (
+    <div className='max-w-3xl space-y-4 pb-12'>
+      <PageHeader
+        title='AI Settings'
+        hint='Configure the AI provider, model, and credentials powering the SME assistant.'
+        actions={
+          <button
+            type='button'
+            onClick={() => setIsActive(!isActive)}
+            aria-pressed={isActive}
+            className='rounded focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
+            title='Toggles whether the assistant is enabled once you save'
+          >
+            <StatusPill tone={isActive ? 'success' : 'danger'}>
+              {isActive ? 'Active (Live)' : 'Disabled'}
+            </StatusPill>
+          </button>
+        }
+      />
+
+      <Panel className='px-3 py-2.5'>
+        <p className='mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-muted'>
+          Provider preset
+        </p>
+        <div className='flex flex-wrap gap-1.5'>
           {PROVIDER_PRESETS.map((p) => {
             const isSelected = selectedPresetId === p.id;
             return (
               <button
                 key={p.id}
-                type="button"
+                type='button'
+                aria-pressed={isSelected}
                 onClick={() => handleSelectPreset(p)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                className={`${pillBase} ${
                   isSelected
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                    ? 'border-hairline-strong bg-ink font-semibold text-panel'
+                    : 'border-hairline bg-panel text-ink-muted hover:bg-panel-subtle hover:text-ink'
                 }`}
               >
-                <span>{p.name}</span>
+                {p.name}
                 {p.free && (
                   <span
-                    className={`text-[9px] px-1 py-0.5 rounded font-bold uppercase tracking-wide ${
+                    className={`rounded px-1 text-[9px] font-semibold uppercase tracking-wider ${
                       isSelected
-                        ? 'bg-purple-700 text-white'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        ? 'bg-white/15 text-panel'
+                        : 'border border-success-200 bg-success-50 text-success-700'
                     }`}
                   >
                     Free
@@ -403,114 +420,109 @@ export default function AdminAISettings() {
             );
           })}
         </div>
-      </div>
+      </Panel>
 
-      {/* Main Configuration Card */}
       <form onSubmit={handleSave}>
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 sm:p-7 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Label / Name */}
+        <Panel className='divide-y divide-hairline'>
+          <div className='grid grid-cols-1 gap-4 p-3 sm:grid-cols-2'>
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Provider Name
+              <label htmlFor='ai-name' className={fieldLabel}>
+                Provider name
               </label>
               <input
-                type="text"
+                id='ai-name'
+                type='text'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Groq Cloud or OpenRouter"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100 transition-all shadow-2xs"
+                placeholder='e.g. Groq Cloud or OpenRouter'
+                className={inputClass}
                 required
               />
             </div>
 
-            {/* Provider Type */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Provider Protocol
+              <label htmlFor='ai-provider' className={fieldLabel}>
+                Provider protocol
               </label>
               <select
+                id='ai-provider'
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-900 text-sm focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100 transition-all shadow-2xs cursor-pointer"
+                className={`${inputClass} cursor-pointer`}
               >
-                <option value="groq">Groq Cloud (OpenAI-compatible)</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="openai">OpenAI (ChatGPT)</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="xai">xAI (Grok)</option>
-                <option value="deepseek">DeepSeek</option>
-                <option value="custom">Custom / Self-Hosted</option>
+                <option value='groq'>Groq Cloud (OpenAI-compatible)</option>
+                <option value='openrouter'>OpenRouter</option>
+                <option value='openai'>OpenAI (ChatGPT)</option>
+                <option value='gemini'>Google Gemini</option>
+                <option value='xai'>xAI (Grok)</option>
+                <option value='deepseek'>DeepSeek</option>
+                <option value='custom'>Custom / Self-Hosted</option>
               </select>
             </div>
 
-            {/* Base URL */}
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                API Base URL
+            <div className='sm:col-span-2'>
+              <label htmlFor='ai-baseurl' className={fieldLabel}>
+                API base URL
               </label>
               <input
-                type="url"
+                id='ai-baseurl'
+                type='url'
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://api.openai.com/v1"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/60 border border-gray-300 text-gray-900 placeholder:text-gray-400 text-sm font-mono focus:outline-none focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 transition-all shadow-2xs"
+                placeholder='https://api.openai.com/v1'
+                className={inputClass}
                 required
               />
             </div>
 
-            {/* API Key */}
-            <div className="sm:col-span-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                  <span>API Key</span>
-                  {hasApiKey && (
-                    <span className="text-emerald-700 text-xs font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Active: {maskedApiKey}
-                    </span>
-                  )}
+            <div className='sm:col-span-2'>
+              <div className='mb-1.5 flex items-center justify-between gap-2'>
+                <label htmlFor='ai-key' className='flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-ink-muted'>
+                  API key
+                  {hasApiKey && <StatusPill tone='success'>{maskedApiKey}</StatusPill>}
                 </label>
-                <span className="text-xs text-gray-400">
+                <span className='text-[10px] text-ink-subtle'>
                   {hasApiKey ? 'Leave blank to keep existing key' : 'Required'}
                 </span>
               </div>
-              <div className="relative">
+              <div className='relative'>
                 <input
+                  id='ai-key'
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={hasApiKey ? '••••••••••••••••••••••••••••••••' : 'Enter secret key (sk-...)'}
-                  className="w-full pl-3.5 pr-11 py-2.5 rounded-xl bg-gray-50/60 border border-gray-300 text-gray-900 placeholder:text-gray-400 text-sm font-mono focus:outline-none focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 transition-all shadow-2xs"
+                  placeholder={hasApiKey ? '••••••••••••••••••••••••••••••••' : 'Enter secret key (sk-…)'}
+                  className={`${inputClass} pl-2.5 pr-8`}
                 />
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1 cursor-pointer"
+                  aria-label={showKey ? 'Hide API key' : 'Show API key'}
+                  className='absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-ink-subtle transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
                 >
-                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showKey ? <EyeOff className='h-3.5 w-3.5' /> : <Eye className='h-3.5 w-3.5' />}
                 </button>
               </div>
             </div>
 
-            {/* Model Name */}
-            <div className="sm:col-span-2 space-y-2">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Model Identifier
+            <div className='sm:col-span-2 space-y-2'>
+              <label htmlFor='ai-model' className={fieldLabel}>
+                Model identifier
               </label>
               <input
-                type="text"
+                id='ai-model'
+                type='text'
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder="e.g. qwen/qwen3.8-27b, gpt-4o-mini, or nvidia/nemotron-3-ultra:free"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50/60 border border-gray-300 text-gray-900 placeholder:text-gray-400 text-sm font-mono focus:outline-none focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-100 transition-all shadow-2xs"
+                placeholder='e.g. qwen/qwen3.8-27b, gpt-4o-mini, or nvidia/nemotron-3-ultra:free'
+                className={inputClass}
                 required
               />
 
-              {/* Clickable Model Suggestions */}
               {currentPreset?.suggestedModels && currentPreset.suggestedModels.length > 0 && (
-                <div className="space-y-2.5 pt-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-semibold text-gray-500 mr-1">Quick select:</span>
+                <>
+                  <div className='flex flex-wrap items-center gap-1.5 pt-0.5'>
+                    <span className='mr-0.5 text-[11px] font-semibold text-ink-muted'>Quick select</span>
                     {currentPreset.suggestedModels.map((item) => {
                       const spec: AIModelSpec =
                         typeof item === 'string'
@@ -520,168 +532,178 @@ export default function AdminAISettings() {
                       return (
                         <button
                           key={spec.slug}
-                          type="button"
+                          type='button'
+                          aria-pressed={isSelected}
                           onClick={() => {
                             setModel(spec.slug);
                             if (spec.recommendedTokens) setMaxTokens(spec.recommendedTokens);
                             if (spec.recommendedTemp !== undefined) setTemperature(spec.recommendedTemp);
                           }}
-                          className={`text-xs px-2.5 py-1 rounded-lg border font-mono transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                          className={`${pillBase} font-mono ${
                             isSelected
-                              ? 'bg-purple-100 text-purple-900 border-purple-300 font-bold shadow-2xs'
-                              : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200 hover:text-gray-900'
+                              ? 'border-hairline-strong bg-ink font-semibold text-panel'
+                              : 'border-hairline bg-panel text-ink-muted hover:bg-panel-subtle hover:text-ink'
                           }`}
                         >
                           {spec.free && (
-                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              FREE
+                            <span className='rounded border border-success-200 bg-success-50 px-1 text-[9px] font-semibold uppercase tracking-wider text-success-700'>
+                              Free
                             </span>
                           )}
-                          <span>{spec.label || spec.slug}</span>
+                          {spec.label || spec.slug}
                         </button>
                       );
                     })}
                   </div>
 
-                  {/* Active Selected Model Specification Card */}
                   {activeModelSpec && (
-                    <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl text-xs text-purple-950 flex items-start gap-2.5 animate-fade-in">
-                      <Bot className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-gray-900">{activeModelSpec.label || activeModelSpec.slug}</span>
+                    <div className='flex items-start gap-2.5 rounded border border-info-200 bg-info-50 px-3 py-2.5'>
+                      <Bot className='mt-0.5 h-4 w-4 shrink-0 text-info-600' aria-hidden='true' />
+                      <div className='min-w-0'>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <span className='text-xs font-semibold text-ink'>
+                            {activeModelSpec.label || activeModelSpec.slug}
+                          </span>
                           {activeModelSpec.badge && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <span className='rounded border border-success-200 bg-success-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-success-700'>
                               {activeModelSpec.badge}
                             </span>
                           )}
                           {activeModelSpec.recommendedTokens && (
-                            <span className="text-[11px] text-purple-700 font-mono">
-                              Optimal: {activeModelSpec.recommendedTokens} tokens • {activeModelSpec.recommendedTemp} temp
+                            <span className='font-mono text-[10px] text-ink-muted'>
+                              Optimal: {activeModelSpec.recommendedTokens} tokens · temp{' '}
+                              {activeModelSpec.recommendedTemp}
                             </span>
                           )}
                         </div>
                         {activeModelSpec.description && (
-                          <p className="text-gray-600 mt-1 text-[11px] leading-relaxed font-body">
+                          <p className='mt-1 text-[11px] leading-relaxed text-ink-muted'>
                             {activeModelSpec.description}
                           </p>
                         )}
                       </div>
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </div>
 
-          {/* Collapsible Advanced Parameters */}
-          <div className="border-t border-gray-100 pt-3">
+          <div className='p-3'>
             <button
-              type="button"
+              type='button'
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-1.5 py-1 cursor-pointer transition-colors"
+              aria-expanded={showAdvanced}
+              className='flex items-center gap-1.5 rounded text-xs font-medium text-ink-muted transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
             >
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              <span>{showAdvanced ? 'Hide advanced parameters' : 'Advanced parameters (Temperature & Tokens)'}</span>
+              {showAdvanced ? (
+                <ChevronUp className='h-3.5 w-3.5' aria-hidden='true' />
+              ) : (
+                <ChevronDown className='h-3.5 w-3.5' aria-hidden='true' />
+              )}
+              {showAdvanced ? 'Hide advanced parameters' : 'Advanced parameters (temperature & tokens)'}
             </button>
 
             {showAdvanced && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 mt-2 bg-gray-50/50 p-4 rounded-xl border border-gray-200/80">
+              <div className='mt-2 grid grid-cols-1 gap-4 rounded border border-hairline bg-panel-subtle p-3 sm:grid-cols-2'>
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Temperature: <span className="text-purple-700 font-mono">{temperature}</span>
+                  <div className='mb-2 flex items-center justify-between gap-2'>
+                    <label htmlFor='ai-temp' className={inlineFieldLabel}>
+                      Temperature{' '}
+                      <span className='font-mono text-ink'>{temperature}</span>
                     </label>
-                    <span className="text-[11px] text-gray-400">0.3 is optimal for tax logic</span>
+                    <span className='text-[10px] text-ink-subtle'>0.3 is optimal for tax logic</span>
                   </div>
                   <input
-                    type="range"
-                    min="0.0"
-                    max="1.0"
-                    step="0.05"
+                    id='ai-temp'
+                    type='range'
+                    min='0.0'
+                    max='1.0'
+                    step='0.05'
                     value={temperature}
                     onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className="w-full accent-purple-600 cursor-pointer"
+                    className='w-full cursor-pointer accent-primary-600'
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Max Output Tokens
+                  <label htmlFor='ai-tokens' className={fieldLabel}>
+                    Max output tokens
                   </label>
                   <input
-                    type="number"
-                    min="100"
-                    max="4096"
-                    step="64"
+                    id='ai-tokens'
+                    type='number'
+                    min='100'
+                    max='4096'
+                    step='64'
                     value={maxTokens}
                     onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 1024)}
-                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-900 text-sm font-mono focus:outline-none focus:border-purple-600 transition-all shadow-2xs"
+                    className={inputClass}
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Test Connection Output */}
           {testResult?.tested && (
             <div
-              className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 transition-all ${
+              role='status'
+              aria-live='polite'
+              className={`flex items-start gap-2.5 px-3 py-2.5 ${
                 testResult.success
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                  : 'bg-red-50 border-red-200 text-red-900'
+                  ? 'border-y border-success-200 bg-success-50'
+                  : 'border-y border-danger-200 bg-danger-50'
               }`}
             >
               {testResult.success ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle2 className='mt-0.5 h-4 w-4 shrink-0 text-success-600' aria-hidden='true' />
               ) : (
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <AlertCircle className='mt-0.5 h-4 w-4 shrink-0 text-danger-600' aria-hidden='true' />
               )}
-              <div className="flex-1 min-w-0 space-y-1">
-                <div className="font-bold flex items-center gap-2">
-                  <span>{testResult.success ? 'Connection Verified' : 'Connection Failed'}</span>
+              <div className='min-w-0 flex-1 space-y-1'>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <span
+                    className={`text-xs font-semibold ${
+                      testResult.success ? 'text-success-700' : 'text-danger-700'
+                    }`}
+                  >
+                    {testResult.success ? 'Connection verified' : 'Connection failed'}
+                  </span>
                   {testResult.latencyMs !== undefined && (
-                    <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">
-                      {testResult.latencyMs}ms
-                    </span>
+                    <span className='font-mono text-[10px] text-success-700'>{testResult.latencyMs}ms</span>
                   )}
                 </div>
-                <div className="font-mono text-[11px] leading-relaxed break-words opacity-90">
+                <p className='break-words font-mono text-[11px] leading-relaxed text-ink-muted'>
                   {testResult.success ? `Response: "${testResult.reply}"` : testResult.error}
-                </div>
+                </p>
               </div>
             </div>
           )}
 
-          {/* Actions Bar */}
-          <div className="border-t border-gray-200 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                type="button"
+          <div className='flex flex-col items-stretch justify-between gap-2 p-3 sm:flex-row sm:items-center'>
+            <div className='flex items-center gap-3'>
+              <Button
+                type='button'
+                variant='secondary'
+                size='sm'
                 onClick={handleTestConnection}
                 disabled={testing || loading}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 hover:text-gray-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-2xs"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} />
-                {testing ? 'Testing Endpoint...' : 'Test Connection'}
-              </button>
-
+                <RefreshCw className={`h-3.5 w-3.5 ${testing ? 'animate-spin' : ''}`} />
+                {testing ? 'Testing endpoint…' : 'Test Connection'}
+              </Button>
               {updatedAt && (
-                <span className="hidden sm:inline text-[11px] text-gray-400">
-                  Updated {new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <span className='hidden text-[11px] text-ink-subtle sm:inline'>
+                  Updated {formatStamp(updatedAt)}
                 </span>
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={saving || loading}
-              className="w-full sm:w-auto px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-            >
-              {saving ? 'Saving...' : 'Save Configuration'}
-            </button>
+            <Button type='submit' size='sm' disabled={saving || loading} isLoading={saving}>
+              {saving ? 'Saving…' : 'Save Configuration'}
+            </Button>
           </div>
-        </div>
+        </Panel>
       </form>
     </div>
   );
