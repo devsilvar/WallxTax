@@ -161,7 +161,7 @@ export default function VerifyEmail() {
             <Button
               type='submit'
               isLoading={isResending}
-              className='w-full py-3 text-[15px] rounded-lg'
+              className='w-full py-3 text-[15px] rounded-full'
             >
               Send new link
               {!isResending && <ArrowRight className='h-4.5 w-4.5 ml-2' />}
@@ -265,7 +265,7 @@ export default function VerifyEmail() {
         >
           <Button
             type='button'
-            className='w-full py-3.5 text-base font-semibold shadow-md shadow-primary-500/20 rounded-xl flex items-center justify-center gap-2 group'
+            className='w-full py-3.5 text-base font-semibold shadow-md shadow-primary-500/20 rounded-full flex items-center justify-center gap-2 group'
           >
             <span>Log in to your account</span>
             <ArrowRight

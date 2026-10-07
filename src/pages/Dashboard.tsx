@@ -48,7 +48,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import api from '@/lib/axios.ts';
-import type { TaxReport, SalesTransaction, Expense } from '@/types/index.ts';
+import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/types/index.ts';
 
 // Recharts is ~100kB gzipped and this is the post-login landing page. Keeping
 // the chart out of the dashboard chunk lets the KPI strip, trends and activity
@@ -367,6 +367,24 @@ function getGreetingLabel(): string {
     return hour < 12 ? 'Good morning' : 'Good afternoon';
   if (bucket === 'sunset') return 'Good evening';
   return hour < 5 ? 'Working late' : 'Good evening';
+}
+
+export function resolveGreetingName(
+  user: User | null | undefined,
+  activeBusiness: Business | null | undefined,
+): string {
+  const userFirst = user?.fullName?.trim().split(/\s+/)[0];
+  if (userFirst) return userFirst;
+
+  const isOwner = Boolean(
+    user?.id && activeBusiness?.userId && user.id === activeBusiness.userId,
+  );
+  if (isOwner && activeBusiness?.ownerName) {
+    const ownerFirst = activeBusiness.ownerName.trim().split(/\s+/)[0];
+    if (ownerFirst) return ownerFirst;
+  }
+
+  return '';
 }
 
 function getHealthScore(
@@ -850,7 +868,7 @@ export default function Dashboard() {
   const trends = dashboard?.trends || [];
   const health = getHealthScore(lt, dashboard?.unpaidCount ?? 0);
 
-  const userName = user?.email?.split('@')[0] || '';
+  const userName = resolveGreetingName(user, activeBusiness);
   const todBucket = getTimeBucket(new Date().getHours());
 
   // Calculate max sales for trend bar visualization
@@ -996,7 +1014,7 @@ export default function Dashboard() {
             <div className='min-w-0'>
               <p className='text-xs font-medium text-purple-200/90 flex items-center gap-1.5'>
                 <span>
-                  {getGreetingLabel()}, {userName}
+                  {getGreetingLabel()}{userName ? `, ${userName}` : ''}
                 </span>
               </p>
               <h1 className='mt-0.5 text-xl sm:text-2xl font-bold text-white tracking-tight truncate'>

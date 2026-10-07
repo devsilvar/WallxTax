@@ -10,6 +10,7 @@ import type {
   UpdateInvoicePayload,
   MarkInvoicePaidPayload,
   SendInvoiceWhatsAppResult,
+  SendInvoiceEmailResult,
 } from '@/types/index.ts';
 
 /**
@@ -55,6 +56,7 @@ interface InvoiceState {
   updateInvoice: (businessId: string, id: string, payload: UpdateInvoicePayload) => Promise<Invoice>;
   deleteInvoice: (businessId: string, id: string) => Promise<void>;
   sendInvoice: (businessId: string, id: string) => Promise<Invoice>;
+  sendInvoiceByEmail: (businessId: string, id: string) => Promise<SendInvoiceEmailResult>;
   sendInvoiceByWhatsApp: (businessId: string, id: string) => Promise<SendInvoiceWhatsAppResult>;
   markInvoicePaid: (businessId: string, id: string, payload: MarkInvoicePaidPayload) => Promise<Invoice>;
   reconcileDva: (businessId: string, id: string, saleId: string) => Promise<Invoice>;
@@ -192,6 +194,18 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
       invoices: patchInList(s.invoices, updated),
     }));
     return updated;
+  },
+
+  sendInvoiceByEmail: async (businessId, id) => {
+    const { data } = await api.post(`${basePath(businessId)}/${id}/send-email`);
+    const updated = data.data as Invoice;
+    const delivered = Boolean(data?.meta?.delivered);
+    const to = String(data?.meta?.to ?? '');
+    set((s) => ({
+      activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
+      invoices: updated ? patchInList(s.invoices, updated) : s.invoices,
+    }));
+    return { invoice: updated, delivered, to };
   },
 
   /**

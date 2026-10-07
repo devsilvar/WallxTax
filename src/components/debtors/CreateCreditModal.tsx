@@ -400,6 +400,9 @@ export default function CreateCreditModal({
                     placeholder='customer@example.com'
                     className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white'
                   />
+                  <p className='text-[10px] text-gray-500 mt-1'>
+                    Debtor will be emailed on creation and when payment is due.
+                  </p>
                 </div>
 
                 <div>

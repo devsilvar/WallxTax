@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import ErrorBoundary from '@/components/ErrorBoundary.tsx';
@@ -15,8 +15,15 @@ import ScrollToTop from '@/components/ScrollToTop.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 
-// Lazy-loaded page components for optimal code splitting
-const Landing = lazy(() => import('@/pages/Landing.tsx'));
+// Marketing editorial pages
+const MarketingLayout = lazy(
+  () => import('@/components/marketing/MarketingLayout.tsx'),
+);
+const Home = lazy(() => import('@/pages/marketing/Home.tsx'));
+const About = lazy(() => import('@/pages/marketing/About.tsx'));
+const Pricing = lazy(() => import('@/pages/marketing/Pricing.tsx'));
+const Contact = lazy(() => import('@/pages/marketing/Contact.tsx'));
+
 const Login = lazy(() => import('@/pages/Login.tsx'));
 const Register = lazy(() => import('@/pages/Register.tsx'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword.tsx'));
@@ -60,6 +67,12 @@ const AdminUnverifiedInflows = lazy(
   () => import('@/pages/admin/AdminUnverifiedInflows.tsx'),
 );
 const AdminAISettings = lazy(() => import('@/pages/admin/AdminAISettings.tsx'));
+
+function SalesUnverifiedRedirect() {
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  return <Navigate to={`/sales?tab=unverified${qs ? `&${qs}` : ''}`} replace />;
+}
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -127,7 +140,7 @@ export default function App() {
                 <Route path='/sales' element={<Sales />} />
                 <Route
                   path='/sales/unverified'
-                  element={<Navigate to='/sales?tab=unverified' replace />}
+                  element={<SalesUnverifiedRedirect />}
                 />
                 {isSimulatorEnabled && (
                   <Route
@@ -195,8 +208,14 @@ export default function App() {
               </Route>
             </Route>
 
-            {/* Landing page */}
-            <Route path='/' element={<Landing />} />
+            {/* Marketing editorial pages */}
+            <Route element={<MarketingLayout />}>
+              <Route path='/' element={<Home />} />
+              <Route path='/about' element={<About />} />
+              <Route path='/pricing' element={<Pricing />} />
+              <Route path='/contact' element={<Contact />} />
+            </Route>
+
             <Route path='*' element={<NotFound />} />
           </Routes>
         </Suspense>

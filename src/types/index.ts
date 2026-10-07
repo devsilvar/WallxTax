@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   email: string;
+  fullName?: string | null;
   phone?: string;
   bvn?: string;
   bvnLast4?: string | null;
@@ -56,6 +57,7 @@ export interface BusinessMember {
   user: {
     id: string;
     email: string;
+    fullName?: string | null;
     phone?: string | null;
     isVerified: boolean;
     lastLoginAt?: string | null;
@@ -66,6 +68,7 @@ export interface TeamInvitation {
   id: string;
   businessId?: string;
   email: string;
+  fullName?: string | null;
   role: BusinessRole;
   status: InvitationStatus;
   expiresAt: string;
@@ -87,8 +90,10 @@ export interface TeamCap {
 
 export interface ValidateInviteResponse {
   valid: boolean;
-  reason?: 'not_found' | 'revoked' | 'already_used' | 'expired' | 'account_already_registered' | string;
+  accountExists?: boolean;
+  reason?: 'not_found' | 'revoked' | 'already_used' | 'expired' | 'account_already_registered' | 'account_not_eligible' | string;
   email?: string;
+  fullName?: string | null;
   role?: BusinessRole;
   business?: {
     id: string;
@@ -102,7 +107,6 @@ export interface ValidateInviteResponse {
 export interface AcceptOnboardingPayload {
   token: string;
   password: string;
-  fullName?: string;
 }
 
 export interface Business {
@@ -161,6 +165,7 @@ export interface SalesTransaction {
   finalClassification?: string;
   needsVerification?: boolean;
   verifiedAt?: string;
+  dvaOrigin?: boolean;
   isTaxable?: boolean;
   transactionDate: string;
   createdAt: string;
@@ -364,6 +369,12 @@ export interface SendInvoiceWhatsAppResult {
   pdfBlob: Blob | null;
   /** Filename for the PDF */
   filename: string;
+}
+
+export interface SendInvoiceEmailResult {
+  invoice: Invoice;
+  delivered: boolean;
+  to: string;
 }
 
 // ─── Sales Import ───────────────────────────────────────────
@@ -675,6 +686,9 @@ export interface UnifiedLedgerRow {
   counterparty: string;
   isTaxable: boolean;
   accrualLinked?: boolean;
+  needsVerification?: boolean;
+  verifiedAt?: string | null;
+  dvaOrigin?: boolean;
   metadata?: Record<string, unknown> | null;
 }
 

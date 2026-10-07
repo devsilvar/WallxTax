@@ -87,7 +87,7 @@ export const DvaVerificationScreen: React.FC<DvaVerificationScreenProps> = ({
 
         <div className="rounded-lg bg-blue-50/70 border border-blue-100 p-3.5 text-xs text-blue-800 max-w-md mx-auto mb-6">
           <p className="leading-relaxed">
-            ⏱️ <strong>This typically takes 1–3 minutes.</strong> We are automatically checking the status every 10 seconds. You may safely navigate to other pages — we'll notify you once active!
+            ⏱️ <strong>This typically takes 1–3 minutes.</strong> We are automatically checking the status every 5 seconds. You may safely navigate to other pages — we'll notify you once active!
           </p>
         </div>
 

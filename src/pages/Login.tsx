@@ -132,7 +132,7 @@ export default function Login() {
           </div>
         </div>
 
-        <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-lg">
+        <Button type="submit" isLoading={isLoading} className="w-full py-3 text-[15px] rounded-full">
           Sign in
           {!isLoading && <ArrowRight className="h-4.5 w-4.5 ml-2" strokeWidth={2.5} />}
         </Button>

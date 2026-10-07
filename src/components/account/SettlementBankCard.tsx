@@ -16,6 +16,7 @@ import api from '@/lib/axios.ts';
 import { formatNaira } from './WalletBalanceCard.tsx';
 
 export interface SettlementBankCardProps {
+  businessId?: string;
   isLinked: boolean;
   isOwner?: boolean;
   bankName?: string;
@@ -38,6 +39,7 @@ export interface SettlementBankCardProps {
 }
 
 export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
+  businessId,
   isLinked,
   isOwner: isOwnerProp,
   bankName,
@@ -68,6 +70,10 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   const [settlementError, setSettlementError] = useState('');
 
   const handleResolveSettlement = async () => {
+    if (!businessId) {
+      setSettlementError('Select a business first');
+      return;
+    }
     if (!/^\d{10}$/.test(settlementAccount)) {
       setSettlementError('Account number must be 10 digits');
       return;
@@ -80,7 +86,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
     setSettlementError('');
     setResolvingAccount(true);
     try {
-      const res = await api.post('/businesses/current/dva/settlement/resolve', {
+      const res = await api.post(`/businesses/${businessId}/dva/settlement/resolve`, {
         bankCode: settlementBank,
         accountNumber: settlementAccount,
       });
@@ -95,11 +101,15 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
 
   const handleConnectSettlement = async () => {
     if (!resolvedName) return;
+    if (!businessId) {
+      setSettlementError('Select a business first');
+      return;
+    }
 
     setConnectingSettlement(true);
     try {
       const selectedBank = banks?.find((b) => b.code === settlementBank);
-      await api.post('/businesses/current/dva/settlement/connect', {
+      await api.post(`/businesses/${businessId}/dva/settlement/connect`, {
         bankCode: settlementBank,
         bankName: selectedBank?.name || '',
         accountNumber: settlementAccount,

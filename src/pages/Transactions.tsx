@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useLedgerStore } from '@/stores/ledger.store.ts';
@@ -104,6 +105,9 @@ export default function Transactions() {
       source: sourceFor(item.sourceType),
       businessId: biz.id,
       accrualLinked: item.accrualLinked,
+      needsVerification: item.needsVerification,
+      dvaOrigin: item.dvaOrigin,
+      verifiedAt: item.verifiedAt,
     });
   };
 
@@ -362,7 +366,15 @@ export default function Transactions() {
                       {formatDate(item.date)}
                     </td>
                     <td className='px-5 py-3 text-sm text-gray-900'>
-                      {item.description}
+                      <div className='flex items-center gap-2 flex-wrap'>
+                        <span>{item.description}</span>
+                        {item.needsVerification && (
+                          <span className='inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300'>
+                            <AlertCircle className='h-3 w-3 text-amber-600' />
+                            Unverified Inflow
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className='px-5 py-3 text-[11px] font-mono text-gray-400 hidden sm:table-cell'>
                       {item.reference || '—'}

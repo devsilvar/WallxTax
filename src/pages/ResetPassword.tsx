@@ -147,13 +147,13 @@ export default function ResetPassword() {
 
         <div className="space-y-3">
           <Link to="/forgot-password">
-            <Button className="w-full py-3 text-[15px] rounded-lg">
+            <Button className="w-full py-3 text-[15px] rounded-full">
               Request a new reset link
             </Button>
           </Link>
 
           <Link to="/login">
-            <Button variant="outline" className="w-full py-3 text-[15px] rounded-lg">
+            <Button variant="outline" className="w-full py-3 text-[15px] rounded-full">
               Back to login
             </Button>
           </Link>

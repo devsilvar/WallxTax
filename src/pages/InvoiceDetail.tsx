@@ -102,6 +102,7 @@ export default function InvoiceDetail() {
   const detailError = useInvoiceStore((s) => s.detailError);
   const fetchInvoice = useInvoiceStore((s) => s.fetchInvoice);
   const sendInvoice = useInvoiceStore((s) => s.sendInvoice);
+  const sendInvoiceByEmail = useInvoiceStore((s) => s.sendInvoiceByEmail);
   const sendInvoiceByWhatsApp = useInvoiceStore((s) => s.sendInvoiceByWhatsApp);
   const markInvoicePaid = useInvoiceStore((s) => s.markInvoicePaid);
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
@@ -110,7 +111,7 @@ export default function InvoiceDetail() {
   const clearActive = useInvoiceStore((s) => s.clearActive);
 
   const [actionLoading, setActionLoading] = useState<
-    null | 'send' | 'whatsapp' | 'pay' | 'cancel' | 'delete' | 'pdf'
+    null | 'send' | 'email' | 'whatsapp' | 'pay' | 'cancel' | 'delete' | 'pdf'
   >(null);
 
   // Tracks which copy-to-clipboard fallback succeeded most recently — used to
@@ -213,6 +214,7 @@ export default function InvoiceDetail() {
   const canMarkPaid =
     inv.status === 'sent' || inv.status === 'overdue' || eff === 'overdue';
   const canCancel = inv.status !== 'paid' && inv.status !== 'cancelled';
+  const canEmail = inv.status !== 'paid' && inv.status !== 'cancelled';
   const isPaid = inv.status === 'paid';
 
   const handleDownload = async () => {
@@ -220,6 +222,26 @@ export default function InvoiceDetail() {
     try {
       await downloadInvoicePdf(biz.id, inv.id, inv.invoiceNumber);
       toast.success('Invoice downloaded');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!inv.customerEmail) {
+      toast.error('Customer email is missing. Edit the invoice to add an email address.');
+      return;
+    }
+    setActionLoading('email');
+    try {
+      const res = await sendInvoiceByEmail(biz.id, inv.id);
+      if (res.delivered) {
+        toast.success(`Invoice sent to ${res.to} with PDF attached`);
+      } else {
+        toast.success(`Invoice sent to ${res.to} (logged in dev mode)`);
+      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -540,6 +562,22 @@ export default function InvoiceDetail() {
               onClick={() => navigate(`/invoices/${inv.id}/edit`)}
             >
               <Pencil className='h-3.5 w-3.5' /> Edit
+            </Button>
+          )}
+          {canEmail && (
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleSendEmail}
+              isLoading={actionLoading === 'email'}
+              title={
+                inv.customerEmail
+                  ? `Send invoice PDF directly to ${inv.customerEmail}`
+                  : 'Add customer email to send electronically'
+              }
+            >
+              <Mail className='h-3.5 w-3.5' />
+              {inv.sentAt ? 'Resend email' : 'Send via Email'}
             </Button>
           )}
           {canSend && (

@@ -385,6 +385,9 @@ export default function Sales() {
       creditOrigin: sale.creditOrigin,
       creditPayment: sale.creditPayment,
       accrualLinked: sale.accrualLinked,
+      needsVerification: sale.needsVerification,
+      dvaOrigin: sale.dvaOrigin,
+      verifiedAt: sale.verifiedAt,
     });
 
     if (biz && (sale.itemsCount ?? 0) > 0 && (!sale.items || sale.items.length === 0)) {
@@ -841,6 +844,12 @@ export default function Sales() {
                             · {s.itemsCount} {s.itemsCount === 1 ? 'item type' : 'item types'}
                           </span>
                         )}
+                        {s.needsVerification && (
+                          <span className='inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300'>
+                            <AlertCircle className='h-3 w-3 text-amber-600' />
+                            Unverified
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className='px-4 py-3 capitalize text-gray-600'>
@@ -1085,6 +1094,12 @@ export default function Sales() {
                               {(t.itemsCount ?? 0) > 0 && (
                                 <span className='inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700'>
                                   · {t.itemsCount} {t.itemsCount === 1 ? 'item type' : 'item types'}
+                                </span>
+                              )}
+                              {(t as any).needsVerification && (
+                                <span className='inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300'>
+                                  <AlertCircle className='h-3 w-3 text-amber-600' />
+                                  Unverified
                                 </span>
                               )}
                             </div>

@@ -260,6 +260,9 @@ export default function EditCreditModal({
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     className="rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs"
                   />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Debtor will receive payment reminders when due.
+                  </p>
                 </div>
               </div>
             </div>

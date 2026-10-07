@@ -126,7 +126,7 @@ export default function ForgotPassword() {
                   </div>
                   <button
                     onClick={() => setShowDevModal(false)}
-                    className='rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors'
+                    className='rounded-full border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors'
                     aria-label='Close'
                   >
                     <X className='h-4 w-4' />
@@ -144,7 +144,7 @@ export default function ForgotPassword() {
                   <div className='flex gap-2'>
                     <Button
                       onClick={handleDevLinkClick}
-                      className='flex-1 py-2 text-xs rounded-none'
+                      className='flex-1 py-2 text-xs rounded-full'
                     >
                       <ExternalLink className='h-3.5 w-3.5 mr-2' />
                       Reset Password Now
@@ -152,7 +152,7 @@ export default function ForgotPassword() {
                     <Button
                       onClick={() => copyToClipboard(resetLink)}
                       variant='outline'
-                      className='px-4 py-2 rounded-none text-xs'
+                      className='px-4 py-2 rounded-full text-xs'
                     >
                       <Copy className='h-3.5 w-3.5' />
                     </Button>
@@ -198,7 +198,7 @@ export default function ForgotPassword() {
             <Button
               onClick={() => setShowDevModal(true)}
               variant='outline'
-              className='w-full py-3 text-[15px] rounded-lg border-yellow-400 text-yellow-700 hover:bg-yellow-50'
+              className='w-full py-3 text-[15px] rounded-full border-yellow-400 text-yellow-700 hover:bg-yellow-50'
             >
               <AlertCircle className='h-4.5 w-4.5 mr-2' strokeWidth={2.5} />
               Show Reset Link (Dev Mode)
@@ -211,7 +211,7 @@ export default function ForgotPassword() {
             type='button'
             onClick={() => setIsSubmitted(false)}
             variant='outline'
-            className='w-full py-3 text-[15px] rounded-lg'
+            className='w-full py-3 text-[15px] rounded-full'
           >
             Try a different email
           </Button>
@@ -219,7 +219,7 @@ export default function ForgotPassword() {
           <Link to='/login'>
             <Button
               variant='ghost'
-              className='w-full py-3 text-[15px] rounded-lg'
+              className='w-full py-3 text-[15px] rounded-full'
             >
               <ArrowLeft className='h-4.5 w-4.5 mr-2' strokeWidth={2.5} />
               Back to login
@@ -282,7 +282,7 @@ export default function ForgotPassword() {
         <Button
           type='submit'
           isLoading={isLoading}
-          className='w-full py-3 text-[15px] rounded-lg'
+          className='w-full py-3 text-[15px] rounded-full'
         >
           {isLoading ? 'Sending...' : 'Send reset link'}
         </Button>

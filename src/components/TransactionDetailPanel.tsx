@@ -52,6 +52,7 @@ export interface TransactionDetailData {
   creditPayment?: { id: string } | null;
   accrualLinked?: boolean;
   // DVA specific
+  dvaOrigin?: boolean;
   needsVerification?: boolean;
   verifiedAt?: string | null;
   // Tax payment specific
@@ -152,13 +153,14 @@ export default function TransactionDetailPanel({
   const isSale = transaction.type === 'sales_transaction';
   // Prefer the server's derived flag; fall back to the relations for payloads
   // (detail endpoint) that ship them without it.
-  const isAccrualLinked =
-    transaction.accrualLinked ??
-    Boolean(
-      transaction.invoice ||
-      transaction.creditOrigin ||
-      transaction.creditPayment,
-    );
+  const isCreditLinked = Boolean(
+    transaction.creditOrigin ||
+    transaction.creditPayment,
+  );
+  const isInvoiceLinked = Boolean(
+    transaction.invoice ||
+    transaction.source === 'invoice',
+  );
 
   const copyReference = () => {
     const ref = transaction.referenceId || transaction.id;
@@ -340,6 +342,15 @@ export default function TransactionDetailPanel({
               {transaction.status}
             </span>
 
+            {transaction.needsVerification && (
+              <div className='mb-2'>
+                <span className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-xs'>
+                  <AlertCircle className='h-3.5 w-3.5 text-amber-600' />
+                  Unverified Inflow — Review Required
+                </span>
+              </div>
+            )}
+
             <div
               className={`text-3xl font-extrabold tracking-tight font-mono ${
                 isTax ? 'text-red-600' : 'text-emerald-600'
@@ -359,65 +370,75 @@ export default function TransactionDetailPanel({
             </p>
           </div>
 
-          {/* Review Banner for unverified sales (only after transfer is confirmed/settled) */}
-          {transaction.needsVerification &&
-            transaction.status !== 'pending' && (
-              <div className='rounded-xl border border-amber-200 bg-amber-50/60 p-4'>
-                <div className='flex items-start gap-3'>
-                  <AlertCircle className='h-5 w-5 text-amber-600 shrink-0 mt-0.5' />
-                  <div className='flex-1'>
-                    <h4 className='text-xs font-bold text-amber-900'>
+          {/* Review Banner for unverified transfers & sales (Direct Link to Sales Unverified Inflows) */}
+          {transaction.needsVerification && (
+            <div className='rounded-xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs'>
+              <div className='flex items-start gap-3'>
+                <div className='h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0 mt-0.5'>
+                  <AlertCircle className='h-5 w-5' />
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <div className='flex items-center justify-between gap-2 flex-wrap'>
+                    <h4 className='text-xs font-bold text-amber-950 uppercase tracking-wide'>
                       Tax Revenue Review Required
                     </h4>
-                    <p className='text-xs text-amber-700 mt-0.5 leading-relaxed'>
-                      This transfer was captured automatically. Confirm if this
-                      is taxable sales income or non-taxable funds
-                      (loan/capital).
-                    </p>
-                    <div className='mt-3 flex flex-wrap items-center gap-2'>
-                      <button
-                        type='button'
-                        onClick={handleVerifyAsSales}
-                        disabled={verifying}
-                        className='px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer'
-                      >
-                        {verifying ? (
-                          <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                        ) : (
-                          <Check className='h-3.5 w-3.5' />
-                        )}
-                        Confirm as Sales
-                      </button>
-                      <button
-                        type='button'
-                        onClick={handleReclassify}
-                        disabled={reclassifying}
-                        className='px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer'
-                      >
-                        {reclassifying ? (
-                          <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                        ) : (
-                          <HelpCircle className='h-3.5 w-3.5' />
-                        )}
-                        Reclassify Non-Taxable
-                      </button>
-                      <button
-                        type='button'
-                        onClick={() => {
-                          onClose();
-                          navigate('/sales/unverified');
-                        }}
-                        className='px-3 py-1.5 bg-amber-100 hover:bg-amber-200/80 text-amber-900 border border-amber-300/70 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer'
-                        title='Open full classification and multi-business review page'
-                      >
-                        <ExternalLink className='h-3.5 w-3.5' />
-                        Review in Unverified Tab
-                      </button>
-                    </div>
+                    <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300'>
+                      Action Required
+                    </span>
+                  </div>
+                  <p className='text-xs text-amber-800 mt-1 leading-relaxed'>
+                    This transfer was captured automatically. Confirm if this
+                    is taxable sales income or non-taxable funds
+                    (loan, capital injection, or debtor repayment).
+                  </p>
+                  <div className='mt-3 flex flex-wrap items-center gap-2'>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        onClose();
+                        navigate(`/sales?tab=unverified&txnId=${transaction.id}`);
+                      }}
+                      className='px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer hover:shadow-sm'
+                      title='Open directly in Sales Unverified Inflows'
+                    >
+                      <ExternalLink className='h-3.5 w-3.5' />
+                      Go to Unverified Inflow &rarr;
+                    </button>
+                    {transaction.status !== 'pending' && (
+                      <>
+                        <button
+                          type='button'
+                          onClick={handleVerifyAsSales}
+                          disabled={verifying}
+                          className='px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer'
+                        >
+                          {verifying ? (
+                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                          ) : (
+                            <Check className='h-3.5 w-3.5' />
+                          )}
+                          Quick Confirm Sale
+                        </button>
+                        <button
+                          type='button'
+                          onClick={handleReclassify}
+                          disabled={reclassifying}
+                          className='px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer'
+                        >
+                          {reclassifying ? (
+                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                          ) : (
+                            <HelpCircle className='h-3.5 w-3.5' />
+                          )}
+                          Reclassify Non-Taxable
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
           {/* Pending Transfer Notice (Awaiting Settlement) */}
           {transaction.status === 'pending' && (
@@ -665,10 +686,10 @@ export default function TransactionDetailPanel({
                 <button
                   type='button'
                   onClick={() => setShowReassign(!showReassign)}
-                  disabled={isAccrualLinked}
+                  disabled={isCreditLinked}
                   title={
-                    isAccrualLinked
-                      ? "This transaction's revenue was recognised when the invoice or credit was issued, so it stays with this business."
+                    isCreditLinked
+                      ? "Credit transactions cannot be moved to another business because customer debt obligations are non-transferable."
                       : undefined
                   }
                   className='text-[11px] font-semibold text-purple-700 hover:text-purple-900 cursor-pointer disabled:text-gray-400 disabled:hover:text-gray-400 disabled:cursor-not-allowed'
@@ -677,20 +698,27 @@ export default function TransactionDetailPanel({
                 </button>
               </div>
               <p className='text-gray-600 text-[11px]'>
-                {isAccrualLinked ? (
+                {isCreditLinked ? (
                   <span className='flex items-start gap-1.5'>
                     <HelpCircle className='h-3.5 w-3.5 shrink-0 mt-px text-gray-400' />
                     <span>
-                      Accrual and invoice-linked transactions can&apos;t be
-                      moved to another business. Cancel and re-issue the invoice
-                      against the correct business instead.
+                      Credit transactions cannot be moved to another business
+                      because customer debt obligations are non-transferable.
+                    </span>
+                  </span>
+                ) : isInvoiceLinked ? (
+                  <span className='flex items-start gap-1.5'>
+                    <HelpCircle className='h-3.5 w-3.5 shrink-0 mt-px text-purple-600' />
+                    <span>
+                      This transaction is linked to an invoice. Moving this sale will
+                      automatically reassign the invoice and its line items to the target business as well.
                     </span>
                   </span>
                 ) : (
                   'Under Nigerian tax law, sales and tax obligations belong to the assigned business entity. Move misattributed transfers to keep ledgers accurate.'
                 )}
               </p>
-              {showReassign && !isAccrualLinked && (
+              {showReassign && !isCreditLinked && (
                 <div className='space-y-2.5 pt-1'>
                   <select
                     value={targetBusinessId}

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, X, Gift, TrendingUp, Clock, ArrowRight, ShoppingBag, HelpCircle, Wallet, CircleDollarSign, Building2, BookOpen, FileText, Search, RefreshCw, ShieldCheck } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
@@ -45,6 +45,10 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
   const businesses = useBusinessStore((s) => s.businesses);
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
   
+  const [searchParams] = useSearchParams();
+  const targetTxnId = searchParams.get('txnId') || searchParams.get('highlightId');
+  const autoOpenedRef = useRef<string | null>(null);
+
   const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
@@ -81,6 +85,24 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
       fetchClassifications();
     }
   }, [biz, page]);
+
+  // If navigated with ?txnId=..., auto-open the classification wizard and scroll to row
+  useEffect(() => {
+    if (!targetTxnId || transactions.length === 0) return;
+    if (autoOpenedRef.current === targetTxnId) return;
+
+    const match = transactions.find((t) => t.id === targetTxnId);
+    if (match) {
+      autoOpenedRef.current = targetTxnId;
+      setVerifyModal({ transaction: match });
+      setTimeout(() => {
+        const el = document.getElementById(`unverified-row-${targetTxnId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [targetTxnId, transactions]);
 
   useEffect(() => {
     if (!verifyModal) return;
@@ -463,7 +485,12 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
           {transactions.map((tx) => (
             <div
               key={tx.id}
-              className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-xs hover:shadow-sm hover:border-gray-300 transition-all group"
+              id={`unverified-row-${tx.id}`}
+              className={`rounded-xl border p-4 shadow-xs hover:shadow-sm transition-all group ${
+                targetTxnId === tx.id
+                  ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300 shadow-md'
+                  : 'border-gray-200/80 bg-white hover:border-gray-300'
+              }`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -475,9 +502,16 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
                       <p className="text-lg font-bold text-gray-900 tabular-nums">
                         {formatNaira(Number(tx.amount))}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDate(tx.transactionDate)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-gray-500">
+                          {formatDate(tx.transactionDate)}
+                        </p>
+                        {targetTxnId === tx.id && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                            Selected Inflow
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   

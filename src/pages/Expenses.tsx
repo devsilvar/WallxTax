@@ -28,19 +28,36 @@ import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
 
 // Core and system expense categories
 const CATEGORIES = [
-  'rent',
-  'inventory',
-  'salary',
-  'utility',
+  'bad_debt',
+  'bank_charges',
+  'communication',
+  'depreciation',
   'fuel',
+  'gift',
+  'insurance',
+  'interest',
+  'inventory',
   'logistics',
   'marketing',
-  'bad_debt',
+  'office_supplies',
   'other',
+  'professional_fees',
+  'rent',
+  'repairs_maintenance',
+  'salary',
+  'subscription',
+  'tax_permit',
+  'travel',
+  'utility',
 ] as const;
 
 const CATEGORY_LABELS: Record<string, string> = {
   bad_debt: 'Bad Debt',
+  bank_charges: 'Bank Charges',
+  office_supplies: 'Office Supplies',
+  professional_fees: 'Professional Fees',
+  repairs_maintenance: 'Repairs & Maintenance',
+  tax_permit: 'Tax/Permit',
 };
 
 function formatCategoryLabel(cat: string): string {
@@ -117,15 +134,27 @@ type DailyExpenseSummary = {
 // ─── Category color map ─────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
-  rent: 'bg-blue-500',
-  inventory: 'bg-emerald-500',
-  salary: 'bg-purple-500',
-  utility: 'bg-amber-500',
+  bad_debt: 'bg-rose-500',
+  bank_charges: 'bg-blue-600',
+  communication: 'bg-sky-500',
+  depreciation: 'bg-slate-500',
   fuel: 'bg-orange-500',
+  gift: 'bg-fuchsia-500',
+  insurance: 'bg-indigo-500',
+  interest: 'bg-blue-700',
+  inventory: 'bg-emerald-500',
   logistics: 'bg-cyan-500',
   marketing: 'bg-pink-500',
-  bad_debt: 'bg-rose-500',
+  office_supplies: 'bg-teal-500',
   other: 'bg-gray-400',
+  professional_fees: 'bg-violet-500',
+  rent: 'bg-blue-500',
+  repairs_maintenance: 'bg-yellow-600',
+  salary: 'bg-purple-500',
+  subscription: 'bg-cyan-600',
+  tax_permit: 'bg-red-600',
+  travel: 'bg-lime-600',
+  utility: 'bg-amber-500',
 };
 
 // ─── Component ──────────────────────────────────────────────

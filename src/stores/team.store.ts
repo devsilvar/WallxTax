@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '@/lib/axios.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useAuthStore } from '@/stores/auth.store.ts';
 import type {
   BusinessMember,
   TeamInvitation,
@@ -23,12 +24,12 @@ interface TeamState {
   fetchRoleDefaults: (businessId: string) => Promise<Record<string, Record<string, boolean>>>;
   inviteMember: (
     businessId: string,
-    data: { email: string; role: BusinessRole; permissions?: Record<string, boolean> }
+    data: { email: string; role: BusinessRole; permissions?: Record<string, boolean>; fullName?: string }
   ) => Promise<void>;
   updateMember: (
     businessId: string,
     memberId: string,
-    data: { role?: BusinessRole; permissions?: Record<string, boolean> }
+    data: { fullName?: string; role?: BusinessRole; permissions?: Record<string, boolean> }
   ) => Promise<void>;
   removeMember: (businessId: string, memberId: string) => Promise<void>;
   revokeInvitation: (businessId: string, invitationId: string) => Promise<void>;
@@ -40,8 +41,12 @@ interface TeamState {
   ) => Promise<{ user: any; accessToken: string; refreshToken: string; business: any }>;
 
   fetchMyInvitations: () => Promise<void>;
-  acceptInvitation: (token: string) => Promise<{ business: { id: string; businessName: string } }>;
-  declineInvitation: (token: string) => Promise<void>;
+  acceptInvitation: (
+    tokenOrPayload: string | { token?: string; invitationId?: string }
+  ) => Promise<{ business: { id: string; businessName: string } }>;
+  declineInvitation: (
+    tokenOrPayload: string | { token?: string; invitationId?: string }
+  ) => Promise<void>;
 
   clear: () => void;
 }
@@ -107,7 +112,17 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   updateMember: async (businessId, memberId, updateData) => {
     set({ isLoading: true, error: null });
     try {
-      await api.patch(`/businesses/${businessId}/team/members/${memberId}`, updateData);
+      const { data } = await api.patch(`/businesses/${businessId}/team/members/${memberId}`, updateData);
+      const currentUser = useAuthStore.getState().user;
+      if (
+        currentUser &&
+        updateData.fullName &&
+        (data?.data?.userId === currentUser.id || data?.data?.user?.id === currentUser.id)
+      ) {
+        useAuthStore.setState((state) => ({
+          user: state.user ? { ...state.user, fullName: updateData.fullName } : null,
+        }));
+      }
       await get().fetchTeam(businessId);
       await useBusinessStore.getState().fetchBusinesses(true);
     } catch (err: any) {
@@ -180,10 +195,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }
   },
 
-  acceptInvitation: async (token: string) => {
+  acceptInvitation: async (tokenOrPayload: string | { token?: string; invitationId?: string }) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.post('/invitations/accept', { token });
+      const payload = typeof tokenOrPayload === 'string' ? { token: tokenOrPayload } : tokenOrPayload;
+      const { data } = await api.post('/invitations/accept', payload);
       set({ isLoading: false });
       return data.data;
     } catch (err: any) {
@@ -192,10 +208,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }
   },
 
-  declineInvitation: async (token: string) => {
+  declineInvitation: async (tokenOrPayload: string | { token?: string; invitationId?: string }) => {
     set({ isLoading: true, error: null });
     try {
-      await api.post('/invitations/decline', { token });
+      const payload = typeof tokenOrPayload === 'string' ? { token: tokenOrPayload } : tokenOrPayload;
+      await api.post('/invitations/decline', payload);
       await get().fetchMyInvitations();
     } catch (err: any) {
       set({ isLoading: false, error: err.response?.data?.error?.message });

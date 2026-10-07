@@ -118,6 +118,20 @@ export default function Account() {
     toast.success('Account details copied to clipboard');
   };
 
+  // Verification resolves via Paystack webhook — poll while it is in flight so
+  // success and failure both surface without the user hitting Refresh.
+  const isActive = dva?.status === 'active';
+  const isVerifying = !isActive && (awaitingValidation || dva?.status === 'pending');
+  const bizId = biz?.id;
+
+  useEffect(() => {
+    if (!isVerifying || !canViewAccount || !bizId) return;
+    const timer = setInterval(() => {
+      void fetchDVA();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isVerifying, canViewAccount, bizId, fetchDVA]);
+
   if (businessStoreLoading) return <AccountSkeleton />;
   if (!biz) {
     return (
@@ -145,9 +159,6 @@ export default function Account() {
       </div>
     );
   }
-
-  const isActive = dva?.status === 'active';
-  const isVerifying = !isActive && (awaitingValidation || dva?.status === 'pending');
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 animate-fade-in pb-16">
@@ -223,6 +234,7 @@ export default function Account() {
 
             <div className="space-y-6">
               <SettlementBankCard
+                businessId={biz.id}
                 isLinked={isSettlementLinked}
                 isOwner={isOwner}
                 bankName={resolvedBankName}

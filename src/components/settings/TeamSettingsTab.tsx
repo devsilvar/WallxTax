@@ -186,6 +186,7 @@ export default function TeamSettingsTab() {
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   // Invite form state
+  const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] =
     useState<Exclude<BusinessRole, 'owner'>>('sales_staff');
@@ -194,6 +195,7 @@ export default function TeamSettingsTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Edit member modal state
+  const [editFullName, setEditFullName] = useState('');
   const [editRole, setEditRole] = useState<BusinessRole>('sales_staff');
   const [editPerms, setEditPerms] = useState<Record<string, boolean>>({});
 
@@ -219,6 +221,7 @@ export default function TeamSettingsTab() {
   }, [activeBusiness?.id, fetchTeam, fetchRoleDefaults]);
 
   const handleOpenInvite = () => {
+    setInviteName('');
     setInviteEmail('');
     setInviteRole('sales_staff');
     setShowCustomPerms(false);
@@ -228,7 +231,7 @@ export default function TeamSettingsTab() {
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeBusiness?.id || !inviteEmail.trim()) return;
+    if (!activeBusiness?.id || !inviteEmail.trim() || !inviteName.trim()) return;
 
     setIsSubmitting(true);
     try {
@@ -246,6 +249,7 @@ export default function TeamSettingsTab() {
       const payload: any = {
         email: inviteEmail.trim().toLowerCase(),
         role: inviteRole,
+        fullName: inviteName.trim(),
       };
       if (Object.keys(overrides).length > 0) {
         payload.permissions = overrides;
@@ -264,6 +268,12 @@ export default function TeamSettingsTab() {
 
   const handleOpenEdit = (member: BusinessMember) => {
     setSelectedMember(member);
+    const resolvedName =
+      member.user.fullName ||
+      (member.role === 'owner' ? activeBusiness?.ownerName : null) ||
+      (member.permissions as any)?.memberName ||
+      '';
+    setEditFullName(resolvedName);
     setEditRole(member.role);
     const defaults = getRoleDefaultsFor(member.role);
     const memberPerms = (member.permissions as Record<string, any>) || {};
@@ -278,27 +288,63 @@ export default function TeamSettingsTab() {
 
   const handleSaveMember = async () => {
     if (!activeBusiness?.id || !selectedMember) return;
+    const trimmedName = editFullName.trim();
+    if (trimmedName.length > 0 && trimmedName.length < 2) {
+      toast.error('Full name must be at least 2 characters');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const overrides: Record<string, boolean> = {};
-      const defaults =
-        editRole !== 'owner'
-          ? getRoleDefaultsFor(editRole)
-          : {};
-      for (const { key } of OVERRIDABLE_PERMS) {
-        if (
-          typeof editPerms[key] === 'boolean' &&
-          editPerms[key] !== defaults[key]
-        ) {
-          overrides[key] = editPerms[key];
-        }
+      const payload: {
+        fullName?: string;
+        role?: BusinessRole;
+        permissions?: Record<string, boolean>;
+      } = {};
+
+      const currentResolvedName =
+        selectedMember.user.fullName ||
+        (selectedMember.role === 'owner' ? activeBusiness?.ownerName : null) ||
+        (selectedMember.permissions as any)?.memberName ||
+        '';
+
+      if (trimmedName !== currentResolvedName) {
+        payload.fullName = trimmedName;
       }
 
-      await updateMember(activeBusiness.id, selectedMember.id, {
-        role: editRole,
-        permissions: Object.keys(overrides).length > 0 ? overrides : {},
-      });
-      toast.success('Member role and permissions updated');
+      const isSelf = selectedMember.userId === user?.id;
+      const isTargetOwner = selectedMember.role === 'owner';
+      const canChangeRoleAndPerms =
+        canManageTeam &&
+        !isTargetOwner &&
+        !isSelf &&
+        (isOwner || selectedMember.role !== 'manager');
+
+      if (canChangeRoleAndPerms) {
+        payload.role = editRole;
+        const overrides: Record<string, boolean> = {};
+        const defaults =
+          editRole !== 'owner'
+            ? getRoleDefaultsFor(editRole)
+            : {};
+        for (const { key } of OVERRIDABLE_PERMS) {
+          if (
+            typeof editPerms[key] === 'boolean' &&
+            editPerms[key] !== defaults[key]
+          ) {
+            overrides[key] = editPerms[key];
+          }
+        }
+        payload.permissions = overrides;
+      }
+
+      if (Object.keys(payload).length === 0) {
+        setSelectedMember(null);
+        return;
+      }
+
+      await updateMember(activeBusiness.id, selectedMember.id, payload);
+      toast.success('Team member updated successfully');
       setSelectedMember(null);
     } catch (err: any) {
       toast.error(
@@ -486,8 +532,28 @@ export default function TeamSettingsTab() {
                 : ROLE_INFO[member.role as Exclude<BusinessRole, 'owner'>];
 
             const isCurrentCaller = member.userId === user?.id;
-            const canModifyThisMember =
-              canManageTeam && member.role !== 'owner' && !isCurrentCaller;
+            const isTargetOwner = member.role === 'owner';
+            const memberName =
+              member.user.fullName ||
+              (isTargetOwner ? activeBusiness?.ownerName : null) ||
+              (member.permissions as any)?.memberName ||
+              '';
+
+            // Role and permissions can only be modified for other non-owner members by someone with team.manage
+            const canModifyRoleOrPerms =
+              canManageTeam && !isTargetOwner && !isCurrentCaller && (isOwner || member.role !== 'manager');
+
+            // Name can be edited if:
+            // 1. Current caller is editing their own record (self-edit)
+            // 2. Caller is business owner (can edit anyone's name)
+            // 3. Caller has team.manage (manager) and target member is not owner and not manager
+            const canEditName =
+              isCurrentCaller ||
+              isOwner ||
+              (canManageTeam && !isTargetOwner && member.role !== 'manager');
+
+            const canEditMember = canEditName || canModifyRoleOrPerms;
+            const canRemoveMember = canModifyRoleOrPerms;
 
             return (
               <div
@@ -496,19 +562,50 @@ export default function TeamSettingsTab() {
               >
                 <div className='flex items-center gap-3.5'>
                   <div className='h-10 w-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center font-bold text-sm text-gray-700 shrink-0'>
-                    {member.user.email.charAt(0).toUpperCase()}
+                    {(memberName || member.user.email).charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className='flex items-center gap-2'>
-                      <span className='text-sm font-semibold text-gray-900'>
-                        {member.user.email}
-                      </span>
+                      {memberName ? (
+                        canEditName ? (
+                          <button
+                            type='button'
+                            onClick={() => handleOpenEdit(member)}
+                            className='group flex items-center gap-1.5 text-left text-sm font-semibold text-gray-900 hover:text-primary-600 transition-colors cursor-pointer'
+                            title='Click to edit name'
+                          >
+                            <span>{memberName}</span>
+                            <Edit2 className='h-3.5 w-3.5 text-gray-400 group-hover:text-primary-600 transition-colors opacity-70 group-hover:opacity-100' />
+                          </button>
+                        ) : (
+                          <span className='text-sm font-semibold text-gray-900'>
+                            {memberName}
+                          </span>
+                        )
+                      ) : canEditName ? (
+                        <button
+                          type='button'
+                          onClick={() => handleOpenEdit(member)}
+                          className='group inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100/80 px-2 py-0.5 rounded-md transition-colors border border-primary-200/60 cursor-pointer'
+                          title='Click to set full name'
+                        >
+                          <span>+ Add Full Name</span>
+                          <Edit2 className='h-3 w-3 text-primary-500' />
+                        </button>
+                      ) : (
+                        <span className='text-xs italic text-gray-400'>
+                          (No name set)
+                        </span>
+                      )}
                       {isCurrentCaller && (
                         <span className='text-[11px] font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full'>
                           You
                         </span>
                       )}
                     </div>
+                    <p className='text-xs text-gray-500 font-mono mt-0.5'>
+                      {member.user.email}
+                    </p>
                     <div className='flex items-center gap-3 text-xs text-gray-400 mt-0.5'>
                       <span>
                         Joined {new Date(member.joinedAt).toLocaleDateString()}
@@ -531,24 +628,30 @@ export default function TeamSettingsTab() {
                     {roleConfig.label}
                   </span>
 
-                  {canModifyThisMember && (
-                    <div className='flex items-center gap-1'>
+                  <div className='flex items-center gap-1'>
+                    {canEditMember && (
                       <button
                         onClick={() => handleOpenEdit(member)}
-                        className='p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors'
-                        title='Edit Role & Permissions'
+                        className='p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer'
+                        title={
+                          canModifyRoleOrPerms
+                            ? 'Edit Member Name, Role & Permissions'
+                            : 'Edit Full Name'
+                        }
                       >
                         <Edit2 className='h-4 w-4' />
                       </button>
+                    )}
+                    {canRemoveMember && (
                       <button
                         onClick={() => handleRemoveMember(member)}
-                        className='p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors'
+                        className='p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer'
                         title='Remove Member'
                       >
                         <Trash2 className='h-4 w-4' />
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -586,8 +689,13 @@ export default function TeamSettingsTab() {
                     </div>
                     <div>
                       <span className='text-sm font-medium text-gray-900'>
-                        {inv.email}
+                        {inv.fullName || inv.email}
                       </span>
+                      {inv.fullName && (
+                        <p className='text-xs text-gray-500 font-mono'>
+                          {inv.email}
+                        </p>
+                      )}
                       <p className='text-xs text-gray-400'>
                         Expires in {daysLeft} day{daysLeft === 1 ? '' : 's'}
                       </p>
@@ -653,6 +761,20 @@ export default function TeamSettingsTab() {
             </div>
 
             <form onSubmit={handleSendInvite} className='mt-5 space-y-4'>
+              <div>
+                <label className='block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5'>
+                  Full Name
+                </label>
+                <input
+                  type='text'
+                  required
+                  placeholder='e.g. Adeola Johnson'
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  className='w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500'
+                />
+              </div>
+
               <div>
                 <label className='block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5'>
                   Email Address
@@ -811,95 +933,135 @@ export default function TeamSettingsTab() {
       {/* ── Edit Member Modal ── */}
       {selectedMember && (
         <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs'>
-          <div className='bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100'>
+          <div className='bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 max-h-[90vh] overflow-y-auto'>
             <div className='flex items-center justify-between pb-3 border-b border-gray-100'>
               <div>
                 <h3 className='text-base font-bold text-gray-900'>
-                  Edit Member Role
+                  {selectedMember.userId === user?.id
+                    ? selectedMember.role === 'owner'
+                      ? 'Edit Owner Name'
+                      : 'Edit Your Profile Name'
+                    : 'Edit Team Member'}
                 </h3>
-                <p className='text-xs text-gray-500'>
+                <p className='text-xs text-gray-500 font-mono'>
                   {selectedMember.user.email}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedMember(null)}
-                className='text-gray-400 hover:text-gray-600 p-1 rounded-lg'
+                className='text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer'
               >
                 <X className='h-5 w-5' />
               </button>
             </div>
 
             <div className='mt-4 space-y-4'>
+              {/* Full Name Input */}
               <div>
                 <label className='block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5'>
-                  Business Role
+                  Full Name
                 </label>
-                <select
-                  value={editRole}
-                  onChange={(e) => {
-                    const newRole = e.target.value as BusinessRole;
-                    setEditRole(newRole);
-                    if (newRole !== 'owner') {
-                      setEditPerms({
-                        ...getRoleDefaultsFor(newRole),
-                      });
-                    }
-                  }}
-                  className='w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20'
-                >
-                  <option value='sales_staff'>Sales Staff</option>
-                  <option value='accountant'>Accountant</option>
-                  {isOwner && <option value='manager'>Manager</option>}
-                  <option value='viewer'>Viewer</option>
-                </select>
+                <input
+                  type='text'
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder='e.g. Adebayo Ogunlesi'
+                  maxLength={100}
+                  className='w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500'
+                  autoFocus
+                />
+                <p className='text-[11px] text-gray-400 mt-1'>
+                  This name is displayed across the team roster, dashboard greetings, and activity logs.
+                </p>
               </div>
 
-              <div>
-                <label className='block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2'>
-                  Permission Overrides
-                </label>
-                <div className='max-h-48 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl p-3 bg-gray-50/50'>
-                  {OVERRIDABLE_PERMS.map(({ key, label }) => {
-                    const implied = isPermImplied(editPerms, key);
-                    const isChecked = implied || (editPerms[key] ?? false);
-                    return (
-                      <label
-                        key={key}
-                        className={`flex items-center justify-between py-2 text-xs ${
-                          implied ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
-                        }`}
-                        title={implied ? 'Implied by enabled action permission' : undefined}
-                      >
-                        <span className='text-gray-700'>
-                          {label}
-                          {implied && (
-                            <span className='ml-2 text-[10px] text-primary-600 font-medium'>
-                              (implied)
-                            </span>
-                          )}
-                        </span>
-                        <input
-                          type='checkbox'
-                          checked={isChecked}
-                          disabled={implied}
-                          onChange={(e) =>
-                            setEditPerms(
-                              updatePermWithImplications(editPerms, key, e.target.checked)
-                            )
-                          }
-                          className='rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 disabled:opacity-60'
-                        />
-                      </label>
-                    );
-                  })}
+              {/* Owner Role Notice */}
+              {selectedMember.role === 'owner' ? (
+                <div className='p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-800 flex items-center gap-2.5'>
+                  <Shield className='h-4 w-4 text-purple-600 shrink-0' />
+                  <span>The business owner holds permanent, full permissions. Role and permissions cannot be changed.</span>
                 </div>
-              </div>
+              ) : selectedMember.userId === user?.id ? (
+                /* Self Notice for Non-Owner */
+                <div className='p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-center gap-2.5'>
+                  <Shield className='h-4 w-4 text-blue-600 shrink-0' />
+                  <span>You cannot modify your own role or permissions. Contact the business owner to request permission changes.</span>
+                </div>
+              ) : (
+                /* Role & Permissions Configuration (for other team members) */
+                <>
+                  <div>
+                    <label className='block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5'>
+                      Business Role
+                    </label>
+                    <select
+                      value={editRole}
+                      onChange={(e) => {
+                        const newRole = e.target.value as BusinessRole;
+                        setEditRole(newRole);
+                        if (newRole !== 'owner') {
+                          setEditPerms({
+                            ...getRoleDefaultsFor(newRole),
+                          });
+                        }
+                      }}
+                      className='w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20'
+                    >
+                      <option value='sales_staff'>Sales Staff</option>
+                      <option value='accountant'>Accountant</option>
+                      {isOwner && <option value='manager'>Manager</option>}
+                      <option value='viewer'>Viewer</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className='block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2'>
+                      Permission Overrides
+                    </label>
+                    <div className='max-h-48 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl p-3 bg-gray-50/50'>
+                      {OVERRIDABLE_PERMS.map(({ key, label }) => {
+                        const implied = isPermImplied(editPerms, key);
+                        const isChecked = implied || (editPerms[key] ?? false);
+                        return (
+                          <label
+                            key={key}
+                            className={`flex items-center justify-between py-2 text-xs ${
+                              implied ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'
+                            }`}
+                            title={implied ? 'Implied by enabled action permission' : undefined}
+                          >
+                            <span className='text-gray-700'>
+                              {label}
+                              {implied && (
+                                <span className='ml-2 text-[10px] text-primary-600 font-medium'>
+                                  (implied)
+                                </span>
+                              )}
+                            </span>
+                            <input
+                              type='checkbox'
+                              checked={isChecked}
+                              disabled={implied}
+                              onChange={(e) =>
+                                setEditPerms(
+                                  updatePermWithImplications(editPerms, key, e.target.checked)
+                                )
+                              }
+                              className='rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4 disabled:opacity-60'
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className='flex items-center justify-end gap-2 pt-3 border-t border-gray-100'>
                 <button
                   type='button'
                   onClick={() => setSelectedMember(null)}
-                  className='px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors'
+                  className='px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer'
                 >
                   Cancel
                 </button>
@@ -907,7 +1069,7 @@ export default function TeamSettingsTab() {
                   type='button'
                   onClick={handleSaveMember}
                   disabled={isSubmitting}
-                  className='px-5 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors disabled:opacity-50'
+                  className='px-5 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors disabled:opacity-50 cursor-pointer'
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
