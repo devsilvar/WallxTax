@@ -7,7 +7,11 @@ import Footer from './Footer.tsx';
  * Marketing site shell for public editorial pages (Home, About, Pricing, Contact).
  * Provides fixed header, route-aware navigation, and shared footer.
  */
-export default function MarketingLayout() {
+export default function MarketingLayout({
+  children,
+}: {
+  children?: React.ReactNode;
+} = {}) {
   const { pathname } = useLocation();
 
   // Scroll to top on route change
@@ -19,7 +23,7 @@ export default function MarketingLayout() {
     <div className='min-h-screen bg-white text-gray-900 flex flex-col font-sans antialiased selection:bg-primary-100 selection:text-primary-900'>
       <Nav />
       <main className='flex-1 pt-14 sm:pt-16'>
-        <Outlet />
+        {children || <Outlet />}
       </main>
       <Footer />
     </div>

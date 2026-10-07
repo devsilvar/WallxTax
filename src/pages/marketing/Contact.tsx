@@ -135,39 +135,127 @@ export default function Contact() {
       {/* ── 2. Contact Channels Strip ── */}
       <SectionContainer background='gray'>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-          {supportChannels.map((channel, idx) => (
-            <ScrollReveal key={channel.title} delay={idx * 60}>
-              <div className='h-full flex flex-col justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-2xs hover:shadow-md transition-all'>
-                <div>
-                  <div className='flex items-center justify-between mb-3'>
-                    <h3 className='text-lg font-bold text-gray-900'>
+          {supportChannels.map((channel, idx) => {
+            const isWhatsapp = channel.id === 'whatsapp';
+            const isEmail = channel.id === 'email';
+
+            return (
+              <ScrollReveal key={channel.title} delay={idx * 60}>
+                <div
+                  className={`h-full flex flex-col justify-between rounded-2xl border bg-white p-6 shadow-2xs hover:shadow-md transition-all ${
+                    isWhatsapp
+                      ? 'border-emerald-200/90 hover:border-emerald-300'
+                      : isEmail
+                      ? 'border-purple-200/90 hover:border-purple-300'
+                      : 'border-gray-200 hover:border-primary-200'
+                  }`}
+                >
+                  <div>
+                    {/* Header with authentic Channel Icon Badge */}
+                    <div className='flex items-center justify-between mb-4'>
+                      <div
+                        className={`h-11 w-11 rounded-xl flex items-center justify-center shadow-2xs ${
+                          isWhatsapp
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : isEmail
+                            ? 'bg-purple-50 text-primary-600'
+                            : 'bg-blue-50 text-blue-600'
+                        }`}
+                      >
+                        {isWhatsapp && <WhatsAppIcon className='h-6 w-6 text-emerald-600' />}
+                        {isEmail && <Mail className='h-5 w-5 text-primary-600' />}
+                        {!isWhatsapp && !isEmail && <MessageSquare className='h-5 w-5 text-blue-600' />}
+                      </div>
+
+                      {/* Channel Icon Pill */}
+                      {isWhatsapp && (
+                        <span className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80'>
+                          <WhatsAppIcon className='h-3.5 w-3.5 text-emerald-600' />
+                          <span>WhatsApp</span>
+                        </span>
+                      )}
+                      {isEmail && (
+                        <span className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-primary-700 border border-purple-200/80'>
+                          <Mail className='h-3.5 w-3.5 text-primary-600' />
+                          <span>Email Support</span>
+                        </span>
+                      )}
+                      {!isWhatsapp && !isEmail && (
+                        <span className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80'>
+                          <MessageSquare className='h-3.5 w-3.5 text-blue-600' />
+                          <span>In-App Desk</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className='text-lg font-bold text-gray-900 mb-2'>
                       {channel.title}
                     </h3>
-                    <span className='text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200'>
-                      {channel.badge}
-                    </span>
-                  </div>
-                  <p className='text-xs sm:text-sm text-gray-600 leading-relaxed mb-4'>
-                    {channel.description}
-                  </p>
-                  <p className='text-sm font-semibold text-gray-900 mb-6'>
-                    {channel.contact}
-                  </p>
-                </div>
 
-                <div>
-                  <a
-                    href={channel.href}
-                    target={channel.href.startsWith('http') ? '_blank' : undefined}
-                    rel='noopener noreferrer'
-                    className='inline-flex items-center justify-center w-full py-2.5 px-4 rounded-full bg-gray-50 hover:bg-gray-100 text-gray-800 text-xs sm:text-sm font-semibold border border-gray-200 transition-colors'
-                  >
-                    {channel.actionText}
-                  </a>
+                    <p className='text-xs sm:text-sm text-gray-600 leading-relaxed mb-4'>
+                      {channel.description}
+                    </p>
+
+                    {/* Direct clickable contact */}
+                    <div className='mb-6'>
+                      {isWhatsapp ? (
+                        <a
+                          href='tel:2348147490832'
+                          className='inline-flex items-center gap-2 text-sm sm:text-base font-bold text-gray-900 hover:text-emerald-600 transition-colors'
+                          title='Call or message +234 814 749 0832'
+                        >
+                          <Phone className='h-4 w-4 text-emerald-600' />
+                          <span>+234 814 749 0832</span>
+                        </a>
+                      ) : isEmail ? (
+                        <a
+                          href={channel.href}
+                          className='inline-flex items-center gap-2 text-sm sm:text-base font-bold text-gray-900 hover:text-primary-600 transition-colors'
+                        >
+                          <Mail className='h-4 w-4 text-primary-600' />
+                          <span>{channel.contact}</span>
+                        </a>
+                      ) : (
+                        <div className='inline-flex items-center gap-2 text-sm sm:text-base font-bold text-gray-900'>
+                          <MessageSquare className='h-4 w-4 text-blue-600' />
+                          <span>{channel.contact}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    {isWhatsapp ? (
+                      <a
+                        href={channel.href}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all'
+                      >
+                        <WhatsAppIcon className='h-4 w-4 text-white' />
+                        <span>{channel.actionText}</span>
+                      </a>
+                    ) : isEmail ? (
+                      <a
+                        href={channel.href}
+                        className='inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all'
+                      >
+                        <Mail className='h-4 w-4 text-white' />
+                        <span>{channel.actionText}</span>
+                      </a>
+                    ) : (
+                      <a
+                        href={channel.href}
+                        className='inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-full bg-gray-900 hover:bg-gray-800 text-white text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all'
+                      >
+                        <span>{channel.actionText}</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </ScrollReveal>
-          ))}
+              </ScrollReveal>
+            );
+          })}
         </div>
       </SectionContainer>
 
@@ -255,11 +343,12 @@ export default function Contact() {
                     </p>
                     <div className='flex flex-wrap items-center justify-center gap-3'>
                       <a
-                        href={`https://wa.me/2348030000000?text=Hello%20WallXERP,%20I%20just%20submitted%20a%20support%20message%20regarding%20${encodeURIComponent(formData.topic)}`}
+                        href={`https://wa.me/2348147490832?text=Hello%20WallXERP,%20I%20just%20submitted%20a%20support%20message%20regarding%20${encodeURIComponent(formData.topic)}`}
                         target='_blank'
                         rel='noopener noreferrer'
                         className='inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700 transition-colors'
                       >
+                        <WhatsAppIcon className='h-4 w-4 text-white' />
                         Follow up on WhatsApp
                       </a>
                       <button

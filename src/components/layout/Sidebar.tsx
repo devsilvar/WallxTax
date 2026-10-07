@@ -17,6 +17,7 @@ import {
   Zap,
   Bot,
   BookOpen,
+  Crown,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -88,6 +89,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     {
       label: t('sections.account'),
       items: [
+        {
+          to: '/subscription',
+          label: t('subscription', { defaultValue: 'Subscription' }),
+          icon: Crown,
+        },
         { to: '/settings', label: t('Settings'), icon: Settings }, // personal settings always visible
       ],
     },

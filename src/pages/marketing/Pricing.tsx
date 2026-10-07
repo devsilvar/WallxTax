@@ -80,6 +80,20 @@ export default function Pricing() {
                 </span>
               </button>
             </div>
+
+            {/* Direct Bank Transfer Notice */}
+            <div className='mt-6 flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-200/80 text-xs sm:text-sm text-gray-800 shadow-2xs mx-auto max-w-fit'>
+              <span className='inline-block h-2.5 w-2.5 rounded-full bg-[#E31B23]' />
+              <span className='font-bold text-gray-900'>Direct Bank Transfer:</span>
+              <span className='text-gray-700'>Zenith Bank Plc • 1214382269</span>
+              <Link
+                to='/subscription'
+                className='font-bold text-[#E31B23] hover:underline ml-1 inline-flex items-center gap-0.5'
+              >
+                <span>Pay & Upload Receipt</span>
+                <ArrowRight className='h-3 w-3' />
+              </Link>
+            </div>
           </ScrollReveal>
         </div>
       </section>
@@ -176,6 +190,18 @@ export default function Pricing() {
                         <ArrowRight className='h-4 w-4' />
                       </button>
                     </Link>
+
+                    {!isFree && (
+                      <div className='mt-2.5 text-center'>
+                        <Link
+                          to={`/subscription?plan=${plan.id}`}
+                          className='text-xs font-semibold text-primary-700 hover:text-primary-900 transition-colors inline-flex items-center gap-1 hover:underline'
+                        >
+                          <span>Pay via Bank Transfer</span>
+                          <ArrowRight className='h-3 w-3' />
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               </ScrollReveal>

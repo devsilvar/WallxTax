@@ -21,6 +21,7 @@ const pageTitles: Record<string, string> = {
   '/payments': 'Payments',
   '/reminders': 'Reminders',
   '/account': 'Banking & Wallet',
+  '/subscription': 'Subscription',
   '/settings': 'Settings',
 };
 
@@ -30,7 +31,11 @@ const IS_MAC =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 const SHORTCUT_LABEL = IS_MAC ? '⌘K' : 'Ctrl K';
 
-export default function AppLayout() {
+export default function AppLayout({
+  children,
+}: {
+  children?: React.ReactNode;
+} = {}) {
   const location = useLocation();
   const mainContentRef = useRef<HTMLElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -112,7 +117,7 @@ export default function AppLayout() {
         {/* Main content */}
         <main ref={mainContentRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-6">
-            <Outlet />
+            {children || <Outlet />}
           </div>
         </main>
       </div>

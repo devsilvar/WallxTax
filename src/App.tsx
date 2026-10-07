@@ -50,6 +50,7 @@ const PaymentCallback = lazy(() => import('@/pages/PaymentCallback.tsx'));
 const Transactions = lazy(() => import('@/pages/Transactions.tsx'));
 const Settings = lazy(() => import('@/pages/Settings.tsx'));
 const Account = lazy(() => import('@/pages/Account.tsx'));
+const Subscription = lazy(() => import('@/pages/Subscription.tsx'));
 const InvitationAccept = lazy(() => import('@/pages/InvitationAccept.tsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.tsx'));
 
@@ -72,6 +73,24 @@ function SalesUnverifiedRedirect() {
   const [searchParams] = useSearchParams();
   const qs = searchParams.toString();
   return <Navigate to={`/sales?tab=unverified${qs ? `&${qs}` : ''}`} replace />;
+}
+
+function SubscriptionRoute() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  if (isAuthenticated) {
+    return (
+      <AppLayout>
+        <Subscription />
+      </AppLayout>
+    );
+  }
+
+  return (
+    <MarketingLayout>
+      <Subscription />
+    </MarketingLayout>
+  );
 }
 
 export default function App() {
@@ -207,6 +226,9 @@ export default function App() {
                 />
               </Route>
             </Route>
+
+            {/* Subscription desk — accessible both authenticated (AppLayout) and public (MarketingLayout) */}
+            <Route path='/subscription' element={<SubscriptionRoute />} />
 
             {/* Marketing editorial pages */}
             <Route element={<MarketingLayout />}>
