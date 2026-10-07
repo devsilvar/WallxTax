@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 /* ─── Latin-only font subsets (removes Cyrillic/Greek/Vietnamese = 50% fewer files) ─── */
-/* Montserrat: 600 (SemiBold) for headers & KPIs */
+/* Montserrat: 400 (Regular for subscription body) and 600 (SemiBold) */
+@import "@fontsource/montserrat/latin-400.css";
 @import "@fontsource/montserrat/latin-600.css";
 
 /* Inter: 400 (Regular), 500 (Medium), 600 (SemiBold) - core UI weights */
@@ -140,6 +141,7 @@ p, td, th, li, label, input, textarea, select {
 /* ─── Utility classes ─────────────────────────────────────── */
 
 .animate-fade-in { animation: fade-in 0.5s ease-out both; }
+.animate-veil-in { animation: fade-in 0.1s ease-out both; }
 .animate-slide-up { animation: slide-up 0.5s ease-out both; }
 .animate-slide-in-right { animation: slide-in-right 0.4s ease-out both; }
 .animate-scale-in { animation: scale-in 0.3s ease-out both; }

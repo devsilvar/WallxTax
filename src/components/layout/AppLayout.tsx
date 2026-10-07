@@ -1,29 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import Sidebar from './Sidebar.tsx';
 import NotificationBell from './NotificationBell.tsx';
 import UserMenu from './UserMenu.tsx';
+import RouteTransitionLoader from './RouteTransitionLoader.tsx';
 import CommandPalette from '@/components/CommandPalette.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
-
-const isSimulatorEnabled = import.meta.env.VITE_ENABLE_TRANSFER_SIMULATOR === 'true';
-
-const pageTitles: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/sales': 'Sales',
-  '/sales/unverified': 'Unverified Transactions',
-  ...(isSimulatorEnabled ? { '/test/transfer-simulator': 'Test Transfer Simulator' } : {}),
-  '/expenses': 'Expenses',
-  '/invoices': 'Invoices',
-  '/debtors': 'Debtors',
-  '/tax': 'Tax Reports',
-  '/payments': 'Payments',
-  '/reminders': 'Reminders',
-  '/account': 'Banking & Wallet',
-  '/subscription': 'Subscription',
-  '/settings': 'Settings',
-};
+import { resolvePageTitle } from '@/lib/pageTitles.ts';
 
 // Mac users get ⌘K, everyone else gets Ctrl+K. Detected once at module load — the
 // platform doesn't change mid-session.
@@ -65,7 +49,7 @@ export default function AppLayout({
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  const pageTitle = pageTitles[location.pathname] || '';
+  const pageTitle = resolvePageTitle(location.pathname);
 
   return (
     <div className="flex h-screen bg-gray-100/50">
@@ -115,10 +99,12 @@ export default function AppLayout({
         </header>
 
         {/* Main content */}
-        <main ref={mainContentRef} className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl px-4 py-6">
-            {children || <Outlet />}
-          </div>
+        <main ref={mainContentRef} className="relative flex-1 overflow-y-auto">
+          <Suspense fallback={<RouteTransitionLoader />}>
+            <div className="mx-auto max-w-6xl px-4 py-6">
+              {children || <Outlet />}
+            </div>
+          </Suspense>
         </main>
       </div>
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { prefetchRoute } from '@/lib/routeChunks.ts';
 import {
   LayoutDashboard,
   Receipt,
@@ -122,6 +123,32 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     if (mainEl) {
       mainEl.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       mainEl.scrollTop = 0;
+    }
+  };
+
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (prefetchTimerRef.current) {
+        clearTimeout(prefetchTimerRef.current);
+      }
+    };
+  }, []);
+
+  const schedulePrefetch = (to: string) => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+    }
+    prefetchTimerRef.current = setTimeout(() => {
+      void prefetchRoute(to);
+    }, 50);
+  };
+
+  const cancelPrefetch = () => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
     }
   };
 
@@ -280,6 +307,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <NavLink
               to='/sales'
               onClick={handleNavClick}
+              onMouseEnter={() => schedulePrefetch('/sales')}
+              onMouseLeave={cancelPrefetch}
+              onFocus={() => void prefetchRoute('/sales')}
+              onTouchStart={() => void prefetchRoute('/sales')}
               className='flex items-center gap-2 rounded-xl bg-primary-600 px-3 py-2 text-[13px] font-semibold text-white shadow-sm shadow-primary-500/20 transition-all duration-200 hover:bg-primary-700 active:scale-[0.99]'
             >
               <Plus className='h-4 w-4' strokeWidth={2.4} />
@@ -290,6 +321,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <NavLink
               to='/tax'
               onClick={handleNavClick}
+              onMouseEnter={() => schedulePrefetch('/tax')}
+              onMouseLeave={cancelPrefetch}
+              onFocus={() => void prefetchRoute('/tax')}
+              onTouchStart={() => void prefetchRoute('/tax')}
               className='flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-[13px] font-medium text-gray-700 transition-all duration-200 hover:border-primary-200 hover:bg-primary-50/40 hover:text-primary-700'
             >
               <Zap className='h-4 w-4 text-amber-500' strokeWidth={2.2} />
@@ -312,6 +347,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   <NavLink
                     to={to}
                     onClick={handleNavClick}
+                    onMouseEnter={() => schedulePrefetch(to)}
+                    onMouseLeave={cancelPrefetch}
+                    onFocus={() => void prefetchRoute(to)}
+                    onTouchStart={() => void prefetchRoute(to)}
                     className={({ isActive }) =>
                       `group relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-200 ${
                         isActive
@@ -346,6 +385,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           <NavLink
             to='/admin'
             onClick={handleNavClick}
+            onMouseEnter={() => schedulePrefetch('/admin')}
+            onMouseLeave={cancelPrefetch}
+            onFocus={() => void prefetchRoute('/admin')}
+            onTouchStart={() => void prefetchRoute('/admin')}
             className={({ isActive }) =>
               `group relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
                 isActive

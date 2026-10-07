@@ -21,6 +21,7 @@ import { ScrollReveal } from '@/components/marketing/anim.tsx';
 import { SectionHeader, SectionContainer } from '@/components/marketing/Section.tsx';
 import FinalCta from '@/components/marketing/FinalCta.tsx';
 import { howItWorksSteps, trustIndicators } from '@/data/marketing.ts';
+import { prefetchRoute } from '@/lib/routeChunks.ts';
 
 /* ─── Hero 3D Interactive Dashboard Mockup ─── */
 function HeroDashboardPreview() {
@@ -332,6 +333,8 @@ export default function Home() {
                       key={i}
                       src={avatar}
                       alt={`Business owner ${i + 1}`}
+                      width='28'
+                      height='28'
                       className='h-7 w-7 rounded-full border-2 border-white object-cover'
                     />
                   ))}
@@ -403,6 +406,12 @@ export default function Home() {
               <div className='mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 px-4 sm:px-0'>
                 <Link
                   to={isAuthenticated ? '/dashboard' : '/register'}
+                  onMouseEnter={() =>
+                    prefetchRoute(isAuthenticated ? '/dashboard' : '/register')
+                  }
+                  onFocus={() =>
+                    prefetchRoute(isAuthenticated ? '/dashboard' : '/register')
+                  }
                   className='w-full sm:w-auto'
                 >
                   <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-primary-600 via-primary-500 to-purple-600 px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-bold text-white shadow-xl shadow-primary-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/50 hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden group'>
@@ -415,6 +424,12 @@ export default function Home() {
                 </Link>
                 <Link
                   to={isAuthenticated ? '/tax' : '/login'}
+                  onMouseEnter={() =>
+                    prefetchRoute(isAuthenticated ? '/tax' : '/login')
+                  }
+                  onFocus={() =>
+                    prefetchRoute(isAuthenticated ? '/tax' : '/login')
+                  }
                   className='w-full sm:w-auto'
                 >
                   <button className='w-full sm:w-auto relative inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white/80 backdrop-blur px-6 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-[15px] font-semibold text-gray-700 shadow-sm transition-all duration-300 hover:bg-white hover:shadow-md hover:text-primary-700 hover:-translate-y-0.5 active:scale-[0.98]'>
@@ -559,6 +574,8 @@ export default function Home() {
         <div className='mt-10 text-center'>
           <Link
             to='/about'
+            onMouseEnter={() => prefetchRoute('/about')}
+            onFocus={() => prefetchRoute('/about')}
             className='inline-flex items-center gap-1.5 text-sm font-semibold text-primary-600 hover:text-primary-700'
           >
             <span>Explore our full architecture & compliance story</span>
@@ -737,7 +754,15 @@ export default function Home() {
 
           {/* Bottom CTA */}
           <div className='mt-10 sm:mt-14 flex justify-center'>
-            <Link to={isAuthenticated ? '/dashboard' : '/register'}>
+            <Link
+              to={isAuthenticated ? '/dashboard' : '/register'}
+              onMouseEnter={() =>
+                prefetchRoute(isAuthenticated ? '/dashboard' : '/register')
+              }
+              onFocus={() =>
+                prefetchRoute(isAuthenticated ? '/dashboard' : '/register')
+              }
+            >
               <button className='group px-6 sm:px-7 py-3 sm:py-3.5 min-h-[44px] rounded-full bg-gradient-to-r from-primary-600 to-purple-600 text-white text-sm sm:text-base font-semibold shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/40 transition-all duration-300 hover:-translate-y-0.5'>
                 <span className='flex items-center gap-2'>
                   {isAuthenticated

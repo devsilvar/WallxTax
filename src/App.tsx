@@ -88,7 +88,7 @@ function SubscriptionRoute() {
 
   return (
     <MarketingLayout>
-      <Subscription />
+      <Pricing />
     </MarketingLayout>
   );
 }
@@ -229,12 +229,12 @@ export default function App() {
 
             {/* Subscription desk — accessible both authenticated (AppLayout) and public (MarketingLayout) */}
             <Route path='/subscription' element={<SubscriptionRoute />} />
+            <Route path='/pricing' element={<Navigate to='/subscription' replace />} />
 
             {/* Marketing editorial pages */}
             <Route element={<MarketingLayout />}>
               <Route path='/' element={<Home />} />
               <Route path='/about' element={<About />} />
-              <Route path='/pricing' element={<Pricing />} />
               <Route path='/contact' element={<Contact />} />
             </Route>
 

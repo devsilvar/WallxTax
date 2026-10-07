@@ -1,207 +1,258 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { useDocumentTitle } from '@/components/marketing/useDocumentTitle.ts';
 import { ScrollReveal } from '@/components/marketing/anim.tsx';
 import { SectionHeader, SectionContainer } from '@/components/marketing/Section.tsx';
 import FAQSection from '@/components/marketing/FAQSection.tsx';
 import FinalCta from '@/components/marketing/FinalCta.tsx';
+import PlanComparisonTable from '@/components/PlanComparisonTable.tsx';
 import {
-  pricingPlans,
-  planComparisonMatrix,
+  freeTrialPlan,
+  paidPricingPlans,
   pricingFaqs,
 } from '@/data/marketing.ts';
 
 export default function Pricing() {
   useDocumentTitle(
-    'Transparent SME Pricing Plans',
-    'Simple, predictable pricing for Nigerian SMEs. Free compliance tier, Starter at ₦5,000/mo, and Business 14-day trial.',
+    'Subscription Plans | WallXERP',
+    'Simple, predictable subscription plans for Nigerian SMEs. 10-days FREE Trial, Starter at ₦5,000/mo, Business at ₦12,000/quarter, and Scale-Up at ₦45,000/yr.',
   );
-
-  const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
-
-  const formatNaira = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <div className='bg-white'>
-      {/* ── 1. Editorial Header & Billing Toggle ── */}
+      {/* ── 1. Hero Header (Canonical Marketing Heading Size) ── */}
       <section className='pt-12 sm:pt-16 lg:pt-20 pb-12 sm:pb-16 bg-white border-b border-gray-100'>
         <div className='mx-auto max-w-4xl px-4 sm:px-6 text-center'>
           <ScrollReveal>
-            <div className='inline-flex items-center gap-2 rounded-full bg-primary-50 border border-primary-200/80 px-3.5 py-1 mb-4 sm:mb-5 shadow-2xs'>
-              <Sparkles className='h-3.5 w-3.5 text-primary-600' />
-              <span className='text-xs font-semibold tracking-wide text-primary-800 uppercase'>
-                Simple, Predictable Plans
+            <div className='inline-flex items-center gap-2 rounded-full bg-purple-50 border border-purple-200/80 px-4 py-1.5 mb-4 sm:mb-5 shadow-2xs'>
+              <span className='text-xs font-bold tracking-wider text-[#352778] uppercase'>
+                Pricing for WallX Business Suite
               </span>
             </div>
 
             <h1 className='text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight sm:leading-snug'>
-              Transparent pricing that scales with{' '}
+              Transparent subscription plans that scale with{' '}
               <span className='text-primary-600'>your business.</span>
             </h1>
 
             <p className='mt-4 sm:mt-5 text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed'>
-              Start completely free. Always free to record sales, compute taxes,
-              and stay NRS compliant. Upgrade when you need team seats, imports,
-              and AI assistance.
+              Start with a 10-days FREE Trial with full unrestricted access across all features. No credit card required. Upgrade whenever you need higher capacity and multi-branch management.
             </p>
-
-            {/* Monthly / Annual Toggle */}
-            <div className='mt-8 sm:mt-10 inline-flex items-center p-1 rounded-full bg-gray-100 border border-gray-200'>
-              <button
-                type='button'
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-4 py-2 text-sm font-semibold rounded-full transition-all ${
-                  billingCycle === 'monthly'
-                    ? 'bg-white text-gray-900 shadow-2xs'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Monthly billing
-              </button>
-              <button
-                type='button'
-                onClick={() => setBillingCycle('annual')}
-                className={`relative px-4 py-2 text-sm font-semibold rounded-full transition-all flex items-center gap-2 ${
-                  billingCycle === 'annual'
-                    ? 'bg-white text-gray-900 shadow-2xs'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <span>Annual billing</span>
-                <span className='text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200'>
-                  Save ~20%
-                </span>
-              </button>
-            </div>
-
-            {/* Direct Bank Transfer Notice */}
-            <div className='mt-6 flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-200/80 text-xs sm:text-sm text-gray-800 shadow-2xs mx-auto max-w-fit'>
-              <span className='inline-block h-2.5 w-2.5 rounded-full bg-[#E31B23]' />
-              <span className='font-bold text-gray-900'>Direct Bank Transfer:</span>
-              <span className='text-gray-700'>Zenith Bank Plc • 1214382269</span>
-              <Link
-                to='/subscription'
-                className='font-bold text-[#E31B23] hover:underline ml-1 inline-flex items-center gap-0.5'
-              >
-                <span>Pay & Upload Receipt</span>
-                <ArrowRight className='h-3 w-3' />
-              </Link>
-            </div>
           </ScrollReveal>
         </div>
       </section>
 
-      {/* ── 2. Pricing Cards Grid ── */}
+      {/* ── 2. Plans Showcase (Sleek Freemium Bar + Wide Sharp Cards) ── */}
       <SectionContainer background='gray'>
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-          {pricingPlans.map((plan) => {
-            const isFree = plan.id === 'free';
-            const price =
-              billingCycle === 'annual'
-                ? isFree
-                  ? 0
-                  : Math.round(plan.annualPrice / 12)
-                : plan.monthlyPrice;
+        {/* Executive Split Freemium Spotlight Bar (Solid Black Left Anchor + Clean Descriptive Right) */}
+        <ScrollReveal>
+          <div className='max-w-7xl mx-auto mb-10 overflow-hidden rounded-2xl md:rounded-full bg-white border border-gray-200/90 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row items-stretch md:items-center'>
+            {/* Left Block: Solid Black Anchor with Initial Short Words */}
+            <div className='bg-[#0B0F17] text-white px-5 sm:px-6 py-3.5 sm:py-4 flex items-center gap-3 shrink-0 md:rounded-l-full'>
+              <span className='relative flex h-2.5 w-2.5 shrink-0'>
+                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
+                <span className='relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500' />
+              </span>
+              <div className='flex items-baseline gap-2'>
+                <span className='font-bold text-xs sm:text-sm tracking-tight text-white uppercase'>
+                  {freeTrialPlan.name}
+                </span>
+                <span className='text-emerald-400 font-extrabold text-sm sm:text-base'>
+                  — ₦0
+                </span>
+              </div>
+            </div>
+
+            {/* Right Block: Descriptive Words + Rounded Pill Button */}
+            <div className='flex-1 px-4 sm:px-6 py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-emerald-50/20 md:bg-transparent md:rounded-r-full'>
+              <p className='text-xs sm:text-sm text-gray-700 font-medium leading-snug'>
+                Full unrestricted access across Starter, Business & Scale-Up. No credit card required.
+              </p>
+
+              <div className='shrink-0 sm:self-center'>
+                <Link to={freeTrialPlan.ctaLink} className='inline-block w-full sm:w-auto'>
+                  <button
+                    type='button'
+                    className='w-full sm:w-auto px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 active:scale-[0.98]'
+                  >
+                    <span>{freeTrialPlan.ctaText}</span>
+                    <ArrowRight className='h-3.5 w-3.5' />
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* 3 Wide, Sharp Executive Cards Grid */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto items-stretch pt-2'>
+          {paidPricingPlans.map((plan) => {
+            const isQuarterly = plan.id === 'business';
+            const isAnnual = plan.id === 'scale';
+            const priceDisplay = isAnnual
+              ? '₦45,000'
+              : isQuarterly
+                ? '₦12,000'
+                : '₦5,000';
+            const periodDisplay = isAnnual
+              ? '/Yearly'
+              : isQuarterly
+                ? '/Quarterly'
+                : '/Monthly';
+            const planBadge = isQuarterly
+              ? 'Quarterly • Most Popular'
+              : isAnnual
+                ? 'Annual • Best Value'
+                : 'Monthly Plan';
 
             return (
               <ScrollReveal key={plan.id}>
                 <div
-                  className={`h-full flex flex-col justify-between rounded-2xl bg-white p-6 transition-all duration-200 ${
-                    plan.popular
-                      ? 'border-2 border-primary-600 shadow-lg relative'
-                      : 'border border-gray-200 shadow-2xs hover:shadow-md'
+                  style={{ fontFamily: "'Montserrat', sans-serif" }}
+                  className={`h-full flex flex-col justify-between rounded-2xl p-6 sm:p-7 lg:p-8 transition-all duration-200 relative ${
+                    isQuarterly
+                      ? 'bg-[#352778] text-white border-2 border-purple-400/40 shadow-xl shadow-[#352778]/30 transform lg:-translate-y-1.5'
+                      : 'bg-white border border-gray-200 shadow-md shadow-gray-200/50 hover:border-[#352778]/40 hover:shadow-xl'
                   }`}
                 >
-                  {plan.popular && (
-                    <div className='absolute -top-3 left-1/2 -translate-x-1/2'>
-                      <span className='px-3 py-1 rounded-full bg-primary-600 text-white text-xs font-bold uppercase tracking-wider shadow-2xs'>
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
+                  {/* Floating Pill Badge at Top Edge */}
+                  <div className='absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap'>
+                    <span
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      className={`px-5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
+                        isQuarterly
+                          ? 'bg-[#E85918] text-white'
+                          : 'bg-[#352778] text-white'
+                      }`}
+                    >
+                      {planBadge}
+                    </span>
+                  </div>
 
                   <div>
                     {/* Header */}
-                    <div className='flex items-center justify-between'>
-                      <h3 className='text-xl font-bold text-gray-900'>
+                    <div className='pt-1'>
+                      <h3
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                        className={`text-2xl sm:text-[26px] font-extrabold tracking-tight ${
+                          isQuarterly ? 'text-white' : 'text-[#352778]'
+                        }`}
+                      >
                         {plan.name}
                       </h3>
-                      {plan.trialBadge && (
-                        <span className='text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200'>
-                          {plan.trialBadge}
+                      <p
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                        className={`mt-2 text-xs sm:text-sm font-normal leading-relaxed min-h-[38px] ${
+                          isQuarterly ? 'text-purple-100/90' : 'text-gray-600'
+                        }`}
+                      >
+                        {plan.tagline}
+                      </p>
+                    </div>
+
+                    {/* Features List — Razor-sharp Montserrat Regular with Crisp Check Icons */}
+                    <div
+                      className={`my-5 pt-4 border-t ${
+                        isQuarterly ? 'border-purple-500/30' : 'border-gray-100'
+                      }`}
+                    >
+                      <ul className='space-y-3' style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                        {plan.features.map((feat) => (
+                          <li key={feat} className='flex items-start gap-3'>
+                            <CheckCircle2
+                              className={`h-5.5 w-5.5 sm:h-6 sm:w-6 shrink-0 mt-0.5 ${
+                                isQuarterly
+                                  ? 'text-white/95'
+                                  : 'text-[#352778]'
+                              }`}
+                              strokeWidth={1.8}
+                            />
+                            <span
+                              style={{ fontFamily: "'Montserrat', sans-serif" }}
+                              className={`text-[13.5px] sm:text-[14px] font-normal leading-snug tracking-[-0.01em] antialiased ${
+                                isQuarterly ? 'text-white' : 'text-gray-900'
+                              }`}
+                            >
+                              {feat}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Pricing and Action CTA Block */}
+                  <div
+                    className={`mt-6 pt-4 border-t ${
+                      isQuarterly ? 'border-purple-500/30' : 'border-gray-100'
+                    }`}
+                  >
+                    <div>
+                      <span
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                        className={`text-xs uppercase font-bold tracking-wider block mb-1 ${
+                          isQuarterly ? 'text-purple-200/80' : 'text-gray-500'
+                        }`}
+                      >
+                        Pricing
+                      </span>
+                      <div className='flex items-baseline gap-1.5'>
+                        <span
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
+                            isQuarterly ? 'text-white' : 'text-gray-900'
+                          }`}
+                        >
+                          {priceDisplay}
                         </span>
+                        <span
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className={`text-sm sm:text-base font-normal ${
+                            isQuarterly ? 'text-purple-200' : 'text-gray-500'
+                          }`}
+                        >
+                          {periodDisplay}
+                        </span>
+                      </div>
+
+                      {/* Savings Pill */}
+                      {plan.trialBadge ? (
+                        <div className='mt-2'>
+                          <span
+                            style={{ fontFamily: "'Montserrat', sans-serif" }}
+                            className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                              isQuarterly
+                                ? 'bg-[#E85918]/20 text-orange-200 border-orange-400/40'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            }`}
+                          >
+                            {plan.trialBadge}
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className='mt-2 text-xs font-normal text-gray-500'
+                        >
+                          Billed monthly
+                        </div>
                       )}
                     </div>
 
-                    <p className='mt-2 text-xs sm:text-sm text-gray-600 min-h-[40px]'>
-                      {plan.tagline}
-                    </p>
-
-                    {/* Price Block */}
-                    <div className='mt-5 pb-5 border-b border-gray-100'>
-                      <div className='flex items-baseline gap-1'>
-                        <span className='text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight'>
-                          {isFree ? '₦0' : formatNaira(price)}
-                        </span>
-                        {!isFree && (
-                          <span className='text-xs font-medium text-gray-500'>
-                            /month
-                          </span>
-                        )}
-                      </div>
-                      <div className='mt-1 text-xs text-gray-500'>
-                        {isFree
-                          ? 'Free forever'
-                          : billingCycle === 'annual'
-                            ? `Billed annually at ${formatNaira(plan.annualPrice)}/yr`
-                            : 'Billed monthly'}
-                      </div>
-                    </div>
-
-                    {/* Features List */}
-                    <ul className='mt-6 space-y-3 text-sm text-gray-600'>
-                      {plan.features.map((feat) => (
-                        <li key={feat} className='flex items-start gap-2.5'>
-                          <Check className='h-4 w-4 text-emerald-600 shrink-0 mt-0.5' />
-                          <span className='text-xs sm:text-sm'>{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Action CTA */}
-                  <div className='mt-8 pt-4 border-t border-gray-50'>
-                    <Link to={plan.ctaLink} className='block'>
+                    <Link to={plan.ctaLink} className='block mt-5'>
                       <button
-                        className={`w-full py-3 px-4 rounded-full text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${
-                          plan.popular
-                            ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-2xs hover:shadow'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border border-gray-200'
+                        type='button'
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                        className={`w-full py-3.5 sm:py-4 px-6 rounded-full text-sm sm:text-base font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-[0.98] ${
+                          isQuarterly
+                            ? 'bg-[#E85918] hover:bg-[#D44E12] text-white shadow-orange-950/25 hover:shadow-lg'
+                            : 'bg-[#352778] hover:bg-[#2A1E63] text-white shadow-purple-950/20 hover:shadow-lg'
                         }`}
                       >
                         <span>{plan.ctaText}</span>
                         <ArrowRight className='h-4 w-4' />
                       </button>
                     </Link>
-
-                    {!isFree && (
-                      <div className='mt-2.5 text-center'>
-                        <Link
-                          to={`/subscription?plan=${plan.id}`}
-                          className='text-xs font-semibold text-primary-700 hover:text-primary-900 transition-colors inline-flex items-center gap-1 hover:underline'
-                        >
-                          <span>Pay via Bank Transfer</span>
-                          <ArrowRight className='h-3 w-3' />
-                        </Link>
-                      </div>
-                    )}
                   </div>
                 </div>
               </ScrollReveal>
@@ -210,7 +261,7 @@ export default function Pricing() {
         </div>
       </SectionContainer>
 
-      {/* ── 3. Plan Comparison Matrix (Real Table) ── */}
+      {/* ── 3. Plan Comparison Matrix ── */}
       <SectionContainer background='white'>
         <SectionHeader
           eyebrow='Detailed Matrix'
@@ -219,84 +270,24 @@ export default function Pricing() {
           subtitle='Transparent breakdown of caps, allowances, and plan features.'
         />
 
-        <div className='overflow-x-auto rounded-xl border border-gray-200 shadow-2xs'>
-          <table className='w-full text-left border-collapse min-w-[680px]'>
-            <thead>
-              <tr className='bg-gray-50 border-b border-gray-200'>
-                <th className='py-4 px-5 text-sm font-bold text-gray-900 w-2/5'>
-                  Plan Feature
-                </th>
-                <th className='py-4 px-3 text-center text-sm font-bold text-gray-900'>
-                  Free
-                </th>
-                <th className='py-4 px-3 text-center text-sm font-bold text-gray-900'>
-                  Starter
-                </th>
-                <th className='py-4 px-3 text-center text-sm font-bold text-primary-700 bg-primary-50/50'>
-                  Business
-                </th>
-                <th className='py-4 px-3 text-center text-sm font-bold text-gray-900'>
-                  Scale
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {planComparisonMatrix.map((section) => (
-                <tr key={section.category} className='contents'>
-                  <tr className='bg-gray-100/70 border-y border-gray-200'>
-                    <td
-                      colSpan={5}
-                      className='py-2.5 px-5 text-xs font-bold uppercase tracking-wider text-gray-700'
-                    >
-                      {section.category}
-                    </td>
-                  </tr>
-                  {section.rows.map((row, rIdx) => (
-                    <tr
-                      key={row.feature}
-                      className={`border-b border-gray-100 hover:bg-gray-50/70 ${
-                        rIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                      }`}
-                    >
-                      <td className='py-3 px-5 text-sm font-medium text-gray-800'>
-                        {row.feature}
-                      </td>
-                      <td className='py-3 px-3 text-center text-xs sm:text-sm text-gray-600'>
-                        {row.free}
-                      </td>
-                      <td className='py-3 px-3 text-center text-xs sm:text-sm text-gray-600'>
-                        {row.starter}
-                      </td>
-                      <td className='py-3 px-3 text-center text-xs sm:text-sm font-semibold text-primary-700 bg-primary-50/30'>
-                        {row.business}
-                      </td>
-                      <td className='py-3 px-3 text-center text-xs sm:text-sm text-gray-600'>
-                        {row.scale}
-                      </td>
-                    </tr>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PlanComparisonTable />
       </SectionContainer>
 
       {/* ── 4. Pricing FAQs ── */}
       <FAQSection
         items={pricingFaqs}
-        title='Frequently asked questions about billing'
-        accentWord='billing'
-        subtitle='Details regarding payments via Paystack, trial periods, and account downgrades.'
+        title='Frequently asked questions about subscription'
+        accentWord='subscription'
+        subtitle='Details regarding payments, trial periods, and account activations.'
       />
 
       {/* ── 5. Final CTA ── */}
       <FinalCta
         title='Ready to get started? Test WallXERP with zero risk.'
         accentWord='zero'
-        subtitle='Sign up in under 2 minutes. Business tier comes with a full 14-day free trial on signup.'
-        buttonText='Start Free 14-Day Trial'
-        buttonLink='/register?plan=business'
+        subtitle='Sign up in under 2 minutes. Start with a 10-day free trial with complete access across all features.'
+        buttonText='Start 10-Day Free Trial'
+        buttonLink='/register'
       />
     </div>
   );

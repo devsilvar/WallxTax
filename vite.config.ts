@@ -66,9 +66,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Critical: Separate Landing page from other routes
-          if (id.includes('/pages/Landing')) {
-            return 'landing';
+          // Critical: Separate marketing pages & components from application routes
+          if (
+            id.includes('/pages/marketing/') ||
+            id.includes('/components/marketing/')
+          ) {
+            return 'marketing-site';
           }
           
           // Recharts and charting internals are deliberately NOT forced into a

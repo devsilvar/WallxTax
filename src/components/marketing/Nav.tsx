@@ -3,13 +3,14 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
+import { prefetchRoute } from '@/lib/routeChunks.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
-  { label: 'Pricing', to: '/pricing' },
+  { label: 'Subscription', to: '/subscription' },
   { label: 'Contact', to: '/contact' },
 ];
 
@@ -30,10 +31,11 @@ export default function Nav() {
     }
   }, [isAuthenticated, user, activeBusiness, fetchMe, fetchBusinesses]);
 
-  // Close mobile drawer on route change
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (prevPathname !== location.pathname) {
+    setPrevPathname(location.pathname);
     setMobileNavOpen(false);
-  }, [location.pathname]);
+  }
 
   return (
     <>
@@ -55,6 +57,8 @@ export default function Nav() {
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
+                onMouseEnter={() => prefetchRoute(item.to)}
+                onFocus={() => prefetchRoute(item.to)}
                 className={({ isActive }) =>
                   `relative font-sans text-[15px] font-medium transition-colors py-1 ${
                     isActive
@@ -73,6 +77,8 @@ export default function Nav() {
             {isAuthenticated ? (
               <Link
                 to='/dashboard'
+                onMouseEnter={() => prefetchRoute('/dashboard')}
+                onFocus={() => prefetchRoute('/dashboard')}
                 className='flex items-center gap-2 sm:gap-3 rounded-full border border-gray-200 bg-white hover:bg-gray-50 pl-1.5 pr-2 sm:pr-4 py-1.5 shadow-2xs hover:shadow-xs transition-all duration-200 group'
                 title='Go to Dashboard'
               >
@@ -103,7 +109,12 @@ export default function Nav() {
               </Link>
             ) : (
               <>
-                <Link to='/login' className='hidden sm:block'>
+                <Link
+                  to='/login'
+                  onMouseEnter={() => prefetchRoute('/login')}
+                  onFocus={() => prefetchRoute('/login')}
+                  className='hidden sm:block'
+                >
                   <Button
                     variant='ghost'
                     size='sm'
@@ -112,7 +123,12 @@ export default function Nav() {
                     Sign in
                   </Button>
                 </Link>
-                <Link to='/register' className='hidden sm:block'>
+                <Link
+                  to='/register'
+                  onMouseEnter={() => prefetchRoute('/register')}
+                  onFocus={() => prefetchRoute('/register')}
+                  className='hidden sm:block'
+                >
                   <button className='inline-flex items-center justify-center gap-1.5 rounded-full bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 text-sm font-semibold shadow-2xs hover:shadow transition-all duration-200 active:scale-[0.98]'>
                     <span>Get Started</span>
                     <ArrowRight className='h-4 w-4' />
@@ -164,6 +180,8 @@ export default function Nav() {
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
+                onMouseEnter={() => prefetchRoute(item.to)}
+                onFocus={() => prefetchRoute(item.to)}
                 onClick={() => setMobileNavOpen(false)}
                 className={({ isActive }) =>
                   `block px-4 py-3 text-[15px] font-medium rounded-xl transition-colors ${
@@ -183,6 +201,8 @@ export default function Nav() {
               <>
                 <Link
                   to='/dashboard'
+                  onMouseEnter={() => prefetchRoute('/dashboard')}
+                  onFocus={() => prefetchRoute('/dashboard')}
                   onClick={() => setMobileNavOpen(false)}
                   className='flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-all'
                 >
@@ -212,6 +232,8 @@ export default function Nav() {
                 </Link>
                 <Link
                   to='/dashboard'
+                  onMouseEnter={() => prefetchRoute('/dashboard')}
+                  onFocus={() => prefetchRoute('/dashboard')}
                   onClick={() => setMobileNavOpen(false)}
                   className='block'
                 >
@@ -224,6 +246,8 @@ export default function Nav() {
               <>
                 <Link
                   to='/login'
+                  onMouseEnter={() => prefetchRoute('/login')}
+                  onFocus={() => prefetchRoute('/login')}
                   onClick={() => setMobileNavOpen(false)}
                   className='block'
                 >
@@ -236,6 +260,8 @@ export default function Nav() {
                 </Link>
                 <Link
                   to='/register'
+                  onMouseEnter={() => prefetchRoute('/register')}
+                  onFocus={() => prefetchRoute('/register')}
                   onClick={() => setMobileNavOpen(false)}
                   className='block'
                 >

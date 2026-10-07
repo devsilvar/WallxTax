@@ -149,13 +149,16 @@ export const trustIndicators = [
   { icon: Clock, text: 'Active NRS Compliance' },
 ];
 
-/* ─── Pricing Plans (from subtext.md) ─── */
+/* ─── Pricing Plans (from freetrial.txt) ─── */
 export interface PricingPlan {
   id: 'free' | 'starter' | 'business' | 'scale';
   name: string;
   tagline: string;
   monthlyPrice: number; // in NGN
+  quarterlyPrice: number; // in NGN/quarter
   annualPrice: number; // in NGN/year
+  savingsQuarterly?: string;
+  savingsAnnual?: string;
   popular?: boolean;
   trialBadge?: string;
   features: string[];
@@ -163,87 +166,116 @@ export interface PricingPlan {
   ctaLink: string;
 }
 
-export const pricingPlans: PricingPlan[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    tagline: 'Essential compliance foundation for solopreneurs & new vendors.',
-    monthlyPrice: 0,
-    annualPrice: 0,
-    features: [
-      'Up to 3 team members',
-      '1 business profile',
-      '5 invoices / month (with WallX badge)',
-      'Unlimited manual sales & expenses',
-      'Dedicated Virtual Account (DVA)',
-      'FIRS/NRS tax calculation & filing',
-      '5 AI CFO trial queries / month',
-      'Tax deadline email reminders',
-    ],
-    ctaText: 'Start Free',
-    ctaLink: '/register',
-  },
+export const freeTrialPlan: PricingPlan = {
+  id: 'free',
+  name: '10-days FREE Trial (Freemiums)',
+  tagline: 'Get 10 days of unrestricted access to every single feature across Starter, Business, and Scale-Up tiers.',
+  monthlyPrice: 0,
+  quarterlyPrice: 0,
+  annualPrice: 0,
+  trialBadge: '10-Day Free Trial',
+  features: [
+    'Everything in Starter, Business and ScaleUp',
+  ],
+  ctaText: 'Start 10-Day Free Trial',
+  ctaLink: '/register',
+};
+
+export const paidPricingPlans: PricingPlan[] = [
   {
     id: 'starter',
-    name: 'Starter',
-    tagline: 'Ideal for growing retail stores and small service businesses.',
+    name: 'Monthly PLAN (Starter)',
+    tagline: 'Monthly Plan for essential store operations and sales records.',
     monthlyPrice: 5000,
-    annualPrice: 50000, // ₦50k/yr (save ~₦10k)
+    quarterlyPrice: 15000,
+    annualPrice: 50000,
     features: [
-      'Up to 5 team members',
-      'Up to 2 businesses',
-      'Unlimited invoices (your own branding)',
+      'Up to 3 team members',
+      'Sales Management',
+      'Dedicated Virtual Bank Acc (DVA)',
+      'Manage Up to 2 businesses/branches',
+      'Unlimited invoices (custom branding) & Auto Collection',
       'Excel & CSV bulk sales import',
       '30 AI CFO queries / month',
-      'Tax + overdue invoice reminders',
-      'All 11 PDF document generators',
-      'Full data export anytime',
+      'Payment/Debtors/ Mgt & Reminders',
+      'Business Profit/Loss Summary',
+      'Expense Management',
+      'Generate Reports',
+      'FIR/NRS Tax Calculation & Filling',
+      'Customer Retention & Loyalty Program',
     ],
-    ctaText: 'Choose Starter',
+    ctaText: 'Choose Monthly Plan',
     ctaLink: '/register?plan=starter',
   },
   {
     id: 'business',
-    name: 'Business',
-    tagline: 'Full power for established SMEs, multi-location stores, & agencies.',
-    monthlyPrice: 15000,
-    annualPrice: 150000, // ₦150k/yr (save ~₦30k)
+    name: 'Quarterly (Business)',
+    tagline: 'Quarterly Plan for scaling SMEs with customer credit and automated triggers.',
+    monthlyPrice: 5000,
+    quarterlyPrice: 12000,
+    annualPrice: 45000,
     popular: true,
-    trialBadge: '14-Day Free Trial',
+    trialBadge: 'Saving ₦3,000',
+    savingsQuarterly: 'Saving ₦3,000',
     features: [
+      'Everything in Starter Plan',
+      'Sales Management',
+      'Dedicated Virtual Bank Acc (DVA)',
       'Up to 10 team members',
-      'Up to 5 businesses',
-      'Unlimited invoices & receipts',
-      'Customer Credit (BNPL & Debtors flow)',
-      'Marketplace product listings (up to 3 featured items)',
-      '200 AI CFO queries / month',
-      'All 19 automated reminder triggers',
-      'Granular team permission overrides',
+      'Manage Up to 5 businesses/branches',
+      'Unlimited invoices (custom branding) & Auto Collection',
+      'Unlimited Receipt',
+      'Excel & CSV bulk sales & expense import',
+      '30 AI CFO queries / month',
+      'Payment/Debtors/ Mgt & Reminders',
+      'Business Profit/Loss Summary',
+      'Customer Credit Management (BNPL)',
+      'Expense Management',
+      'Generate Reports',
+      '19 Automated Reminders & Triggers',
+      'FIR/NRS Tax Calculation & Filling',
+      'Business Intelligence Reports/Analytics',
+      'Customer Retention & Loyalty Program',
     ],
-    ctaText: 'Start 14-Day Trial',
+    ctaText: 'Choose Quarterly Plan',
     ctaLink: '/register?plan=business',
   },
   {
     id: 'scale',
-    name: 'Scale',
-    tagline: 'High volume, multi-branch operations and enterprise compliance.',
-    monthlyPrice: 35000,
-    annualPrice: 350000, // ₦350k/yr (save ~₦70k)
+    name: 'Annual (Scale-Up)',
+    tagline: 'Annual Plan for high-volume enterprises with unlimited operations.',
+    monthlyPrice: 5000,
+    quarterlyPrice: 12000,
+    annualPrice: 45000,
+    trialBadge: 'Saving ₦15,000',
+    savingsAnnual: 'Saving ₦15,000',
     features: [
+      'Everything in Business Plan',
       'Unlimited team members',
-      'Unlimited businesses',
-      'Bulk invoice dispatch',
-      'Custom debt collection workflows',
-      'Marketplace listings with priority placement',
-      'Unlimited AI CFO queries',
-      'Priority reminder scheduling',
-      'White-label PDF document suite',
-      'Dedicated account manager & SLA',
+      'Unlimited Sales Management',
+      'Dedicated Virtual Bank Acc (DVA)',
+      'Manage Up to Unlimited businesses/branches',
+      'Unlimited invoices (custom branding) & Auto Collection',
+      'Bulk Invoicing & Receipting',
+      'Unlimited Receipt',
+      'Excel & CSV bulk sales & expense import',
+      '30 AI CFO queries / month',
+      'Payment/Debtors/ Mgt & Reminders',
+      'Business Profit/Loss Summary',
+      'Customer Credit Management (BNPL)',
+      'Expense Management',
+      'Generate Reports',
+      '30 Automated Reminders & Triggers',
+      'Business Intelligence Reports/Analytics',
+      'FIR/NRS Tax Calculation & Filling',
+      'Customer Retention & Loyalty Program',
     ],
-    ctaText: 'Get Scale',
+    ctaText: 'Choose Annual Plan',
     ctaLink: '/register?plan=scale',
   },
 ];
+
+export const pricingPlans: PricingPlan[] = [freeTrialPlan, ...paidPricingPlans];
 
 /* ─── Plan Comparison Matrix ─── */
 export interface MatrixRow {
@@ -260,106 +292,155 @@ export interface MatrixRow {
 
 export const planComparisonMatrix: MatrixRow[] = [
   {
-    category: 'Capacity & Structure',
+    category: 'Plan Structure & Commitment',
     rows: [
+      {
+        feature: 'Billing / Commitment Term',
+        free: '10-days FREE Trial',
+        starter: 'Monthly Plan',
+        business: 'Quarterly Plan',
+        scale: 'Annual Plan',
+      },
+      {
+        feature: 'Price & Savings',
+        free: '₦0',
+        starter: '₦5,000 / month',
+        business: '₦12,000 / quarter (Saving ₦3,000)',
+        scale: '₦45,000 / year (Saving ₦15,000)',
+      },
       {
         feature: 'Team Member Seats',
-        free: '3 seats',
-        starter: '5 seats',
-        business: '10 seats',
-        scale: 'Unlimited',
+        free: 'Unlimited (trial)',
+        starter: 'Up to 3 team members',
+        business: 'Up to 10 team members',
+        scale: 'Unlimited team members',
       },
       {
-        feature: 'Businesses Managed',
-        free: '1',
-        starter: '2',
-        business: '5',
-        scale: 'Unlimited',
-      },
-      {
-        feature: 'Invoices / Month',
-        free: '5 (WallX badge)',
-        starter: 'Unlimited (Own branding)',
-        business: 'Unlimited',
-        scale: 'Unlimited + Bulk dispatch',
-      },
-      {
-        feature: 'Sales Entry & Ledger',
-        free: 'Unlimited manual',
-        starter: 'Manual + Excel/CSV import',
-        business: 'Manual + Excel/CSV import',
-        scale: 'Manual + Excel/CSV import',
+        feature: 'Businesses / Branches Managed',
+        free: 'Unlimited (trial)',
+        starter: 'Manage Up to 2 businesses/branches',
+        business: 'Manage Up to 5 businesses/branches',
+        scale: 'Manage Up to Unlimited businesses/branches',
       },
     ],
   },
   {
-    category: 'Intelligence & Automation',
+    category: 'Sales, Invoicing & Receipts',
     rows: [
       {
-        feature: 'AI Virtual CFO',
-        free: '5 queries/mo',
-        starter: '30 queries/mo',
-        business: '200 queries/mo',
-        scale: 'Unlimited + custom prompts',
+        feature: 'Sales Management',
+        free: 'Unlimited Sales Management',
+        starter: 'Sales Management',
+        business: 'Sales Management',
+        scale: 'Unlimited Sales Management',
       },
       {
-        feature: 'Automated Reminders',
-        free: 'Tax deadline only',
-        starter: 'Tax + Overdue invoices',
-        business: 'All 19 reminder types',
-        scale: 'All + Priority dispatch',
-      },
-      {
-        feature: 'PDF Statements & Receipts',
-        free: 'Tax statement + Receipt',
-        starter: 'All 11 generators',
-        business: 'All 11 generators',
-        scale: 'All + White-label suite',
-      },
-    ],
-  },
-  {
-    category: 'Money & Growth',
-    rows: [
-      {
-        feature: 'Customer Credits & BNPL',
-        free: '—',
-        starter: '—',
-        business: 'Included',
-        scale: 'Included + Debt notes',
-      },
-      {
-        feature: 'Marketplace Listings',
-        free: '—',
-        starter: '—',
-        business: 'Included (up to 3 products)',
-        scale: 'Included + Priority placement',
-      },
-    ],
-  },
-  {
-    category: 'Core Compliance (Always Free)',
-    rows: [
-      {
-        feature: 'NRS Tax Calculation (VAT + Income Tax)',
+        feature: 'Dedicated Virtual Bank Acc (DVA)',
         free: '✓ Included',
         starter: '✓ Included',
         business: '✓ Included',
         scale: '✓ Included',
       },
       {
-        feature: 'Dedicated Virtual Account (DVA)',
+        feature: 'Invoicing & Auto Collection',
+        free: 'Unlimited invoices (custom branding) & Auto Collection',
+        starter: 'Unlimited invoices (custom branding) & Auto Collection',
+        business: 'Unlimited invoices (custom branding) & Auto Collection',
+        scale: 'Unlimited invoices (custom branding) & Auto Collection',
+      },
+      {
+        feature: 'Receipt Generation',
+        free: 'Unlimited Receipt + Bulk Receipting',
+        starter: 'Standard Receipts',
+        business: 'Unlimited Receipt',
+        scale: 'Bulk Invoicing & Receipting + Unlimited Receipt',
+      },
+      {
+        feature: 'Bulk Sales & Expense Import',
+        free: 'Excel & CSV bulk sales & expense import',
+        starter: 'Excel & CSV bulk sales import',
+        business: 'Excel & CSV bulk sales & expense import',
+        scale: 'Excel & CSV bulk sales & expense import',
+      },
+    ],
+  },
+  {
+    category: 'Finance, Credit & AI Intelligence',
+    rows: [
+      {
+        feature: 'AI CFO Queries / Month',
+        free: '30 AI CFO queries / month',
+        starter: '30 AI CFO queries / month',
+        business: '30 AI CFO queries / month',
+        scale: '30 AI CFO queries / month',
+      },
+      {
+        feature: 'Payment/Debtors/ Mgt & Reminders',
         free: '✓ Included',
         starter: '✓ Included',
         business: '✓ Included',
         scale: '✓ Included',
       },
       {
-        feature: 'Historical Data Retention',
-        free: '✓ Never deleted',
-        starter: '✓ Never deleted',
-        business: '✓ Never deleted',
-        scale: '✓ Never deleted',
+        feature: 'Customer Credit Management (BNPL)',
+        free: '✓ Included',
+        starter: '—',
+        business: '✓ Included',
+        scale: '✓ Included',
+      },
+      {
+        feature: 'Automated Reminders & Triggers',
+        free: '30 Automated Reminders & Triggers',
+        starter: 'Standard Reminders',
+        business: '19 Automated Reminders & Triggers',
+        scale: '30 Automated Reminders & Triggers',
+      },
+      {
+        feature: 'Business Profit/Loss Summary',
+        free: '✓ Included',
+        starter: '✓ Included',
+        business: '✓ Included',
+        scale: '✓ Included',
+      },
+      {
+        feature: 'Business Intelligence Reports/Analytics',
+        free: '✓ Included',
+        starter: '—',
+        business: '✓ Included',
+        scale: '✓ Included',
+      },
+    ],
+  },
+  {
+    category: 'Compliance & Growth Programs',
+    rows: [
+      {
+        feature: 'Expense Management',
+        free: '✓ Included',
+        starter: '✓ Included',
+        business: '✓ Included',
+        scale: '✓ Included',
+      },
+      {
+        feature: 'Generate Reports',
+        free: '✓ Included',
+        starter: '✓ Included',
+        business: '✓ Included',
+        scale: '✓ Included',
+      },
+      {
+        feature: 'FIR/NRS Tax Calculation & Filling',
+        free: '✓ Included',
+        starter: '✓ Included',
+        business: '✓ Included',
+        scale: '✓ Included',
+      },
+      {
+        feature: 'Customer Retention & Loyalty Program',
+        free: '✓ Included',
+        starter: '✓ Included',
+        business: '✓ Included',
+        scale: '✓ Included',
       },
     ],
   },

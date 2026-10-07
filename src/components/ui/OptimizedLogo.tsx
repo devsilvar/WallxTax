@@ -45,6 +45,8 @@ export default function OptimizedLogo({
       <img
         src='/logo.png'
         alt={alt}
+        width={pixelSize}
+        height={pixelSize}
         className={className}
         loading={loading}
         fetchPriority={fetchPriority}

@@ -4,7 +4,7 @@ import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 const FOOTER_PRODUCT_LINKS = [
   { label: 'Home', to: '/' },
   { label: 'About Us', to: '/about' },
-  { label: 'Pricing Plans', to: '/pricing' },
+  { label: 'Subscription Plans', to: '/subscription' },
   { label: 'Contact Support', to: '/contact' },
 ];
 

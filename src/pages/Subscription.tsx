@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   CheckCircle2,
   Copy,
@@ -7,26 +7,26 @@ import {
   UploadCloud,
   FileText,
   ArrowRight,
+  ArrowLeft,
   Crown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDocumentTitle } from '@/components/marketing/useDocumentTitle.ts';
+import zenithLogo from '@/assets/zenith.png';
 
-function ZenithBankLogo({ className = 'h-9 w-9' }: { className?: string }) {
+// Real Zenith Bank lockup (asset is opaque with a white ground — only valid on
+// white surfaces). Its red is the brand's, so no brand hex is hard-coded here.
+function ZenithBankLogo({ className = 'h-10' }: { className?: string }) {
   return (
-    <div
-      className={`rounded-lg bg-[#E31B23] flex items-center justify-center shadow-2xs shrink-0 ${className}`}
-      aria-label='Zenith Bank Plc'
-    >
-      <svg viewBox='0 0 40 40' className='h-5 w-5' fill='none' aria-hidden='true'>
-        <path
-          d='M8 10 H32 L14 26 H32 V30 H8 L26 14 H8 Z'
-          fill='white'
-        />
-      </svg>
-    </div>
+    <img
+      src={zenithLogo}
+      alt='Zenith Bank Plc'
+      width={173}
+      height={183}
+      className={`w-auto shrink-0 object-contain ${className}`}
+    />
   );
 }
 
@@ -47,72 +47,111 @@ interface PlanOption {
   id: 'free' | 'starter' | 'business' | 'scale';
   name: string;
   priceMonth: number;
+  priceQuarter: number;
   priceAnnual: number;
   tagline: string;
   popular?: boolean;
+  trialBadge?: string;
+  savingsBadge?: string;
   features: string[];
 }
 
 const PLANS: PlanOption[] = [
   {
     id: 'free',
-    name: 'Free',
+    name: '10-days FREE Trial (Freemiums)',
     priceMonth: 0,
+    priceQuarter: 0,
     priceAnnual: 0,
-    tagline: 'Essential compliance foundation for sole vendors and new businesses.',
+    trialBadge: '10-Day Free Trial',
+    tagline: 'Full exploratory trial for growing businesses and sole vendors.',
     features: [
-      'Up to 3 team members',
-      '1 business profile',
-      '5 invoices / month',
-      'Manual sales & expenses tracking',
-      'Dedicated Virtual Account (DVA)',
-      'FIRS/NRS tax calculation & filing',
+      'Everything in Starter, Business and ScaleUp',
     ],
   },
   {
     id: 'starter',
-    name: 'Starter',
+    name: 'Monthly PLAN (Starter)',
     priceMonth: 5000,
+    priceQuarter: 15000,
     priceAnnual: 50000,
-    tagline: 'Ideal for growing retail stores and active service businesses.',
+    tagline: 'Monthly Plan for essential store operations and sales records.',
     features: [
-      'Up to 5 team members',
-      'Up to 2 businesses',
-      'Unlimited invoices (custom branding)',
+      'Up to 3 team members',
+      'Sales Management',
+      'Dedicated Virtual Bank Acc (DVA)',
+      'Manage Up to 2 businesses/branches',
+      'Unlimited invoices (custom branding) & Auto Collection',
       'Excel & CSV bulk sales import',
       '30 AI CFO queries / month',
-      'All 11 PDF document generators',
+      'Payment/Debtors/ Mgt & Reminders',
+      'Business Profit/Loss Summary',
+      'Expense Management',
+      'Generate Reports',
+      'FIR/NRS Tax Calculation & Filling',
+      'Customer Retention & Loyalty Program',
     ],
   },
   {
     id: 'business',
-    name: 'Business',
-    priceMonth: 15000,
-    priceAnnual: 150000,
+    name: 'Quarterly (Business)',
+    priceMonth: 5000,
+    priceQuarter: 12000,
+    priceAnnual: 45000,
     popular: true,
-    tagline: 'Full power for established SMEs, multi-location stores, & agencies.',
+    trialBadge: 'Saving ₦3,000',
+    savingsBadge: 'Saving ₦3,000',
+    tagline: 'Quarterly Plan for scaling SMEs with customer credit and automated triggers.',
     features: [
+      'Everything in Starter Plan',
+      'Sales Management',
+      'Dedicated Virtual Bank Acc (DVA)',
       'Up to 10 team members',
-      'Up to 5 businesses',
-      'Unlimited invoices & receipts',
-      'Customer Credit (BNPL & Debtors flow)',
-      '200 AI CFO queries / month',
-      'All 19 automated reminder triggers',
+      'Manage Up to 5 businesses/branches',
+      'Unlimited invoices (custom branding) & Auto Collection',
+      'Unlimited Receipt',
+      'Excel & CSV bulk sales & expense import',
+      '30 AI CFO queries / month',
+      'Payment/Debtors/ Mgt & Reminders',
+      'Business Profit/Loss Summary',
+      'Customer Credit Management (BNPL)',
+      'Expense Management',
+      'Generate Reports',
+      '19 Automated Reminders & Triggers',
+      'FIR/NRS Tax Calculation & Filling',
+      'Business Intelligence Reports/Analytics',
+      'Customer Retention & Loyalty Program',
     ],
   },
   {
     id: 'scale',
-    name: 'Scale',
-    priceMonth: 35000,
-    priceAnnual: 350000,
-    tagline: 'High volume multi-branch operations and enterprise compliance.',
+    name: 'Annual (Scale-Up)',
+    priceMonth: 5000,
+    priceQuarter: 12000,
+    priceAnnual: 45000,
+    trialBadge: 'Saving ₦15,000',
+    savingsBadge: 'Saving ₦15,000',
+    tagline: 'Annual Plan for high-volume enterprises with unlimited operations.',
     features: [
+      'Everything in Business Plan',
       'Unlimited team members',
-      'Unlimited businesses',
-      'Bulk invoice dispatch',
-      'Custom debt collection workflows',
-      'Unlimited AI CFO queries',
-      'White-label PDF document suite',
+      'Unlimited Sales Management',
+      'Dedicated Virtual Bank Acc (DVA)',
+      'Manage Up to Unlimited businesses/branches',
+      'Unlimited invoices (custom branding) & Auto Collection',
+      'Bulk Invoicing & Receipting',
+      'Unlimited Receipt',
+      'Excel & CSV bulk sales & expense import',
+      '30 AI CFO queries / month',
+      'Payment/Debtors/ Mgt & Reminders',
+      'Business Profit/Loss Summary',
+      'Customer Credit Management (BNPL)',
+      'Expense Management',
+      'Generate Reports',
+      '30 Automated Reminders & Triggers',
+      'Business Intelligence Reports/Analytics',
+      'FIR/NRS Tax Calculation & Filling',
+      'Customer Retention & Loyalty Program',
     ],
   },
 ];
@@ -125,7 +164,6 @@ const BANK_DETAILS = {
 };
 
 const WHATSAPP_NUMBER = '2348147490832';
-const DISPLAY_PHONE = '+234 814 749 0832';
 
 export default function Subscription() {
   useDocumentTitle(
@@ -139,20 +177,66 @@ export default function Subscription() {
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
 
   // Default to query param if provided, otherwise 'business' (most popular upgrade)
-  const initialPlanParam = searchParams.get('plan') as PlanOption['id'] | null;
-  const validInitial = PLANS.some((p) => p.id === initialPlanParam)
-    ? initialPlanParam!
-    : 'business';
+  const isNewBiz =
+    searchParams.get('new') === 'true' || searchParams.get('firstBiz') === 'true';
+  const initialPlanParam = searchParams.get('plan');
+  const validInitial: 'starter' | 'business' | 'scale' =
+    initialPlanParam === 'starter' ||
+    initialPlanParam === 'business' ||
+    initialPlanParam === 'scale'
+      ? initialPlanParam
+      : 'business';
 
   const [selectedPlanId, setSelectedPlanId] = useState<PlanOption['id']>(validInitial);
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  // Two-step flow: pick a tier first, then reveal bank transfer + receipt upload.
+  const [step, setStep] = useState<'plans' | 'payment'>('plans');
 
   const selectedPlan = PLANS.find((p) => p.id === selectedPlanId) || PLANS[2];
-  const isPaidPlan = selectedPlan.id !== 'free';
-  const payableAmount =
-    billingCycle === 'annual'
-      ? selectedPlan.priceAnnual
-      : selectedPlan.priceMonth;
+
+  const getPlanPricingDetails = (plan: PlanOption) => {
+    if (plan.id === 'starter') {
+      return {
+        amount: 5000,
+        period: '/mo',
+        cycle: 'monthly',
+        billingLabel: 'Monthly',
+        termLabel: 'Monthly Plan',
+        subtext: 'Billed monthly at ₦5,000/mo',
+      };
+    }
+    if (plan.id === 'business') {
+      return {
+        amount: 12000,
+        period: '/quarter',
+        cycle: 'quarterly',
+        billingLabel: 'Quarterly',
+        termLabel: 'Quarterly Plan',
+        subtext: 'Billed quarterly · Saving ₦3,000',
+      };
+    }
+    if (plan.id === 'scale') {
+      return {
+        amount: 45000,
+        period: '/yr',
+        cycle: 'annual',
+        billingLabel: 'Annual',
+        termLabel: 'Annual Plan',
+        subtext: 'Billed annually · Saving ₦15,000',
+      };
+    }
+    return {
+      amount: 0,
+      period: '',
+      cycle: 'trial',
+      billingLabel: '10-Day Free Trial',
+      termLabel: '10-Day Free Trial',
+      subtext: 'Free for 10 days',
+    };
+  };
+
+  const selectedPricing = getPlanPricingDetails(selectedPlan);
+  const payableAmount = selectedPricing.amount;
+  const billingCycle = selectedPricing.cycle;
 
   // Form fields
   const [name, setName] = useState(user?.fullName || '');
@@ -251,8 +335,12 @@ export default function Subscription() {
 
       setSubmitted(true);
       toast.success('Proof of payment received! Sent to subscription@wallx.co');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to submit proof. You can also chat on WhatsApp.');
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'Failed to submit proof. You can also chat on WhatsApp.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -264,557 +352,666 @@ export default function Subscription() {
     email || name || 'Subscriber',
   )}`;
 
+  // The scroll container is <main> inside AppLayout, not window.
+  const scrollMainToTop = () => {
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goToPayment = () => {
+    setStep('payment');
+    scrollMainToTop();
+  };
+
+  const goToPlans = () => {
+    setStep('plans');
+    scrollMainToTop();
+  };
+
   return (
     <div
-      className={`space-y-6 ${
+      className={`space-y-5 ${
         !isAuthenticated ? 'mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10' : ''
       }`}
     >
-      {/* ── 1. Page Header (Crisp & Minimalist matching Invoices) ── */}
+      {/* ── 1. Page Header ── */}
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-        <div>
-          <div className='flex items-center gap-2'>
-            <h1 className='text-xl sm:text-2xl font-bold tracking-tight text-gray-900'>
-              Subscription & Plans
-            </h1>
-            <span className='inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20'>
-              <span className='h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse' />
-              Free Plan Active
-            </span>
-          </div>
-          <p className='mt-0.5 font-body text-xs text-gray-500 sm:text-sm'>
-            Review your active plan, explore higher tiers, and activate upgrades via direct corporate bank transfer.
-          </p>
+        <div className='flex items-center gap-2'>
+          <h1 className='text-xl sm:text-2xl font-bold tracking-tight text-gray-900'>
+            Subscription & Plans
+          </h1>
+          <span className='inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600'>
+            Free Plan Active
+          </span>
         </div>
 
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-3'>
+          {/* Step indicator — gives a sense of forward motion through the flow */}
+          <div className='hidden sm:flex items-center gap-2 text-xs font-semibold text-gray-500'>
+            <span className={step === 'plans' ? 'text-primary-700' : 'text-gray-500'}>
+              1. Plan
+            </span>
+            <span className='h-px w-4 bg-gray-200' />
+            <span className={step === 'payment' ? 'text-primary-700' : 'text-gray-500'}>
+              2. Payment
+            </span>
+          </div>
           <a
             href={whatsappUrl}
             target='_blank'
             rel='noopener noreferrer'
-            className='inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs'
+            className='inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/70 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs'
           >
             <WhatsAppIcon className='h-3.5 w-3.5 text-emerald-600' />
-            <span>Chat Desk: {DISPLAY_PHONE}</span>
+            <span>Chat on WhatsApp</span>
           </a>
         </div>
       </div>
 
-      {/* ── 2. Current Plan Status Strip (Clean Card like Invoices/Account) ── */}
-      <div className='rounded-xl border border-gray-200/90 bg-white p-4 sm:p-5 shadow-2xs'>
-        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-          <div className='flex items-start sm:items-center gap-3.5'>
-            <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 border border-gray-200/80 text-gray-700 shrink-0'>
-              <Crown className='h-5 w-5 text-gray-700' />
+      {/* ── Optional: New Business Setup Banner ── */}
+      {isNewBiz && step === 'plans' && (
+        <div className='rounded-2xl border border-primary-200/90 bg-primary-50/70 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs'>
+          <div className='flex items-start sm:items-center gap-3'>
+            <div className='h-9 w-9 rounded-full bg-primary-600 text-white flex items-center justify-center shrink-0 shadow-2xs'>
+              <Crown className='h-5 w-5' />
             </div>
             <div>
-              <div className='flex items-center gap-2'>
-                <span className='text-[11px] font-semibold uppercase tracking-wider text-gray-500'>
-                  Your Current Plan
-                </span>
-                <span className='inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20'>
-                  <span className='h-1.5 w-1.5 rounded-full bg-emerald-500' />
-                  Active
-                </span>
-              </div>
-              <p className='text-sm font-bold text-gray-900 mt-0.5'>
-                Free Plan <span className='text-xs font-normal text-gray-500'>• ₦0/month (Compliance Foundation)</span>
+              <p className='text-xs sm:text-sm font-bold text-gray-900'>
+                Business created successfully!
               </p>
-              <p className='text-xs text-gray-500 mt-0.5'>
-                Includes 1 business profile, up to 3 team members, 5 monthly invoices, and NRS compliance tax filing.
+              <p className='text-xs text-gray-600 mt-0.5'>
+                Choose your <strong>{selectedPlan.name}</strong> plan below, then
+                transfer to Zenith Bank Plc to activate it — or explore your
+                dashboard and pay whenever you are ready.
               </p>
             </div>
           </div>
-
-          <div className='flex items-center gap-3 self-start sm:self-center border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0 w-full sm:w-auto justify-between sm:justify-end'>
-            <div className='text-left sm:text-right'>
-              <span className='text-[10px] font-medium text-gray-400 block uppercase tracking-wider'>Selected Plan</span>
-              <span className='text-xs font-bold text-primary-700 block'>
-                {selectedPlan.name} {selectedPlan.id !== 'free' ? `(${billingCycle})` : ''}
-              </span>
-            </div>
-            {selectedPlan.id !== 'free' && (
-              <span className='text-sm font-extrabold text-gray-900 tabular-nums'>
-                ₦{payableAmount.toLocaleString()}
-              </span>
-            )}
-          </div>
+          <Link
+            to='/dashboard'
+            className='inline-flex items-center justify-center px-4 py-2 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-xs font-semibold text-gray-700 transition-colors shrink-0 shadow-2xs'
+          >
+            <span>Skip for now, Go to Dashboard →</span>
+          </Link>
         </div>
-      </div>
+      )}
 
-      {/* ── 3. Plan Tier Cards (All 4 Plans Grid) ── */}
-      <div className='space-y-4'>
-        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-gray-100'>
-          <div>
+      {/* ── Step 1: Choose a plan tier ── */}
+      {step === 'plans' ? (
+        <div className='space-y-6'>
+          <div className='pb-2 border-b border-gray-100'>
             <h2 className='text-sm font-semibold text-gray-900'>
-              1. Choose a Plan Tier
+              1. Choose a Subscription Plan
             </h2>
-            <p className='text-xs text-gray-500'>
-              Select a tier below to view bank transfer instructions and upload your receipt
+            <p className='text-xs text-gray-500 mt-0.5'>
+              Direct monthly, quarterly, or annual plans for your business.
             </p>
           </div>
 
-          {/* Billing Cycle Toggle */}
-          <div className='inline-flex items-center rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 text-xs self-start sm:self-auto'>
-            <button
-              type='button'
-              onClick={() => setBillingCycle('monthly')}
-              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-                billingCycle === 'monthly'
-                  ? 'bg-white text-gray-900 shadow-2xs font-semibold'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              type='button'
-              onClick={() => setBillingCycle('annual')}
-              className={`rounded-md px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 ${
-                billingCycle === 'annual'
-                  ? 'bg-white text-gray-900 shadow-2xs font-semibold'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <span>Annual</span>
-              <span className='rounded bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800'>
-                Save 20%
+          {/* ── Executive Split Freemium Spotlight Bar (Solid Black Left Anchor + Clean Descriptive Right) ── */}
+          <div className='overflow-hidden rounded-2xl md:rounded-full bg-white border border-gray-200/90 shadow-2xs hover:shadow-xs transition-all flex flex-col md:flex-row items-stretch md:items-center'>
+            {/* Left Block: Solid Black Anchor with Initial Short Words */}
+            <div className='bg-[#0B0F17] text-white px-5 sm:px-6 py-3.5 sm:py-4 flex items-center gap-3 shrink-0 md:rounded-l-full'>
+              <span className='relative flex h-2.5 w-2.5 shrink-0'>
+                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
+                <span className='relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500' />
               </span>
-            </button>
-          </div>
-        </div>
-
-        {/* 4 Plans Grid */}
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
-          {PLANS.map((plan) => {
-            const isSelected = selectedPlanId === plan.id;
-            const isCurrent = plan.id === 'free';
-            const price =
-              billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonth;
-
-            return (
-              <div
-                key={plan.id}
-                onClick={() => setSelectedPlanId(plan.id)}
-                className={`cursor-pointer rounded-xl p-4 sm:p-5 border transition-all duration-150 relative flex flex-col justify-between ${
-                  isSelected
-                    ? 'border-primary-600 bg-purple-50/20 ring-1 ring-primary-600 shadow-2xs'
-                    : isCurrent
-                      ? 'border-gray-300 bg-gray-50/40 hover:border-gray-400'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-2xs'
-                }`}
-              >
-                {/* Popular Badge */}
-                {plan.popular && (
-                  <div className='absolute -top-2.5 right-3'>
-                    <span className='px-2 py-0.5 rounded-full bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-2xs'>
-                      Most Popular
-                    </span>
-                  </div>
-                )}
-
-                <div>
-                  {/* Header Row */}
-                  <div className='flex items-center justify-between mb-2'>
-                    <h3 className='text-base font-bold text-gray-900'>
-                      {plan.name}
-                    </h3>
-                    {isCurrent ? (
-                      <span className='inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/20'>
-                        <span className='h-1.5 w-1.5 rounded-full bg-emerald-500' />
-                        Current Plan
-                      </span>
-                    ) : (
-                      <div
-                        className={`h-4 w-4 rounded-full flex items-center justify-center border ${
-                          isSelected
-                            ? 'border-primary-600 bg-primary-600 text-white'
-                            : 'border-gray-300 bg-white'
-                        }`}
-                      >
-                        {isSelected && <Check className='h-2.5 w-2.5 stroke-[3]' />}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  <div className='flex items-baseline gap-1 my-2'>
-                    <span className='text-2xl font-extrabold text-gray-900 tabular-nums'>
-                      {plan.id === 'free' ? '₦0' : `₦${price.toLocaleString()}`}
-                    </span>
-                    <span className='text-xs text-gray-500 font-medium'>
-                      {plan.id === 'free'
-                        ? 'free forever'
-                        : `/${billingCycle === 'annual' ? 'yr' : 'mo'}`}
-                    </span>
-                  </div>
-
-                  <p className='text-xs text-gray-500 mb-4 min-h-[32px]'>
-                    {plan.tagline}
-                  </p>
-
-                  {/* Feature Checklist */}
-                  <ul className='space-y-2 border-t border-gray-100 pt-3 text-xs text-gray-600'>
-                    {plan.features.map((feat) => (
-                      <li key={feat} className='flex items-start gap-2'>
-                        <Check className='h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5' />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Card CTA */}
-                <div className='mt-5 pt-3 border-t border-gray-100'>
-                  {isCurrent ? (
-                    <button
-                      type='button'
-                      disabled
-                      className='w-full py-2 px-3 rounded-lg bg-gray-100 text-gray-500 font-semibold text-xs cursor-default'
-                    >
-                      Active Plan
-                    </button>
-                  ) : (
-                    <button
-                      type='button'
-                      onClick={() => setSelectedPlanId(plan.id)}
-                      className={`w-full py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
-                        isSelected
-                          ? 'bg-primary-600 text-white shadow-2xs'
-                          : 'bg-gray-50 hover:bg-gray-100 text-gray-800 border border-gray-200'
-                      }`}
-                    >
-                      {isSelected ? 'Selected' : `Upgrade to ${plan.name}`}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── 4. Payment Transfer & Upload Desk ── */}
-      {isPaidPlan ? (
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
-          {/* Zenith Bank Account Details Card */}
-          <div className='lg:col-span-5 rounded-xl border border-gray-200/90 bg-white p-5 shadow-2xs space-y-4'>
-            <div>
-              <div className='flex items-center justify-between pb-3 border-b border-gray-100'>
-                <div className='flex items-center gap-2.5'>
-                  <ZenithBankLogo className='h-8 w-8' />
-                  <div>
-                    <h3 className='text-sm font-bold text-gray-900 leading-tight'>
-                      {BANK_DETAILS.bankName}
-                    </h3>
-                    <p className='text-[11px] text-gray-500'>
-                      Official Collection Account
-                    </p>
-                  </div>
-                </div>
-
-                <span className='inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20'>
-                  Verified
+              <div className='flex items-baseline gap-2'>
+                <span className='font-bold text-xs sm:text-sm tracking-tight text-white uppercase'>
+                  {PLANS[0].name}
+                </span>
+                <span className='text-emerald-400 font-extrabold text-sm sm:text-base'>
+                  — ₦0
                 </span>
               </div>
             </div>
 
-            {/* Account Number Box */}
-            <div className='rounded-lg border border-red-200/70 bg-red-50/20 p-3.5'>
-              <div className='text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5'>
-                Account Number
-              </div>
-              <div className='flex items-center justify-between gap-2'>
-                <span className='font-mono text-2xl font-bold tracking-wider text-gray-900 tabular-nums select-all'>
-                  {BANK_DETAILS.accountNumber}
+            {/* Right Block: Descriptive Words + Status Pill Badge */}
+            <div className='flex-1 px-4 sm:px-6 py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-emerald-50/20 md:bg-transparent md:rounded-r-full'>
+              <p className='text-xs sm:text-sm text-gray-700 font-medium leading-snug'>
+                Full unrestricted access across Starter, Business & Scale-Up. Upgrade below to lock in permanent capacity.
+              </p>
+
+              <div className='shrink-0 sm:self-center'>
+                <span className='inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200'>
+                  <CheckCircle2 className='h-3.5 w-3.5 text-emerald-600' />
+                  <span>Freemium Active</span>
                 </span>
-                <button
-                  type='button'
-                  onClick={copyAccountNumber}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                    copied
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'bg-white hover:bg-gray-50 text-red-700 border border-red-200 shadow-2xs'
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Executive Subscription Cards Grid (Sharp, Wide, WallX Inspired) */}
+          <fieldset className='grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch pt-2'>
+            <legend className='sr-only'>Choose a subscription plan</legend>
+            {PLANS.slice(1).map((plan) => {
+              const isSelected = selectedPlanId === plan.id;
+              const pricing = getPlanPricingDetails(plan);
+              const isQuarterly = plan.id === 'business';
+              const isAnnual = plan.id === 'scale';
+              const planBadge = isQuarterly
+                ? 'Quarterly • Most Popular'
+                : isAnnual
+                  ? 'Annual • Best Value'
+                  : 'Monthly Plan';
+
+              return (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlanId(plan.id)}
+                  style={{ fontFamily: "'Montserrat', sans-serif" }}
+                  className={`h-full flex flex-col justify-between rounded-2xl p-6 sm:p-7 lg:p-8 transition-all duration-200 relative cursor-pointer ${
+                    isQuarterly
+                      ? `bg-[#352778] text-white border-2 ${
+                          isSelected
+                            ? 'border-orange-400 ring-4 ring-orange-400/40 shadow-2xl'
+                            : 'border-purple-400/40 shadow-xl shadow-[#352778]/30'
+                        } transform lg:-translate-y-1.5`
+                      : `bg-white border ${
+                          isSelected
+                            ? 'border-[#352778] ring-4 ring-[#352778]/20 shadow-xl'
+                            : 'border-gray-200 shadow-md shadow-gray-200/50 hover:border-[#352778]/40'
+                        }`
                   }`}
                 >
-                  {copied ? (
-                    <>
-                      <Check className='h-3 w-3' /> Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className='h-3 w-3' /> Copy
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+                  <input
+                    type='radio'
+                    name='subscription-plan'
+                    value={plan.id}
+                    checked={isSelected}
+                    onChange={() => setSelectedPlanId(plan.id)}
+                    className='sr-only'
+                  />
 
-            {/* Details Table */}
-            <div className='rounded-lg border border-gray-100 divide-y divide-gray-100 text-xs'>
-              <div className='flex items-center justify-between p-2.5 bg-gray-50/50'>
-                <span className='text-gray-500'>Account Name</span>
-                <span className='font-semibold text-gray-900'>
-                  {BANK_DETAILS.accountName}
-                </span>
-              </div>
-              <div className='flex items-center justify-between p-2.5'>
-                <span className='text-gray-500'>Plan Selected</span>
-                <span className='font-semibold text-gray-900'>
-                  {selectedPlan.name} ({billingCycle})
-                </span>
-              </div>
-              <div className='flex items-center justify-between p-2.5 bg-gray-50/50'>
-                <span className='text-gray-500'>Amount to Transfer</span>
-                <span className='font-extrabold text-primary-700 text-sm tabular-nums'>
-                  ₦{payableAmount.toLocaleString()}
-                </span>
-              </div>
-            </div>
+                  {/* Floating Pill Badge at Top Edge */}
+                  <div className='absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap'>
+                    <span
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      className={`px-5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
+                        isQuarterly
+                          ? 'bg-[#E85918] text-white'
+                          : 'bg-[#352778] text-white'
+                      }`}
+                    >
+                      {planBadge}
+                    </span>
+                  </div>
 
-            <p className='text-[11px] text-gray-500 leading-relaxed'>
-              💡 <strong>Transfer Tip:</strong> Include your business name or email
-              in the transfer narration for fast automated matching.
-            </p>
+                  <div>
+                    {/* Header */}
+                    <div className='pt-1'>
+                      <div className='flex items-center justify-between'>
+                        <h3
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className={`text-2xl sm:text-[26px] font-extrabold tracking-tight ${
+                            isQuarterly ? 'text-white' : 'text-[#352778]'
+                          }`}
+                        >
+                          {plan.name}
+                        </h3>
+                        <span
+                          className={`h-6 w-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                            isSelected
+                              ? isQuarterly
+                                ? 'border-orange-400 bg-[#E85918] text-white'
+                                : 'border-[#352778] bg-[#352778] text-white'
+                              : isQuarterly
+                                ? 'border-purple-400/60 bg-transparent'
+                                : 'border-gray-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className='h-3.5 w-3.5 stroke-[3]' />}
+                        </span>
+                      </div>
+                      <p
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                        className={`mt-2 text-xs sm:text-sm font-normal leading-relaxed min-h-[38px] ${
+                          isQuarterly ? 'text-purple-100/90' : 'text-gray-600'
+                        }`}
+                      >
+                        {plan.tagline}
+                      </p>
+                    </div>
 
-            {/* Direct WhatsApp Quick Chat */}
-            <div className='pt-2 border-t border-gray-100'>
-              <a
-                href={whatsappUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-colors'
+                    {/* Features List — Razor-sharp Montserrat Regular with Crisp Check Icons */}
+                    <div
+                      className={`my-5 pt-4 border-t ${
+                        isQuarterly ? 'border-purple-500/30' : 'border-gray-100'
+                      }`}
+                    >
+                      <ul className='space-y-3' style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                        {plan.features.map((feat) => (
+                          <li key={feat} className='flex items-start gap-3'>
+                            <CheckCircle2
+                              className={`h-5.5 w-5.5 sm:h-6 sm:w-6 shrink-0 mt-0.5 ${
+                                isQuarterly
+                                  ? 'text-white/95'
+                                  : 'text-[#352778]'
+                              }`}
+                              strokeWidth={1.8}
+                            />
+                            <span
+                              style={{ fontFamily: "'Montserrat', sans-serif" }}
+                              className={`text-[13.5px] sm:text-[14px] font-normal leading-snug tracking-[-0.01em] antialiased ${
+                                isQuarterly ? 'text-white' : 'text-gray-900'
+                              }`}
+                            >
+                              {feat}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Pricing and Action CTA Block */}
+                  <div
+                    className={`mt-6 pt-4 border-t ${
+                      isQuarterly ? 'border-purple-500/30' : 'border-gray-100'
+                    }`}
+                  >
+                    <div>
+                      <span
+                        style={{ fontFamily: "'Montserrat', sans-serif" }}
+                        className={`text-xs uppercase font-bold tracking-wider block mb-1 ${
+                          isQuarterly ? 'text-purple-200/80' : 'text-gray-500'
+                        }`}
+                      >
+                        Pricing
+                      </span>
+                      <div className='flex items-baseline gap-1.5'>
+                        <span
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className={`text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums ${
+                            isQuarterly ? 'text-white' : 'text-gray-900'
+                          }`}
+                        >
+                          ₦{pricing.amount.toLocaleString()}
+                        </span>
+                        <span
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className={`text-sm sm:text-base font-normal ${
+                            isQuarterly ? 'text-purple-200' : 'text-gray-500'
+                          }`}
+                        >
+                          {pricing.period}
+                        </span>
+                      </div>
+
+                      {/* Savings Pill */}
+                      {plan.trialBadge ? (
+                        <div className='mt-2'>
+                          <span
+                            style={{ fontFamily: "'Montserrat', sans-serif" }}
+                            className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                              isQuarterly
+                                ? 'bg-[#E85918]/20 text-orange-200 border-orange-400/40'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            }`}
+                          >
+                            {plan.trialBadge}
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          style={{ fontFamily: "'Montserrat', sans-serif" }}
+                          className='mt-2 text-xs font-normal text-gray-500'
+                        >
+                          Billed monthly
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type='button'
+                      style={{ fontFamily: "'Montserrat', sans-serif" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPlanId(plan.id);
+                        goToPayment();
+                      }}
+                      className={`w-full py-3.5 sm:py-4 px-6 rounded-full text-sm sm:text-base font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-[0.98] mt-5 ${
+                        isQuarterly
+                          ? 'bg-[#E85918] hover:bg-[#D44E12] text-white shadow-orange-950/25 hover:shadow-lg'
+                          : 'bg-[#352778] hover:bg-[#2A1E63] text-white shadow-purple-950/20 hover:shadow-lg'
+                      }`}
+                    >
+                      <span>
+                        {isSelected
+                          ? `Pay ₦${pricing.amount.toLocaleString()} via Transfer`
+                          : `Choose ${plan.name}`}
+                      </span>
+                      <ArrowRight className='h-4 w-4' />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </fieldset>
+        </div>
+      ) : (
+        <div className='space-y-6'>
+          {/* ── Step 2: Payment transfer & upload ── */}
+          <div className='rounded-xl border border-primary-100 bg-primary-50/50 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+            <div className='flex items-start sm:items-center gap-3'>
+              <button
+                type='button'
+                onClick={goToPlans}
+                className='inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors shrink-0 shadow-2xs'
               >
-                <WhatsAppIcon className='h-4 w-4 text-emerald-600' />
-                <span>Need Instant Help? Chat on WhatsApp</span>
-              </a>
+                <ArrowLeft className='h-3.5 w-3.5' />
+                <span>Change plan</span>
+              </button>
+              <div>
+                <h2 className='text-sm font-bold text-gray-900'>
+                  You're upgrading to {selectedPlan.name}
+                </h2>
+                <p className='text-xs text-gray-600 mt-0.5'>
+                  One transfer away from unlocking it — {selectedPricing.termLabel}.
+                </p>
+              </div>
+            </div>
+            <div className='text-left sm:text-right shrink-0'>
+              <span className='text-2xl font-extrabold text-primary-700 tabular-nums'>
+                ₦{payableAmount.toLocaleString()}
+              </span>
+              <p className='text-xs text-gray-500 mt-0.5'>
+                {selectedPricing.period === '/yr'
+                  ? 'per year'
+                  : selectedPricing.period === '/quarter'
+                    ? 'per quarter'
+                    : 'per month'}
+              </p>
             </div>
           </div>
 
-          {/* Proof of Payment Upload Card */}
-          <div className='lg:col-span-7 rounded-xl border border-gray-200/90 bg-white p-5 shadow-2xs'>
-            <div className='pb-3 border-b border-gray-100 mb-4'>
-              <h2 className='text-sm font-semibold text-gray-900'>
-                2. Upload Proof of Payment
-              </h2>
-              <p className='text-xs text-gray-500 mt-0.5'>
-                After transferring ₦{payableAmount.toLocaleString()} to Zenith Bank Plc, upload your receipt below.
-                It is automatically sent to{' '}
-                <span className='font-medium text-gray-700'>subscription@wallx.co</span>.
-              </p>
-            </div>
+          <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
+            {/* Zenith Bank Account Details Card */}
+            <div className='lg:col-span-5 rounded-xl border border-gray-200/90 bg-white p-6 shadow-2xs space-y-5'>
+              <div>
+                <div className='flex items-center justify-between pb-3 border-b border-gray-100'>
+                  <div className='flex items-center gap-2.5'>
+                    <ZenithBankLogo className='h-9' />
+                    <div>
+                      <h3 className='text-sm font-bold text-gray-900 leading-snug'>
+                        {BANK_DETAILS.bankName}
+                      </h3>
+                      <p className='text-xs text-gray-500 leading-snug'>
+                        Official Collection Account
+                      </p>
+                    </div>
+                  </div>
 
-            {submitted ? (
-              <div className='p-6 rounded-lg bg-emerald-50/60 border border-emerald-200 text-center space-y-3'>
-                <div className='h-10 w-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto'>
-                  <CheckCircle2 className='h-6 w-6' />
+                  <span className='inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20'>
+                    Verified
+                  </span>
                 </div>
-                <h3 className='text-base font-bold text-gray-900'>
-                  Proof of Payment Submitted!
-                </h3>
-                <p className='text-xs text-gray-600 max-w-md mx-auto'>
-                  Your payment receipt for the{' '}
-                  <strong>{selectedPlan.name}</strong> plan (₦{payableAmount.toLocaleString()}) has been received and dispatched to our subscription activation team.
-                </p>
-                <div className='pt-2 flex flex-wrap items-center justify-center gap-2'>
-                  <a
-                    href={whatsappUrl}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-colors'
-                  >
-                    <WhatsAppIcon className='h-3.5 w-3.5' />
-                    <span>Notify Support on WhatsApp</span>
-                  </a>
+              </div>
+
+              {/* Account Number Box */}
+              <div className='rounded-lg border border-gray-200 bg-gray-50/60 p-3.5'>
+                <div className='text-xs font-semibold uppercase tracking-wider text-gray-600 leading-snug mb-1'>
+                  Account Number
+                </div>
+                <div className='flex items-center justify-between gap-2'>
+                  <span className='font-mono text-2xl font-bold tracking-wider text-gray-900 tabular-nums select-all'>
+                    {BANK_DETAILS.accountNumber}
+                  </span>
                   <button
                     type='button'
-                    onClick={() => {
-                      setSubmitted(false);
-                      setFile(null);
-                    }}
-                    className='inline-flex items-center px-3.5 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold'
+                    onClick={copyAccountNumber}
+                    className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                      copied
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-2xs'
+                    }`}
                   >
-                    Upload Another Receipt
+                    {copied ? (
+                      <>
+                        <Check className='h-3 w-3' /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className='h-3 w-3' /> Copy
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
-            ) : (
-              <form onSubmit={handleSubmitProof} className='space-y-4'>
-                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3.5'>
-                  <div>
-                    <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                      Full Name *
-                    </label>
-                    <input
-                      type='text'
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder='e.g. Adebayo Adeleke'
-                      className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
-                    />
-                  </div>
 
-                  <div>
-                    <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                      Email Address *
-                    </label>
-                    <input
-                      type='email'
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder='e.g. adebayo@example.com'
-                      className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
-                    />
-                  </div>
+              {/* Details Table */}
+              <div className='rounded-lg border border-gray-100 divide-y divide-gray-100 text-[13px] leading-snug'>
+                <div className='flex items-center justify-between gap-3 p-3'>
+                  <span className='text-gray-600'>Account Name</span>
+                  <span className='font-semibold text-gray-900 text-right'>
+                    {BANK_DETAILS.accountName}
+                  </span>
+                </div>
+                <div className='flex items-center justify-between gap-3 p-3'>
+                  <span className='text-gray-600'>Plan Selected</span>
+                  <span className='font-semibold text-gray-900 text-right'>
+                    {selectedPlan.name}
+                  </span>
+                </div>
+                <div className='flex items-center justify-between gap-3 p-3'>
+                  <span className='text-gray-600'>Amount to Transfer</span>
+                  <span className='font-extrabold text-primary-700 text-sm tabular-nums'>
+                    ₦{payableAmount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
 
-                  <div>
-                    <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                      Phone / WhatsApp *
-                    </label>
-                    <input
-                      type='tel'
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder='e.g. 08147490832'
-                      className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
-                    />
-                  </div>
+              <p className='text-xs text-gray-600 leading-relaxed'>
+                Put your business name or email in the transfer narration so we can
+                match your payment automatically.
+              </p>
 
-                  <div>
-                    <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                      Business Name
-                    </label>
-                    <input
-                      type='text'
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder='e.g. Balogun Ventures'
-                      className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
-                    />
+              {/* Direct WhatsApp Quick Chat */}
+              <div className='pt-2 border-t border-gray-100'>
+                <a
+                  href={whatsappUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-colors'
+                >
+                  <WhatsAppIcon className='h-4 w-4 text-emerald-600' />
+                  <span>Chat on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Proof of Payment Upload Card */}
+            <div className='lg:col-span-7 rounded-xl border border-gray-200/90 bg-white p-6 shadow-2xs'>
+              <div className='pb-3 border-b border-gray-100 mb-5'>
+                <h2 className='text-sm font-semibold text-gray-900'>
+                  Upload Proof of Payment
+                </h2>
+                <p className='text-xs text-gray-600 mt-1 leading-relaxed'>
+                  Upload your receipt and we'll send it to{' '}
+                  <span className='font-medium text-gray-800'>subscription@wallx.co</span>.
+                </p>
+              </div>
+
+              {submitted ? (
+                <div className='p-8 rounded-lg bg-emerald-50/60 border border-emerald-200 text-center space-y-3'>
+                  <div className='h-14 w-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto'>
+                    <CheckCircle2 className='h-8 w-8' />
+                  </div>
+                  <h3 className='text-lg font-bold text-gray-900'>
+                    You're all set 🎉
+                  </h3>
+                  <p className='text-[13px] text-gray-600 leading-relaxed max-w-md mx-auto'>
+                    Your receipt for the <strong>{selectedPlan.name}</strong> plan
+                    is in. We're activating it now — welcome to the upgrade.
+                  </p>
+                  <div className='pt-2 flex flex-wrap items-center justify-center gap-2'>
+                    <a
+                      href={whatsappUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-colors'
+                    >
+                      <WhatsAppIcon className='h-3.5 w-3.5' />
+                      <span>Notify Support on WhatsApp</span>
+                    </a>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setSubmitted(false);
+                        setFile(null);
+                      }}
+                      className='inline-flex items-center px-4 py-2.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold'
+                    >
+                      Upload Another Receipt
+                    </button>
                   </div>
                 </div>
+              ) : (
+                <form onSubmit={handleSubmitProof} className='space-y-5'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3.5'>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Full Name *
+                      </label>
+                      <input
+                        type='text'
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder='e.g. Adebayo Adeleke'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
 
-                {/* Selected Plan Summary Banner */}
-                <div className='p-3 rounded-lg bg-gray-50 border border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs'>
-                  <div>
-                    <span className='text-gray-500'>Target Plan:</span>{' '}
-                    <span className='font-bold text-gray-900'>
-                      {selectedPlan.name} ({billingCycle})
-                    </span>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Email Address *
+                      </label>
+                      <input
+                        type='email'
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder='e.g. adebayo@example.com'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Phone / WhatsApp *
+                      </label>
+                      <input
+                        type='tel'
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder='e.g. 08147490832'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Business Name
+                      </label>
+                      <input
+                        type='text'
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        placeholder='e.g. Balogun Ventures'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <span className='text-gray-500'>Amount Paid:</span>{' '}
+
+                  {/* Selected Plan Summary */}
+                  <div className='flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-xs'>
+                    <span className='text-gray-600'>
+                      Paying for{' '}
+                      <strong className='text-gray-900'>
+                        {selectedPlan.name}
+                      </strong>
+                    </span>
                     <span className='font-extrabold text-primary-700 tabular-nums'>
                       ₦{payableAmount.toLocaleString()}
                     </span>
                   </div>
-                </div>
 
-                {/* File Upload Dropzone */}
-                <div>
-                  <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                    Upload Payment Receipt / Transfer Screenshot *
-                  </label>
-                  <div className='relative rounded-lg border-2 border-dashed border-gray-300 hover:border-primary-500 transition-colors p-5 text-center bg-gray-50/50 hover:bg-white cursor-pointer'>
-                    <input
-                      type='file'
-                      required
-                      accept='image/jpeg,image/png,image/webp,application/pdf'
-                      onChange={handleFileChange}
-                      className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
-                    />
-                    {file ? (
-                      <div className='flex items-center justify-center gap-2.5 text-emerald-700'>
-                        <FileText className='h-6 w-6 text-emerald-600 shrink-0' />
-                        <div className='text-left min-w-0'>
-                          <p className='text-xs font-bold text-gray-900 truncate max-w-xs'>
-                            {file.name}
+                  {/* File Upload Dropzone */}
+                  <div>
+                    <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                      Upload Payment Receipt / Transfer Screenshot *
+                    </label>
+                    <div className='relative rounded-lg border-2 border-dashed border-gray-300 hover:border-primary-500 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/30 transition-colors p-5 text-center bg-gray-50/50 hover:bg-white cursor-pointer'>
+                      <input
+                        type='file'
+                        required
+                        accept='image/jpeg,image/png,image/webp,application/pdf'
+                        onChange={handleFileChange}
+                        className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+                      />
+                      {file ? (
+                        <div className='flex items-center justify-center gap-2.5 text-emerald-700'>
+                          <FileText className='h-6 w-6 text-emerald-600 shrink-0' />
+                          <div className='text-left min-w-0'>
+                            <p className='text-xs font-bold text-gray-900 truncate max-w-xs'>
+                              {file.name}
+                            </p>
+                            <p className='text-xs text-gray-600 mt-0.5'>
+                              {(file.size / 1024 / 1024).toFixed(2)} MB • Click to replace file
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <UploadCloud className='mx-auto h-7 w-7 text-gray-400 mb-1.5' />
+                          <p className='text-[13px] font-semibold text-gray-700 mt-1'>
+                            Click or drag transfer receipt here
                           </p>
-                          <p className='text-[10px] text-gray-500'>
-                            {(file.size / 1024 / 1024).toFixed(2)} MB • Click to replace file
+                          <p className='text-xs text-gray-600 mt-1'>
+                            PNG, JPG, WebP or PDF (up to 10MB)
                           </p>
                         </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <UploadCloud className='mx-auto h-7 w-7 text-gray-400 mb-1.5' />
-                        <p className='text-xs font-semibold text-gray-700'>
-                          Click or drag transfer receipt here
-                        </p>
-                        <p className='text-[10px] text-gray-500 mt-0.5'>
-                          PNG, JPG, WebP or PDF (up to 10MB)
-                        </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Notes */}
-                <div>
-                  <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                    Transaction Reference or Notes (Optional)
-                  </label>
-                  <input
-                    type='text'
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder='e.g. Session ID 000015, paid from Zenith Mobile App'
-                    className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
-                  />
-                </div>
+                  {/* Notes */}
+                  <div>
+                    <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                      Transaction Reference or Notes (Optional)
+                    </label>
+                    <input
+                      type='text'
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder='e.g. Session ID 000015'
+                      className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                    />
+                  </div>
 
-                {/* Submit Button */}
-                <div className='pt-1'>
-                  <button
-                    type='submit'
-                    disabled={submitting}
-                    className='w-full py-2.5 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-bold text-xs sm:text-sm shadow-2xs hover:shadow transition-all flex items-center justify-center gap-1.5'
-                  >
-                    {submitting ? (
-                      <>
-                        <span className='animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent' />
-                        <span>Dispatching Proof to subscription@wallx.co...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Submit Proof of Payment</span>
-                        <ArrowRight className='h-3.5 w-3.5' />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Free Plan Selected View */
-        <div className='rounded-xl border border-gray-200/90 bg-white p-6 shadow-2xs text-center space-y-3'>
-          <div className='h-10 w-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto ring-1 ring-emerald-200/80'>
-            <Check className='h-5 w-5 stroke-[2.5]' />
-          </div>
-          <h3 className='text-sm font-bold text-gray-900'>
-            You are Currently on the Free Plan
-          </h3>
-          <p className='text-xs text-gray-500 max-w-md mx-auto'>
-            The Free plan includes 1 business, up to 3 team members, and 5 invoices per month at no cost.
-            If you need more team seats, unlimited invoices, bulk sales import, or AI CFO queries, select{' '}
-            <strong className='text-gray-800'>Starter</strong>,{' '}
-            <strong className='text-gray-800'>Business</strong>, or{' '}
-            <strong className='text-gray-800'>Scale</strong> above.
-          </p>
-          <div className='pt-2'>
-            <button
-              type='button'
-              onClick={() => setSelectedPlanId('business')}
-              className='inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold shadow-2xs transition-colors'
-            >
-              <span>Explore Business Plan (₦15,000/mo)</span>
-              <ArrowRight className='h-3.5 w-3.5' />
-            </button>
+                  {/* Submit Button */}
+                  <div className='pt-1'>
+                    <button
+                      type='submit'
+                      disabled={submitting}
+                      className='w-full py-3.5 px-6 rounded-full bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-bold text-xs sm:text-sm shadow-md shadow-primary-900/15 hover:shadow-lg hover:shadow-primary-900/20 transition-all flex items-center justify-center gap-1.5'
+                    >
+                      {submitting ? (
+                        <>
+                          <span className='animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent' />
+                          <span>Submitting…</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Complete My Upgrade</span>
+                          <ArrowRight className='h-3.5 w-3.5' />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}

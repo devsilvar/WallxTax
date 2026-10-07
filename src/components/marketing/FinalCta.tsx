@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Lock, BadgeCheck, Zap } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import { prefetchRoute, observePrefetch } from '@/lib/routeChunks.ts';
 import { ScrollReveal } from './anim.tsx';
 
 interface FinalCtaProps {
@@ -23,6 +25,19 @@ export default function FinalCta({
   className = '',
 }: FinalCtaProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const unobserveMain = observePrefetch(sectionRef.current, buttonLink);
+    const unobservePricing = !isAuthenticated
+      ? observePrefetch(sectionRef.current, '/subscription')
+      : undefined;
+
+    return () => {
+      unobserveMain?.();
+      unobservePricing?.();
+    };
+  }, [buttonLink, isAuthenticated]);
 
   // Render title with optional highlighted accent word
   const renderTitle = () => {
@@ -44,6 +59,7 @@ export default function FinalCta({
 
   return (
     <section
+      ref={sectionRef}
       className={`relative py-16 sm:py-20 lg:py-24 bg-gray-50 border-t border-gray-200/80 overflow-hidden ${className}`}
     >
       <div className='mx-auto max-w-4xl px-4 sm:px-6 text-center'>
@@ -64,14 +80,24 @@ export default function FinalCta({
           </p>
 
           <div className='mt-8 sm:mt-9 flex flex-col sm:flex-row items-center justify-center gap-3'>
-            <Link to={destination} className='w-full sm:w-auto'>
+            <Link
+              to={destination}
+              onMouseEnter={() => prefetchRoute(destination)}
+              onFocus={() => prefetchRoute(destination)}
+              className='w-full sm:w-auto'
+            >
               <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-primary-600 hover:bg-primary-700 text-white text-sm sm:text-base font-semibold shadow-sm hover:shadow transition-all duration-200 active:scale-[0.98]'>
                 <span>{label}</span>
                 <ArrowRight className='h-4.5 w-4.5' />
               </button>
             </Link>
             {!isAuthenticated && (
-              <Link to='/pricing' className='w-full sm:w-auto'>
+              <Link
+                to='/subscription'
+                onMouseEnter={() => prefetchRoute('/subscription')}
+                onFocus={() => prefetchRoute('/subscription')}
+                className='w-full sm:w-auto'
+              >
                 <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm sm:text-base font-semibold transition-all duration-200 active:scale-[0.98]'>
                   <span>Compare Plans</span>
                 </button>

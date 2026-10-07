@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import PinModal from '@/components/PinModal.tsx';
+import FreeWelcomeModal from '@/components/FreeWelcomeModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
@@ -53,8 +54,10 @@ import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/typ
 // Recharts is ~100kB gzipped and this is the post-login landing page. Keeping
 // the chart out of the dashboard chunk lets the KPI strip, trends and activity
 // lists paint before the charting library has downloaded and parsed. Needs the
-// local <Suspense> at the render site — the only boundary above this is
-// App.tsx's, whose fallback is a full-screen loader that would blank the page.
+// local <Suspense> at the render site — previously the only boundary above this was
+// App.tsx's full-screen loader; although AppLayout now localises route transitions
+// with a dark rolling veil, this component-level boundary isolates the heavy chart
+// chunk so dashboard KPIs paint immediately without triggering a layout veil.
 const SalesExpenseChart = lazy(
   () => import('@/components/dashboard/SalesExpenseChart.tsx'),
 );
@@ -391,19 +394,36 @@ function getHealthScore(
   lt: DashboardData['lifetime'] | undefined,
   unpaidCount: number,
 ): { score: number; label: string; color: string; bg: string } {
-  if (!lt)
+  if (!lt || (lt.reportsCount === 0 && lt.totalSales === 0)) {
     return {
       score: 0,
-      label: 'No data',
+      label: 'Getting started',
       color: 'text-gray-400',
-      bg: 'bg-gray-200',
+      bg: 'bg-white/30',
     };
-  let score = 50;
-  if (lt.reportsCount > 0) score += 15;
-  if (lt.totalSales > 0) score += 15;
-  if (unpaidCount === 0) score += 20;
-  else score -= unpaidCount * 10;
-  score = Math.max(0, Math.min(100, score));
+  }
+
+  let score = 0;
+
+  // Active sales recording: +30%
+  if (lt.totalSales > 0) {
+    score += 30;
+  }
+
+  // Active monthly tax reports filed: +30%
+  if (lt.reportsCount > 0) {
+    score += 30;
+
+    // Up-to-date tax payments: +40%
+    if (unpaidCount === 0) {
+      score += 40;
+    } else {
+      score += Math.max(0, 40 - unpaidCount * 15);
+    }
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
   if (score >= 80)
     return {
       score,
@@ -420,11 +440,19 @@ function getHealthScore(
       color: 'text-amber-600',
       bg: 'bg-amber-400',
     };
+  if (score > 0)
+    return {
+      score,
+      label: 'Needs attention',
+      color: 'text-red-500',
+      bg: 'bg-red-400',
+    };
+
   return {
-    score,
-    label: 'Needs attention',
-    color: 'text-red-500',
-    bg: 'bg-red-400',
+    score: 0,
+    label: 'Getting started',
+    color: 'text-gray-400',
+    bg: 'bg-white/30',
   };
 }
 
@@ -547,6 +575,16 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(!seed);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
+
+  // Free Plan Welcome Modal state
+  const [showFreeWelcomeModal, setShowFreeWelcomeModal] = useState(false);
+
+  useEffect(() => {
+    if (activeBusiness && sessionStorage.getItem('justCreatedFirstBiz') === 'true') {
+      sessionStorage.removeItem('justCreatedFirstBiz');
+      setShowFreeWelcomeModal(true);
+    }
+  }, [activeBusiness]);
 
   // Sections the last load was permitted to read but failed to fetch. Drives
   // the error banner and the fatal-error state — see fetchSection().
@@ -2031,6 +2069,13 @@ export default function Dashboard() {
         onSuccess={handleRevealBvn}
         title='Reveal BVN'
         subtitle='Enter your 4-digit transaction PIN to view your full BVN.'
+      />
+
+      {/* ── Free Plan Welcome Modal ────────────────────── */}
+      <FreeWelcomeModal
+        isOpen={showFreeWelcomeModal}
+        onClose={() => setShowFreeWelcomeModal(false)}
+        businessName={activeBusiness?.businessName}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { X, Building2 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
@@ -37,6 +38,7 @@ export default function CreateBusinessModal({
   const businesses = useBusinessStore((s) => s.businesses);
   const createBusiness = useBusinessStore((s) => s.createBusiness);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
+  const navigate = useNavigate();
 
   const isOwnerAccount =
     businesses.length > 0
@@ -80,7 +82,7 @@ export default function CreateBusinessModal({
 
       const business = await createBusiness(payload);
       setActiveBusiness(business);
-      toast.success('Business / branch created successfully!');
+      toast.success('Business created successfully!');
       setForm({
         businessName: '',
         ownerName: '',
@@ -91,6 +93,15 @@ export default function CreateBusinessModal({
         state: '',
       });
       onClose();
+
+      const signupPlan = localStorage.getItem('signupPlan');
+      localStorage.removeItem('signupPlan');
+
+      if (signupPlan && ['starter', 'business', 'scale'].includes(signupPlan)) {
+        navigate(`/subscription?plan=${signupPlan}&new=true`);
+      } else {
+        sessionStorage.setItem('justCreatedFirstBiz', 'true');
+      }
     } catch (err: any) {
       toast.error(
         err.response?.data?.error?.message || 'Failed to create business',
