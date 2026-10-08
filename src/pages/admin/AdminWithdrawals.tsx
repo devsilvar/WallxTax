@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock,
   Copy,
-  Eye,
   Loader2,
   Search,
   Wallet,
@@ -24,7 +23,7 @@ import PaginationBar from './shared/Pagination';
 import { Panel, PanelEmpty } from './shared/Panel';
 import SegmentedControl from './shared/SegmentedControl';
 import StatusPill, { type Tone } from './shared/StatusPill';
-import { formatNaira, formatStamp } from './shared/format';
+import { formatNaira, formatStamp, formatTransferStamp } from './shared/format';
 import { useAdminStatsStore } from '@/stores/admin.stats.store.ts';
 
 interface WithdrawalRequest {
@@ -443,19 +442,19 @@ export default function AdminWithdrawals() {
             <table className='w-full text-left text-xs'>
               <thead>
                 <tr className='border-b border-hairline bg-panel-subtle/50 text-[11px] font-medium text-ink-subtle'>
-                  <th className='py-3 pl-4 pr-3'>Requested</th>
-                  <th className='px-3 py-3'>Business</th>
-                  <th className='px-3 py-3'>Destination</th>
-                  <th className='px-3 py-3 text-right'>Amount</th>
-                  <th className='px-3 py-3 text-center'>Status</th>
-                  <th className='py-3 pl-3 pr-4 text-right'>Actions</th>
+                  <th className='py-2.5 pl-4 pr-3 whitespace-nowrap'>Requested</th>
+                  <th className='px-3 py-2.5'>Business</th>
+                  <th className='px-3 py-2.5'>Destination</th>
+                  <th className='px-3 py-2.5 text-right whitespace-nowrap'>Amount</th>
+                  <th className='px-3 py-2.5 whitespace-nowrap'>Status</th>
+                  <th className='py-2.5 pl-3 pr-4 text-right whitespace-nowrap'>Actions</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-hairline'>
                 {withdrawals.map((w) => (
-                  <tr key={w.id} className='group hover:bg-panel-subtle/50 transition-colors'>
+                  <tr key={w.id} className='group transition-colors hover:bg-panel-subtle/70'>
                     <td className='py-3 pl-4 pr-3 whitespace-nowrap tabular-nums text-ink-muted'>
-                      {formatStamp(w.initiatedAt)}
+                      {formatTransferStamp(w.initiatedAt)}
                     </td>
 
                     <td className='px-3 py-3'>
@@ -464,14 +463,14 @@ export default function AdminWithdrawals() {
                         type='button'
                         onClick={() => handleCopy(w.transferReference, 'Transfer reference')}
                         title='Copy transfer reference'
-                        className='mt-0.5 flex items-center gap-1.5 font-mono text-[10px] text-ink-subtle transition-colors hover:text-primary-500'
+                        className='mt-0.5 flex items-center gap-1.5 font-mono text-[10px] text-ink-subtle transition-colors hover:text-primary-500 focus-visible:text-primary-500 focus-visible:outline-none'
                       >
+                        {w.transferReference}
                         {copiedField === 'Transfer reference' ? (
                           <Check className='h-3 w-3 text-success-600' />
                         ) : (
-                          <Copy className='h-3 w-3' />
+                          <Copy className='h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100' />
                         )}
-                        {w.transferReference}
                       </button>
                     </td>
 
@@ -483,35 +482,32 @@ export default function AdminWithdrawals() {
                     </td>
 
                     <td className='px-3 py-3 text-right whitespace-nowrap'>
-                      <div className='font-mono font-semibold tabular-nums text-ink'>
+                      <div className='font-mono text-[13px] font-semibold tabular-nums text-ink'>
                         {formatNaira(w.amount)}
                       </div>
-                      <div className='text-[10px] text-ink-muted'>
-                        Net{' '}
-                        <span className='font-mono font-medium text-ink'>{formatNaira(net(w))}</span>
-                        {w.fee > 0 && ` · ${formatNaira(w.fee)} fee`}
-                      </div>
+                      {w.fee > 0 && (
+                        <div className='text-[10px] text-ink-subtle'>
+                          less {formatNaira(w.fee)} fee
+                        </div>
+                      )}
                     </td>
 
-                    <td className='px-3 py-3 text-center'>
+                    <td className='px-3 py-3 whitespace-nowrap'>
                       <WithdrawalStatus withdrawal={w} />
                     </td>
 
                     <td className='py-3 pl-3 pr-4 text-right whitespace-nowrap'>
-                      <div className='flex items-center justify-end gap-1.5'>
-                        <Button variant='secondary' size='sm' onClick={() => goToDetail(w)}>
-                          <Eye className='h-3.5 w-3.5' />
-                          View Details &amp; Actions
+                      <div className='flex items-center justify-end gap-2'>
+                        <Button variant='ghost' size='sm' onClick={() => goToDetail(w)}>
+                          Details
                         </Button>
 
                         {w.status === 'pending' && (
                           <>
                             <Button size='sm' onClick={() => openApproveModal(w)}>
-                              <CheckCircle2 className='h-3.5 w-3.5' />
                               Approve
                             </Button>
                             <Button variant='secondary' size='sm' onClick={() => openRejectModal(w)}>
-                              <XCircle className='h-3.5 w-3.5' />
                               Reject
                             </Button>
                           </>
@@ -522,9 +518,9 @@ export default function AdminWithdrawals() {
                             variant='secondary'
                             size='sm'
                             disabled={processing}
+                            isLoading={processing}
                             onClick={() => handleRequery(w)}
                           >
-                            <Loader2 className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />
                             Re-query
                           </Button>
                         )}

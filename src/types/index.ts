@@ -935,6 +935,35 @@ export interface TreasuryAnalyticsData {
   };
 }
 
+// ─── Admin Transactions (platform-wide real-wallet-money feed) ─
+export interface AdminTransactionRow {
+  id: string;
+  sourceType: 'inflow' | 'withdrawal' | 'tax';
+  direction: 'in' | 'out';
+  date: string;
+  businessId: string;
+  businessName: string;
+  merchantId: string;
+  userEmail: string;
+  reference: string;
+  status: string;
+  amount: number;
+  fee: number;
+  netAmount: number;
+  counterparty: string | null;
+  description: string | null;
+  needsVerification: boolean;
+  destinationBankName: string | null;
+  destinationAccountNum: string | null;
+  failureReason: string | null;
+}
+
+export interface AdminTransactionsSummary {
+  totalIn: number;
+  totalOut: number;
+  net: number;
+}
+
 export interface PlatformFeeConfig {
   withdrawalFeePct: number;
   withdrawalFeeCap: number;

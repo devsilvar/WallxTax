@@ -8,6 +8,7 @@ import {
   ScrollText,
   ArrowLeft,
   ArrowDownLeft,
+  ArrowLeftRight,
   LogOut,
   X,
   ShieldCheck,
@@ -72,6 +73,7 @@ export default function AdminSidebar({
       icon: Wallet,
       badge: pendingWithdrawals > 0 ? pendingWithdrawals : undefined,
     },
+    { to: '/admin/transactions', label: 'Transactions', icon: ArrowLeftRight },
     {
       to: '/admin/unverified-inflows',
       label: 'Unverified Inflows',

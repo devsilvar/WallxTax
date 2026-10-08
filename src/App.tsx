@@ -65,6 +65,9 @@ const AdminAuditLogs = lazy(() => import('@/pages/admin/AdminAuditLogs.tsx'));
 const AdminWithdrawals = lazy(
   () => import('@/pages/admin/AdminWithdrawals.tsx'),
 );
+const AdminTransactions = lazy(
+  () => import('@/pages/admin/AdminTransactions.tsx'),
+);
 const AdminUnverifiedInflows = lazy(
   () => import('@/pages/admin/AdminUnverifiedInflows.tsx'),
 );
@@ -221,6 +224,10 @@ export default function App() {
                 <Route
                   path='/admin/settlement/withdrawals'
                   element={<AdminWithdrawals />}
+                />
+                <Route
+                  path='/admin/transactions'
+                  element={<AdminTransactions />}
                 />
                 <Route
                   path='/admin/unverified-inflows'

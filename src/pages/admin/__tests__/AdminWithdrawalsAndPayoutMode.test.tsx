@@ -108,12 +108,12 @@ describe('AdminWithdrawals UI Tests', () => {
     expect(screen.queryByText(/Manual Review/i)).toBeNull();
     expect(screen.queryByText(/Auto-Payout/i)).toBeNull();
 
-    // Check that View Details & Actions button is available for each item
-    const detailButtons = screen.getAllByText(/View Details & Actions/i);
+    // Check that a Details button is available for each item
+    const detailButtons = screen.getAllByText(/^Details$/);
     expect(detailButtons.length).toBe(2);
   });
 
-  it('opens comprehensive detail modal when View Details & Actions is clicked', async () => {
+  it('opens comprehensive detail modal when Details is clicked', async () => {
     render(
       <BrowserRouter>
         <AdminWithdrawals />
@@ -124,7 +124,7 @@ describe('AdminWithdrawals UI Tests', () => {
       expect(screen.getByText('Apex Logistics Ltd')).toBeDefined();
     });
 
-    const firstDetailBtn = screen.getAllByText(/View Details & Actions/i)[0];
+    const firstDetailBtn = screen.getAllByText(/^Details$/)[0];
     fireEvent.click(firstDetailBtn);
 
     // Verify detail modal opened with comprehensive sections
@@ -149,7 +149,7 @@ describe('AdminWithdrawals UI Tests', () => {
     });
 
     // Open the detail modal — payout mode only surfaces there now
-    const firstDetailBtn = screen.getAllByText(/View Details & Actions/i)[0];
+    const firstDetailBtn = screen.getAllByText(/^Details$/)[0];
     fireEvent.click(firstDetailBtn);
 
     await waitFor(() => {

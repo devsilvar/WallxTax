@@ -323,9 +323,11 @@ export default function Subscription() {
       if (notes.trim()) {
         formData.append('notes', notes.trim());
       }
-      formData.append('file', file);
+      formData.append('file', file, file.name);
 
-      await api.post('/subscription/proof', formData);
+      await api.post('/subscription/proof', formData, {
+        headers: { 'Content-Type': undefined },
+      });
 
       setSubmitted(true);
       toast.success('Proof of payment received! Sent to subscription@wallx.co');
