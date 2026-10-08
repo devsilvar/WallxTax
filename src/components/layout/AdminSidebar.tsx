@@ -12,6 +12,8 @@ import {
   X,
   ShieldCheck,
   Bot,
+  CreditCard,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useAdminStatsStore } from '@/stores/admin.stats.store.ts';
@@ -29,6 +31,7 @@ export default function AdminSidebar({
   const user = useAuthStore((s) => s.user);
   const pendingWithdrawals = useAdminStatsStore((s) => s.stats?.withdrawalSla?.pendingCount ?? 0);
   const unverifiedInflows = useAdminStatsStore((s) => s.stats?.unverifiedInflows?.count ?? 0);
+  const pendingSubscriptions = useAdminStatsStore((s) => s.stats?.pendingSubscriptionsCount ?? 0);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,6 +61,12 @@ export default function AdminSidebar({
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/businesses', label: 'Businesses', icon: Building2 },
     {
+      to: '/admin/subscriptions',
+      label: 'Subscriptions',
+      icon: CreditCard,
+      badge: pendingSubscriptions > 0 ? pendingSubscriptions : undefined,
+    },
+    {
       to: '/admin/withdrawals',
       label: 'Withdrawals',
       icon: Wallet,
@@ -69,6 +78,7 @@ export default function AdminSidebar({
       icon: ArrowDownLeft,
       badge: unverifiedInflows > 0 ? unverifiedInflows : undefined,
     },
+    { to: '/admin/reviews', label: 'Reviews', icon: MessageSquareHeart },
     { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
     { to: '/admin/ai-settings', label: 'AI Settings', icon: Bot },
   ];

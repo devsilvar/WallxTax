@@ -89,7 +89,7 @@ describe('AdminWithdrawals UI Tests', () => {
     });
   });
 
-  it('renders stacked withdrawal cards without horizontal scrolling table headers', async () => {
+  it('renders withdrawal requests as a table without inline mode badges', async () => {
     render(
       <BrowserRouter>
         <AdminWithdrawals />
@@ -101,9 +101,12 @@ describe('AdminWithdrawals UI Tests', () => {
       expect(screen.getByText('Kano Supermart')).toBeDefined();
     });
 
-    // Check that Payout Mode badges are visible on each card
-    expect(screen.getByText(/🔒 Manual Review/i)).toBeDefined();
-    expect(screen.getByText(/⚡ Auto-Payout/i)).toBeDefined();
+    // Real table markup, not stacked cards
+    expect(screen.getAllByRole('row').length).toBeGreaterThan(2);
+
+    // Payout mode badges are no longer rendered on the list — only in the detail modal
+    expect(screen.queryByText(/Manual Review/i)).toBeNull();
+    expect(screen.queryByText(/Auto-Payout/i)).toBeNull();
 
     // Check that View Details & Actions button is available for each item
     const detailButtons = screen.getAllByText(/View Details & Actions/i);
@@ -134,7 +137,7 @@ describe('AdminWithdrawals UI Tests', () => {
     });
   });
 
-  it('displays payout mode as display-only badge without toggle buttons', async () => {
+  it('displays payout mode as display-only badge in the detail modal without toggle buttons', async () => {
     render(
       <BrowserRouter>
         <AdminWithdrawals />
@@ -145,11 +148,15 @@ describe('AdminWithdrawals UI Tests', () => {
       expect(screen.getByText('Apex Logistics Ltd')).toBeDefined();
     });
 
-    // Check display-only status pills are rendered
-    expect(screen.getByText(/Manual Review/i)).toBeDefined();
-    expect(screen.getByText(/Auto-Payout/i)).toBeDefined();
+    // Open the detail modal — payout mode only surfaces there now
+    const firstDetailBtn = screen.getAllByText(/View Details & Actions/i)[0];
+    fireEvent.click(firstDetailBtn);
 
-    // Verify no toggle buttons exist on the page
+    await waitFor(() => {
+      expect(screen.getByText(/Manual Review/i)).toBeDefined();
+    });
+
+    // Verify no toggle buttons exist anywhere
     expect(screen.queryByText('To Auto')).toBeNull();
     expect(screen.queryByText('To Manual')).toBeNull();
     expect(screen.queryByText('Switch to Auto')).toBeNull();

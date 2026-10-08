@@ -46,6 +46,10 @@ export default function AdminLayout() {
       crumbs.push({ label: 'Audit Logs', to: '/admin/audit-logs' });
     } else if (path.startsWith('/admin/ai-settings')) {
       crumbs.push({ label: 'AI Provider Settings', to: '/admin/ai-settings' });
+    } else if (path.startsWith('/admin/subscriptions')) {
+      crumbs.push({ label: 'Subscriptions', to: '/admin/subscriptions' });
+    } else if (path.startsWith('/admin/reviews')) {
+      crumbs.push({ label: 'User Reviews', to: '/admin/reviews' });
     }
 
     return crumbs;

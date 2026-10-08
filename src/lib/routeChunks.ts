@@ -21,10 +21,7 @@ export const PATH_CHUNKS: Record<string, readonly (() => Promise<unknown>)[]> = 
   '/tax': [() => import('@/pages/TaxReports.tsx')],
   '/transactions': [() => import('@/pages/Transactions.tsx')],
   '/account': [() => import('@/pages/Account.tsx')],
-  '/subscription': [
-    () => import('@/pages/marketing/Pricing.tsx'),
-    () => import('@/pages/Subscription.tsx'),
-  ],
+  '/subscription': [() => import('@/pages/Subscription.tsx')],
   '/settings': [() => import('@/pages/Settings.tsx')],
   '/admin': [() => import('@/pages/admin/AdminDashboard.tsx')],
 };

@@ -50,6 +50,7 @@ const SOURCES = [
   'cash',
   'invoice',
   'credit',
+  'store_voucher',
 ] as const;
 
 // Fixed box order for the daily strip — every payment type always has a home,
@@ -62,6 +63,7 @@ const DAILY_SOURCES = [
   'online_store',
   'invoice',
   'credit',
+  'store_voucher',
 ] as const;
 const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
 
@@ -142,6 +144,7 @@ const SOURCE_COLORS: Record<string, string> = {
   cash: 'bg-green-600',
   invoice: 'bg-indigo-500',
   credit: 'bg-amber-600',
+  store_voucher: 'bg-teal-500',
 };
 
 // ─── Component ──────────────────────────────────────────────
@@ -156,6 +159,9 @@ export default function Sales() {
   const [sales, setSales] = useState<SalesTransaction[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterMinAmount, setFilterMinAmount] = useState('');
+  const [filterMaxAmount, setFilterMaxAmount] = useState('');
   const [filterSource, setFilterSource] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -186,6 +192,9 @@ export default function Sales() {
   const basePath = biz ? `/businesses/${biz.id}/sales` : '';
 
   const hasActiveFilters = !!(
+    filterSearch ||
+    filterMinAmount ||
+    filterMaxAmount ||
     filterSource ||
     filterStatus ||
     filterStartDate ||
@@ -193,6 +202,9 @@ export default function Sales() {
   );
 
   const clearFilters = () => {
+    setFilterSearch('');
+    setFilterMinAmount('');
+    setFilterMaxAmount('');
     setFilterSource('');
     setFilterStatus('');
     setFilterStartDate('');
@@ -206,6 +218,9 @@ export default function Sales() {
     setIsLoading(true);
     setError(null);
     const params: Record<string, string | number> = { page, limit: 15 };
+    if (filterSearch.trim()) params.search = filterSearch.trim();
+    if (filterMinAmount) params.minAmount = filterMinAmount;
+    if (filterMaxAmount) params.maxAmount = filterMaxAmount;
     if (filterSource) params.source = filterSource;
     if (filterStatus) params.status = filterStatus;
     if (filterStartDate) params.startDate = filterStartDate;
@@ -249,7 +264,17 @@ export default function Sales() {
 
   useEffect(() => {
     fetchSales();
-  }, [biz, page, filterSource, filterStatus, filterStartDate, filterEndDate]);
+  }, [
+    biz,
+    page,
+    filterSearch,
+    filterMinAmount,
+    filterMaxAmount,
+    filterSource,
+    filterStatus,
+    filterStartDate,
+    filterEndDate,
+  ]);
   useEffect(() => {
     fetchSummary();
   }, [biz, summaryMonth, summaryYear]);
@@ -702,6 +727,9 @@ export default function Sales() {
               <span className='ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-xs text-white'>
                 {
                   [
+                    filterSearch,
+                    filterMinAmount,
+                    filterMaxAmount,
                     filterSource,
                     filterStatus,
                     filterStartDate,
@@ -729,6 +757,21 @@ export default function Sales() {
         {showFilters && (
           <Card className='py-4'>
             <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+              <div className='space-y-1 sm:col-span-2 lg:col-span-2'>
+                <label className='block text-xs font-medium text-gray-500'>
+                  Search
+                </label>
+                <input
+                  type='text'
+                  placeholder='Search by customer, description, reference...'
+                  value={filterSearch}
+                  onChange={(e) => {
+                    setFilterSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+                />
+              </div>
               <div className='space-y-1'>
                 <label className='block text-xs font-medium text-gray-500'>
                   Payment Type
@@ -768,6 +811,40 @@ export default function Sales() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className='space-y-1'>
+                <label className='block text-xs font-medium text-gray-500'>
+                  Min Amount (₦)
+                </label>
+                <input
+                  type='number'
+                  min='0'
+                  step='any'
+                  placeholder='0.00'
+                  value={filterMinAmount}
+                  onChange={(e) => {
+                    setFilterMinAmount(e.target.value);
+                    setPage(1);
+                  }}
+                  className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+                />
+              </div>
+              <div className='space-y-1'>
+                <label className='block text-xs font-medium text-gray-500'>
+                  Max Amount (₦)
+                </label>
+                <input
+                  type='number'
+                  min='0'
+                  step='any'
+                  placeholder='0.00'
+                  value={filterMaxAmount}
+                  onChange={(e) => {
+                    setFilterMaxAmount(e.target.value);
+                    setPage(1);
+                  }}
+                  className='block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+                />
               </div>
               <div className='space-y-1'>
                 <label className='block text-xs font-medium text-gray-500'>

@@ -11,7 +11,6 @@ import {
   Crown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api, { getErrorMessage } from '@/lib/axios.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDocumentTitle } from '@/components/marketing/useDocumentTitle.ts';
@@ -75,7 +74,7 @@ const PLANS: PlanOption[] = [
     priceMonth: 5000,
     priceQuarter: 15000,
     priceAnnual: 50000,
-    tagline: 'Monthly Plan for essential store operations and sales records.',
+    tagline: 'NRS store operations and sales records.',
     features: [
       'Up to 3 Team Members',
       'Sales Management',
@@ -254,7 +253,6 @@ export default function Subscription() {
   );
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [showCustomDetails, setShowCustomDetails] = useState(false);
 
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -294,6 +292,18 @@ export default function Subscription() {
   const handleSubmitProof = async (e: FormEvent) => {
     e.preventDefault();
 
+    if (!name.trim()) {
+      toast.error('Please enter your full name');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error('Please enter your phone or WhatsApp number');
+      return;
+    }
     if (!file) {
       toast.error('Please select your payment receipt or transfer screenshot');
       return;
@@ -301,19 +311,12 @@ export default function Subscription() {
 
     setSubmitting(true);
     try {
-      const resolvedName =
-        name.trim() || user?.fullName || user?.email?.split('@')[0] || 'Subscriber';
-      const resolvedEmail = email.trim() || user?.email || '';
-      const resolvedPhone = phone.trim() || user?.phone || '';
-      const resolvedBusinessName =
-        businessName.trim() || activeBusiness?.businessName || '';
-
       const formData = new FormData();
-      formData.append('name', resolvedName);
-      if (resolvedEmail) formData.append('email', resolvedEmail);
-      if (resolvedPhone) formData.append('phone', resolvedPhone);
-      if (resolvedBusinessName) {
-        formData.append('businessName', resolvedBusinessName);
+      formData.append('name', name.trim());
+      formData.append('email', email.trim());
+      formData.append('phone', phone.trim());
+      if (businessName.trim()) {
+        formData.append('businessName', businessName.trim());
       }
       formData.append(
         'plan',
@@ -325,16 +328,26 @@ export default function Subscription() {
       }
       formData.append('file', file);
 
-      await api.post('/subscription/proof', formData);
+      const res = await fetch('/api/v1/subscription/proof', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(
+          data.error?.message || data.message || 'Submission failed',
+        );
+      }
 
       setSubmitted(true);
       toast.success('Proof of payment received! Sent to subscription@wallx.co');
     } catch (err) {
       toast.error(
-        getErrorMessage(
-          err,
-          'Failed to submit proof. You can also chat on WhatsApp.',
-        ),
+        err instanceof Error
+          ? err.message
+          : 'Failed to submit proof. You can also chat on WhatsApp.',
       );
     } finally {
       setSubmitting(false);
@@ -927,109 +940,61 @@ export default function Subscription() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmitProof} className='space-y-5'>
-                  {/* Verified Subscriber Identity Card */}
-                  <div className='rounded-xl border border-primary-200/80 bg-primary-50/40 p-4'>
-                    <div className='flex items-start justify-between gap-3'>
-                      <div className='flex items-center gap-3'>
-                        <div className='h-10 w-10 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs'>
-                          {(name || user?.fullName || user?.email || 'U')
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                        <div className='min-w-0'>
-                          <div className='flex items-center gap-2'>
-                            <p className='text-sm font-bold text-gray-900 truncate'>
-                              {name ||
-                                user?.fullName ||
-                                user?.email?.split('@')[0] ||
-                                'Subscriber'}
-                            </p>
-                            <span className='inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800'>
-                              <CheckCircle2 className='h-3 w-3 text-emerald-600' />
-                              Verified Account
-                            </span>
-                          </div>
-                          <p className='text-xs text-gray-600 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5'>
-                            <span>{email || user?.email}</span>
-                            {(phone || user?.phone) && (
-                              <>
-                                <span className='text-gray-300'>•</span>
-                                <span>{phone || user?.phone}</span>
-                              </>
-                            )}
-                          </p>
-                          <p className='text-xs font-semibold text-primary-800 mt-1 flex items-center gap-1'>
-                            <span>Business:</span>
-                            <span className='font-bold text-gray-900'>
-                              {businessName ||
-                                activeBusiness?.businessName ||
-                                'Current Business'}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type='button'
-                        onClick={() => setShowCustomDetails((v) => !v)}
-                        className='text-[11px] font-semibold text-primary-700 hover:text-primary-900 underline shrink-0'
-                      >
-                        {showCustomDetails ? 'Hide details' : 'Change contact details'}
-                      </button>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3.5'>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Full Name *
+                      </label>
+                      <input
+                        type='text'
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder='e.g. Adebayo Adeleke'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
                     </div>
 
-                    {/* Optional Collapsible Alternate Details */}
-                    {showCustomDetails && (
-                      <div className='mt-4 pt-3.5 border-t border-primary-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200'>
-                        <div>
-                          <label className='block text-[11px] font-semibold text-gray-700 mb-1'>
-                            Receipt Contact Name
-                          </label>
-                          <input
-                            type='text'
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder='Subscriber Name'
-                            className='w-full px-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none'
-                          />
-                        </div>
-                        <div>
-                          <label className='block text-[11px] font-semibold text-gray-700 mb-1'>
-                            Notification Email
-                          </label>
-                          <input
-                            type='email'
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder='name@company.com'
-                            className='w-full px-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none'
-                          />
-                        </div>
-                        <div>
-                          <label className='block text-[11px] font-semibold text-gray-700 mb-1'>
-                            WhatsApp / Phone (for fast activation)
-                          </label>
-                          <input
-                            type='tel'
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder='08012345678'
-                            className='w-full px-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none'
-                          />
-                        </div>
-                        <div>
-                          <label className='block text-[11px] font-semibold text-gray-700 mb-1'>
-                            Billing Business Name
-                          </label>
-                          <input
-                            type='text'
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                            placeholder='Business Name'
-                            className='w-full px-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none'
-                          />
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Email Address *
+                      </label>
+                      <input
+                        type='email'
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder='e.g. adebayo@example.com'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Phone / WhatsApp *
+                      </label>
+                      <input
+                        type='tel'
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder='e.g. 08147490832'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1.5'>
+                        Business Name
+                      </label>
+                      <input
+                        type='text'
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        placeholder='e.g. Balogun Ventures'
+                        className='w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+                      />
+                    </div>
                   </div>
 
                   {/* Selected Plan Summary */}

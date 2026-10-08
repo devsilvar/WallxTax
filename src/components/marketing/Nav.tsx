@@ -10,7 +10,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
-  { label: 'Subscription', to: '/subscription' },
+  { label: 'Pricing', to: '/pricing' },
   { label: 'Contact', to: '/contact' },
 ];
 

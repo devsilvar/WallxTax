@@ -6,6 +6,7 @@ import NotificationBell from './NotificationBell.tsx';
 import UserMenu from './UserMenu.tsx';
 import RouteTransitionLoader from './RouteTransitionLoader.tsx';
 import CommandPalette from '@/components/CommandPalette.tsx';
+import ReviewPromptModal from '@/components/ReviewPromptModal.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 import { resolvePageTitle } from '@/lib/pageTitles.ts';
 
@@ -109,6 +110,7 @@ export default function AppLayout({
       </div>
 
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ReviewPromptModal />
     </div>
   );
 }

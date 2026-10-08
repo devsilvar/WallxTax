@@ -30,7 +30,7 @@ export default function FinalCta({
   useEffect(() => {
     const unobserveMain = observePrefetch(sectionRef.current, buttonLink);
     const unobservePricing = !isAuthenticated
-      ? observePrefetch(sectionRef.current, '/subscription')
+      ? observePrefetch(sectionRef.current, '/pricing')
       : undefined;
 
     return () => {
@@ -93,9 +93,9 @@ export default function FinalCta({
             </Link>
             {!isAuthenticated && (
               <Link
-                to='/subscription'
-                onMouseEnter={() => prefetchRoute('/subscription')}
-                onFocus={() => prefetchRoute('/subscription')}
+                to='/pricing'
+                onMouseEnter={() => prefetchRoute('/pricing')}
+                onFocus={() => prefetchRoute('/pricing')}
                 className='w-full sm:w-auto'
               >
                 <button className='w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm sm:text-base font-semibold transition-all duration-200 active:scale-[0.98]'>

@@ -25,6 +25,8 @@ export interface User {
   regulatoryTermsVersion?: string | null;
   pendingInvitationCount?: number;
   isOwnerAccount?: boolean;
+  subscriptionTier?: string | null;
+  subscriptionExpiresAt?: string | null;
 }
 
 export type BusinessRole = 'owner' | 'manager' | 'sales_staff' | 'accountant' | 'viewer';
@@ -35,6 +37,7 @@ export type PermissionKey =
   | 'expenses.create' | 'expenses.read' | 'expenses.update' | 'expenses.delete'
   | 'invoices.create' | 'invoices.read' | 'invoices.send' | 'invoices.mark_paid'
   | 'debtors.read' | 'debtors.manage'
+  | 'customers.read' | 'customers.manage'
   | 'tax.read' | 'tax.calculate' | 'tax.finalize' | 'tax.pay'
   | 'payments.read'
   | 'dashboard.read'
@@ -162,6 +165,7 @@ export interface SalesTransaction {
   description?: string;
   customerName?: string;
   customerHint?: string;
+  customerId?: string | null;
   finalClassification?: string;
   needsVerification?: boolean;
   verifiedAt?: string;
@@ -377,6 +381,104 @@ export interface SendInvoiceEmailResult {
   to: string;
 }
 
+// ─── Customer CRM & Virtual Store Cards ──────────────────────
+
+export interface CustomerCardLedger {
+  id: string;
+  cardId: string;
+  type: 'top_up' | 'change_credit' | 'sale_debit' | 'adjustment';
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  receiptNumber?: string | null;
+  linkedSaleId?: string | null;
+  performedBy?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CustomerCard {
+  id: string;
+  businessId: string;
+  customerId: string;
+  cardCode: string;
+  balance: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  ledgers?: CustomerCardLedger[];
+}
+
+export interface Customer {
+  id: string;
+  businessId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  isActive: boolean;
+  card?: CustomerCard | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface QuickCreateCustomerPayload {
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+}
+
+export interface TopUpCustomerCardPayload {
+  amount: number;
+  notes?: string;
+  receiptDate?: string;
+}
+
+export interface CreditCustomerChangePayload {
+  amount: number;
+  receiptNumber?: string;
+  linkedSaleId?: string;
+  notes?: string;
+  receiptDate?: string;
+}
+
+export interface AdjustCustomerCardPayload {
+  amount: number;
+  reason: string;
+  receiptDate?: string;
+}
+
+export interface CustomerStats {
+  totalCustomers: number;
+  totalCards: number;
+  circulatingBalance: number;
+  monthChangeCredited: number;
+  monthRedeemed: number;
+}
+
+export interface CustomerCardActivity {
+  id: string;
+  cardId: string;
+  cardCode: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string | null;
+  type: 'top_up' | 'change_credit' | 'sale_debit' | 'adjustment';
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  receiptNumber?: string | null;
+  linkedSaleId?: string | null;
+  performedBy?: string | null;
+  performerName: string;
+  performerEmail?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
 // ─── Sales Import ───────────────────────────────────────────
 
 export type SalesImportRowStatus =
@@ -456,6 +558,7 @@ export interface AdminDashboardStats {
   unverifiedInflows?: {
     count: number;
   };
+  pendingSubscriptionsCount?: number;
 }
 
 export interface AdminUser {
@@ -469,6 +572,69 @@ export interface AdminUser {
   createdAt: string;
   _count: { businesses: number };
   autoPayoutEnabled?: boolean;
+  subscriptionTier?: string | null;
+  subscriptionExpiresAt?: string | null;
+}
+
+export interface SubscriptionSubmission {
+  id: string;
+  userId?: string | null;
+  businessId?: string | null;
+  customerName: string;
+  email: string;
+  phone?: string | null;
+  businessName?: string | null;
+  plan: string;
+  billingCycle: string;
+  amount: number | string;
+  notes?: string | null;
+  receiptUrl?: string | null;
+  receiptFileName?: string | null;
+  receiptMime?: string | null;
+  receiptPath?: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    email: string;
+    fullName?: string | null;
+    phone?: string | null;
+    subscriptionTier?: string | null;
+    subscriptionExpiresAt?: string | null;
+  } | null;
+  business?: {
+    id: string;
+    businessName: string;
+    ownerName?: string | null;
+    taxId?: string | null;
+  } | null;
+}
+
+export interface UserFeedback {
+  id: string;
+  userId?: string | null;
+  businessId?: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
+  rating: number;
+  sentiment?: string | null;
+  tags: string[];
+  comment?: string | null;
+  createdAt: string;
+  user?: {
+    id: string;
+    email: string;
+    fullName?: string | null;
+    subscriptionTier?: string | null;
+  } | null;
+  business?: {
+    id: string;
+    businessName: string;
+  } | null;
 }
 
 export interface AdminUserDetail extends AdminUser {

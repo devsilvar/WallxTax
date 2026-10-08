@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  AlertCircle,
   Building2,
   Check,
-  CheckCircle2,
   Clock,
   Copy,
-  FolderSync,
   HelpCircle,
-  Loader2,
   Search,
 } from 'lucide-react';
-import Button from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api, { getErrorMessage } from '@/lib/axios';
 import toast from 'react-hot-toast';
@@ -22,19 +16,7 @@ import { Panel, PanelEmpty } from './shared/Panel';
 import StatusPill from './shared/StatusPill';
 import { formatNaira, formatStamp } from './shared/format';
 import { useAdminStatsStore } from '@/stores/admin.stats.store.ts';
-import type { AdminUnverifiedInflowRow, SiblingBusinessOption } from '@/types/index.ts';
-
-const CANONICAL_CLASSIFICATIONS = [
-  'Product Sale',
-  'Service Revenue',
-  'Transfer Between Accounts',
-  'Loan Received',
-  'Gift Received',
-  'Grant Received',
-  'Capital Injection',
-  'Credit / Debt Settlement',
-  'Other',
-];
+import type { AdminUnverifiedInflowRow } from '@/types/index.ts';
 
 export default function AdminUnverifiedInflows() {
   const [inflows, setInflows] = useState<AdminUnverifiedInflowRow[]>([]);
@@ -54,19 +36,6 @@ export default function AdminUnverifiedInflows() {
     hasNext: false,
     hasPrev: false,
   });
-
-  // Reallocate Modal State
-  const [reallocateTarget, setReallocateTarget] = useState<AdminUnverifiedInflowRow | null>(null);
-  const [selectedTargetBusinessId, setSelectedTargetBusinessId] = useState('');
-  const [isReallocating, setIsReallocating] = useState(false);
-
-  // Verify Modal State
-  const [verifyTarget, setVerifyTarget] = useState<AdminUnverifiedInflowRow | null>(null);
-  const [selectedClassification, setSelectedClassification] = useState('Product Sale');
-  const [customerNameInput, setCustomerNameInput] = useState('');
-  const [descriptionInput, setDescriptionInput] = useState('');
-  const [verifyTargetBusinessId, setVerifyTargetBusinessId] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
 
   // Debounce search input by 300ms
   useEffect(() => {
@@ -113,89 +82,11 @@ export default function AdminUnverifiedInflows() {
     setTimeout(() => setCopiedId(null), 1500);
   };
 
-  // Open Reallocate Modal
-  const openReallocateModal = (row: AdminUnverifiedInflowRow) => {
-    setReallocateTarget(row);
-    setSelectedTargetBusinessId(row.siblingBusinesses[0]?.id ?? '');
-  };
-
-  const closeReallocateModal = () => {
-    setReallocateTarget(null);
-    setSelectedTargetBusinessId('');
-  };
-
-  const handleConfirmReallocate = async () => {
-    if (!reallocateTarget || !selectedTargetBusinessId) return;
-
-    try {
-      setIsReallocating(true);
-      const res = await api.patch(`/admin/sales/${reallocateTarget.id}/reassign`, {
-        targetBusinessId: selectedTargetBusinessId,
-      });
-
-      if (res.data?.success) {
-        toast.success(res.data.message || 'Inflow successfully reallocated');
-        closeReallocateModal();
-        await fetchInflows();
-        useAdminStatsStore.getState().fetchStats({ force: true });
-      }
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to reallocate transaction'));
-    } finally {
-      setIsReallocating(false);
-    }
-  };
-
-  // Open Verify Modal
-  const openVerifyModal = (row: AdminUnverifiedInflowRow) => {
-    setVerifyTarget(row);
-    setSelectedClassification('Product Sale');
-    setCustomerNameInput(row.customerName || row.customerHint || '');
-    setDescriptionInput(row.description || '');
-    setVerifyTargetBusinessId('');
-  };
-
-  const closeVerifyModal = () => {
-    setVerifyTarget(null);
-    setSelectedClassification('Product Sale');
-    setCustomerNameInput('');
-    setDescriptionInput('');
-    setVerifyTargetBusinessId('');
-  };
-
-  const handleConfirmVerify = async () => {
-    if (!verifyTarget || !selectedClassification) return;
-
-    try {
-      setIsVerifying(true);
-      const res = await api.post(`/admin/sales/unverified/${verifyTarget.id}/verify`, {
-        classificationName: selectedClassification,
-        customerName: customerNameInput.trim() || undefined,
-        description: descriptionInput.trim() || undefined,
-        targetBusinessId:
-          verifyTarget.accrualLinked || !verifyTargetBusinessId
-            ? undefined
-            : verifyTargetBusinessId,
-      });
-
-      if (res.data?.success) {
-        toast.success(res.data.message || 'Transaction successfully classified and verified');
-        closeVerifyModal();
-        await fetchInflows();
-        useAdminStatsStore.getState().fetchStats({ force: true });
-      }
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to verify transaction'));
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   return (
     <div className='space-y-6'>
       <PageHeader
         title='Unverified Inflows'
-        hint='Central triage queue for auto-captured incoming transfers awaiting classification or business reallocation.'
+        hint='Read-only view of auto-captured incoming transfers awaiting classification by their merchant.'
       />
 
       {/* KPI Overview Banner */}
@@ -272,7 +163,6 @@ export default function AdminUnverifiedInflows() {
                   <th className='px-3 py-3'>Counterparty</th>
                   <th className='px-3 py-3 text-right'>Amount</th>
                   <th className='px-3 py-3 text-center'>State</th>
-                  <th className='py-3 pl-3 pr-4 text-right'>Actions</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-hairline'>
@@ -343,39 +233,6 @@ export default function AdminUnverifiedInflows() {
                     <td className='px-3 py-3.5 text-center'>
                       <StatusPill tone='warning'>Needs Verification</StatusPill>
                     </td>
-
-                    {/* Action buttons */}
-                    <td className='py-3.5 pl-3 pr-4 text-right whitespace-nowrap'>
-                      <div className='flex items-center justify-end gap-2'>
-                        <Button
-                          size='sm'
-                          variant='secondary'
-                          onClick={() => openReallocateModal(row)}
-                          title={
-                            row.accrualLinked
-                              ? 'Revenue was recognised at invoice/credit issuance — this inflow cannot be moved. Cancel and re-issue the invoice instead.'
-                              : row.siblingBusinesses.length === 0
-                                ? 'Merchant has no other businesses'
-                                : 'Reallocate to another business owned by this merchant'
-                          }
-                          disabled={row.accrualLinked || row.siblingBusinesses.length === 0}
-                          className='gap-1 text-[11px]'
-                        >
-                          <FolderSync className='h-3 w-3' />
-                          Reallocate
-                        </Button>
-
-                        <Button
-                          size='sm'
-                          variant='primary'
-                          onClick={() => openVerifyModal(row)}
-                          className='gap-1 text-[11px]'
-                        >
-                          <CheckCircle2 className='h-3 w-3' />
-                          Classify & Verify
-                        </Button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -393,213 +250,6 @@ export default function AdminUnverifiedInflows() {
         )}
       </Panel>
 
-      {/* ─── Modal 1: Reallocate Business Modal ──────────────────────── */}
-      <Modal
-        isOpen={!!reallocateTarget}
-        onClose={closeReallocateModal}
-        title='Reallocate Inflow to Another Business'
-      >
-        {reallocateTarget && (
-          <div className='space-y-4 text-xs'>
-            <div className='rounded border border-hairline bg-panel-subtle p-3 space-y-1.5'>
-              <div className='text-[11px] text-ink-subtle uppercase tracking-wider font-medium'>
-                Current Assignment
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='font-semibold text-ink text-sm'>
-                  {reallocateTarget.business.businessName}
-                </span>
-                <span className='font-mono text-ink-muted'>
-                  {formatNaira(reallocateTarget.amount)}
-                </span>
-              </div>
-              <div className='text-ink-subtle'>
-                Merchant: {reallocateTarget.business.user.email} (ID:{' '}
-                {reallocateTarget.business.merchantId})
-              </div>
-            </div>
-
-            <div>
-              <label className='block font-medium text-ink mb-1.5'>
-                Select Destination Business (Merchant Siblings)
-              </label>
-              <select
-                value={selectedTargetBusinessId}
-                onChange={(e) => setSelectedTargetBusinessId(e.target.value)}
-                className='w-full rounded border border-hairline bg-panel px-3 py-2 text-xs text-ink focus:border-primary-500 focus:outline-none'
-              >
-                {reallocateTarget.siblingBusinesses.map((b: SiblingBusinessOption) => (
-                  <option key={b.id} value={b.id}>
-                    {b.businessName} ({b.merchantId})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Statutory / Accounting Notice */}
-            <div className='flex gap-2.5 rounded border border-amber-500/20 bg-amber-500/5 p-3 text-amber-300'>
-              <AlertCircle className='h-4 w-4 shrink-0 text-amber-400 mt-0.5' />
-              <p className='text-[11px] leading-relaxed text-ink-muted'>
-                <strong className='text-ink font-semibold'>Note:</strong> Reallocating changes
-                which business this inflow counts toward, including in periods already reported.
-                Both sales and wallet ledgers will be synced atomically.
-              </p>
-            </div>
-
-            <div className='flex justify-end gap-2 pt-2'>
-              <Button
-                variant='secondary'
-                size='sm'
-                onClick={closeReallocateModal}
-                disabled={isReallocating}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant='primary'
-                size='sm'
-                onClick={handleConfirmReallocate}
-                disabled={isReallocating || !selectedTargetBusinessId}
-              >
-                {isReallocating ? (
-                  <>
-                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                    Reallocating...
-                  </>
-                ) : (
-                  'Confirm Reallocation'
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* ─── Modal 2: Classify & Verify Modal ────────────────────────── */}
-      <Modal
-        isOpen={!!verifyTarget}
-        onClose={closeVerifyModal}
-        title='Classify & Verify Transaction'
-      >
-        {verifyTarget && (
-          <div className='space-y-4 text-xs'>
-            <div className='rounded border border-hairline bg-panel-subtle p-3 space-y-1'>
-              <div className='flex justify-between items-center'>
-                <span className='font-semibold text-ink'>{verifyTarget.business.businessName}</span>
-                <span className='font-mono font-medium text-ink'>
-                  {formatNaira(verifyTarget.amount)}
-                </span>
-              </div>
-              <div className='text-[11px] text-ink-subtle'>
-                Ref: {verifyTarget.referenceId || verifyTarget.id}
-              </div>
-            </div>
-
-            {/* Classification Category */}
-            <div>
-              <label className='block font-medium text-ink mb-1.5'>
-                Transaction Classification *
-              </label>
-              <select
-                value={selectedClassification}
-                onChange={(e) => setSelectedClassification(e.target.value)}
-                className='w-full rounded border border-hairline bg-panel px-3 py-2 text-xs text-ink focus:border-primary-500 focus:outline-none'
-              >
-                {CANONICAL_CLASSIFICATIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Optional Customer Name */}
-            <div>
-              <label className='block font-medium text-ink mb-1.5'>
-                Customer / Sender Name (Optional)
-              </label>
-              <input
-                type='text'
-                value={customerNameInput}
-                onChange={(e) => setCustomerNameInput(e.target.value)}
-                placeholder='e.g. Alhaji Danladi'
-                className='w-full rounded border border-hairline bg-panel px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:border-primary-500 focus:outline-none'
-              />
-            </div>
-
-            {/* Optional Description */}
-            <div>
-              <label className='block font-medium text-ink mb-1.5'>
-                Description / Memo (Optional)
-              </label>
-              <input
-                type='text'
-                value={descriptionInput}
-                onChange={(e) => setDescriptionInput(e.target.value)}
-                placeholder='e.g. Counter wholesale purchase'
-                className='w-full rounded border border-hairline bg-panel px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:border-primary-500 focus:outline-none'
-              />
-            </div>
-
-            {/* Optional Destination Reassignment during Verification */}
-            {verifyTarget.siblingBusinesses.length > 0 && (
-              <div>
-                <label className='block font-medium text-ink mb-1.5'>
-                  Reallocate Business during verification (Optional)
-                </label>
-                {verifyTarget.accrualLinked ? (
-                  <p className='rounded border border-hairline bg-surface-subtle px-3 py-2 text-xs text-ink-subtle'>
-                    Revenue was recognised when the invoice or credit was issued, so this inflow
-                    cannot be reallocated. Cancel and re-issue the invoice against the correct
-                    business instead.
-                  </p>
-                ) : (
-                  <select
-                    value={verifyTargetBusinessId}
-                    onChange={(e) => setVerifyTargetBusinessId(e.target.value)}
-                    className='w-full rounded border border-hairline bg-panel px-3 py-2 text-xs text-ink focus:border-primary-500 focus:outline-none'
-                  >
-                    <option value=''>
-                      Keep assigned to {verifyTarget.business.businessName}
-                    </option>
-                    {verifyTarget.siblingBusinesses.map((b: SiblingBusinessOption) => (
-                      <option key={b.id} value={b.id}>
-                        Move to {b.businessName} ({b.merchantId})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
-
-            <div className='flex justify-end gap-2 pt-2'>
-              <Button
-                variant='secondary'
-                size='sm'
-                onClick={closeVerifyModal}
-                disabled={isVerifying}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant='primary'
-                size='sm'
-                onClick={handleConfirmVerify}
-                disabled={isVerifying || !selectedClassification}
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                    Verifying...
-                  </>
-                ) : (
-                  'Confirm & Verify'
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

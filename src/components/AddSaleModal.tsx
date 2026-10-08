@@ -9,7 +9,7 @@
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { TrendingUp, Package, Banknote, HandCoins } from 'lucide-react';
+import { TrendingUp, Package, Banknote, HandCoins, CreditCard } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -18,8 +18,10 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
-import type { SalesTransaction, SaleLineItem } from '@/types/index.ts';
+import type { SalesTransaction, SaleLineItem, Customer } from '@/types/index.ts';
 import SaleItemsEditor from './SaleItemsEditor.tsx';
+import CustomerAutocomplete from '@/components/customers/CustomerAutocomplete.tsx';
+import VoucherAuthModal from '@/components/customers/VoucherAuthModal.tsx';
 
 const SOURCES = [
   'bank_transfer',
@@ -28,6 +30,7 @@ const SOURCES = [
   'online_store',
   'cash',
   'invoice',
+  'store_voucher',
 ] as const;
 const CREDIT_SOURCE = 'credit' as const;
 
@@ -92,6 +95,17 @@ export default function AddSaleModal({
   const [originalClassification, setOriginalClassification] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Virtual store voucher state
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [voucherCustomer, setVoucherCustomer] = useState<Customer | null>(null);
+  const [voucherStepUpToken, setVoucherStepUpToken] = useState<string | null>(null);
+  const [voucherBalance, setVoucherBalance] = useState<number | null>(null);
+
+  // Cash change-to-voucher state
+  const [amountReceived, setAmountReceived] = useState('');
+  const [creditChangeToVoucher, setCreditChangeToVoucher] = useState(false);
+  const [changeCustomer, setChangeCustomer] = useState<Customer | null>(null);
+
   const [classifications, setClassifications] = useState<
     TransactionClassification[]
   >([]);
@@ -99,6 +113,7 @@ export default function AddSaleModal({
 
   const isEdit = editSale !== null;
   const isCredit = source === 'credit';
+  const isVoucher = source === 'store_voucher';
 
   // Editing a legacy 'manual' (or any retired) row: keep that value selectable
   // so a save doesn't silently rewrite history — the backend still accepts it.
@@ -113,6 +128,13 @@ export default function AddSaleModal({
   // Reset-on-open + edit pre-fill (same pattern as SalesImportModal)
   useEffect(() => {
     if (!isOpen) return;
+    setVoucherCustomer(null);
+    setVoucherStepUpToken(null);
+    setVoucherBalance(null);
+    setAmountReceived('');
+    setCreditChangeToVoucher(false);
+    setChangeCustomer(null);
+
     if (editSale) {
       setAmount(String(Number(editSale.amount)));
       setSource(editSale.source);
@@ -185,6 +207,15 @@ export default function AddSaleModal({
       cancelled = true;
     };
   }, [isOpen]);
+
+  const currentTotal =
+    mode === 'items'
+      ? items.reduce(
+          (sum, it) =>
+            sum + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0),
+          0
+        )
+      : Number(amount) || 0;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -283,6 +314,38 @@ export default function AddSaleModal({
       }
     }
 
+    if (source === 'store_voucher') {
+      if (!voucherCustomer) {
+        toast.error('Please authenticate customer store voucher before recording sale');
+        setIsVoucherModalOpen(true);
+        setSaving(false);
+        return;
+      }
+      body.metadata = {
+        voucherCustomerId: voucherCustomer.id,
+        voucherStepUpToken: voucherStepUpToken || undefined,
+      };
+      body.customerId = voucherCustomer.id;
+    } else if (source === 'cash' && creditChangeToVoucher && !isEdit) {
+      const receivedNum = Number(amountReceived);
+      const changeDue = receivedNum - currentTotal;
+      if (changeDue <= 0) {
+        toast.error('Amount received must be greater than sale total to credit change');
+        setSaving(false);
+        return;
+      }
+      if (!changeCustomer) {
+        toast.error('Please select or quick-add the customer to receive change');
+        setSaving(false);
+        return;
+      }
+      body.metadata = {
+        changeCreditCustomerId: changeCustomer.id,
+        changeCreditAmount: changeDue,
+      };
+      body.customerId = changeCustomer.id;
+    }
+
     try {
       if (editSale) {
         await api.put(`${basePath}/${editSale.id}`, body);
@@ -312,7 +375,8 @@ export default function AddSaleModal({
   };
 
   return (
-    <Modal
+    <>
+      <Modal
       isOpen={isOpen}
       onClose={onClose}
       dismissible={!saving}
@@ -420,7 +484,13 @@ export default function AddSaleModal({
           <select
             id='sale-source'
             value={source}
-            onChange={(e) => setSource(e.target.value)}
+            onChange={(e) => {
+              const newSource = e.target.value;
+              setSource(newSource);
+              if (newSource === 'store_voucher' && !voucherCustomer) {
+                setIsVoucherModalOpen(true);
+              }
+            }}
             className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
           >
             {sourceOptions.map((s) => (
@@ -430,6 +500,93 @@ export default function AddSaleModal({
             ))}
           </select>
         </div>
+
+        {isVoucher && (
+          <div className='sm:col-span-2 p-3 bg-emerald-50/70 border border-emerald-200 rounded space-y-2'>
+            {voucherCustomer ? (
+              <div className='flex items-center justify-between'>
+                <div>
+                  <div className='text-xs font-bold text-emerald-900 flex items-center gap-1.5'>
+                    <CreditCard className='w-4 h-4 text-emerald-600' />
+                    <span>Redeeming from: {voucherCustomer.name}</span>
+                  </div>
+                  <div className='text-[11px] text-emerald-700 font-semibold mt-0.5'>
+                    Available Balance: ₦{voucherBalance?.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <Button
+                  type='button'
+                  variant='secondary'
+                  size='sm'
+                  onClick={() => setIsVoucherModalOpen(true)}
+                  className='text-xs'
+                >
+                  Change Voucher
+                </Button>
+              </div>
+            ) : (
+              <div className='flex items-center justify-between'>
+                <div className='text-xs text-emerald-900'>
+                  Customer store voucher requires phone authorization before redemption.
+                </div>
+                <Button
+                  type='button'
+                  size='sm'
+                  onClick={() => setIsVoucherModalOpen(true)}
+                  className='bg-emerald-600 hover:bg-emerald-700 text-white text-xs'
+                >
+                  Authenticate Voucher
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {source === 'cash' && !isEdit && (
+          <div className='sm:col-span-2 p-3 bg-gray-50 border border-gray-200 rounded space-y-2.5'>
+            <Input
+              label='Amount Received from Customer (₦)'
+              type='number'
+              inputMode='decimal'
+              placeholder='e.g. 5000'
+              value={amountReceived}
+              onChange={(e) => setAmountReceived(e.target.value)}
+              className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+            />
+            {Number(amountReceived) > currentTotal && (
+              <div className='p-2.5 bg-emerald-50 border border-emerald-200 rounded space-y-2'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs font-bold text-emerald-900'>
+                    Change Due: ₦{(Number(amountReceived) - currentTotal).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  </span>
+                  <label className='flex items-center gap-1.5 text-xs font-semibold text-emerald-800 cursor-pointer'>
+                    <input
+                      type='checkbox'
+                      checked={creditChangeToVoucher}
+                      onChange={(e) => setCreditChangeToVoucher(e.target.checked)}
+                      className='rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500'
+                    />
+                    <span>Credit change to store voucher</span>
+                  </label>
+                </div>
+                {creditChangeToVoucher && (
+                  <div className='pt-1'>
+                    <CustomerAutocomplete
+                      businessId={businessId}
+                      selectedCustomer={changeCustomer}
+                      onSelectCustomer={(c) => {
+                        setChangeCustomer(c);
+                        if (c && !customerName) setCustomerName(c.name);
+                      }}
+                      label='Customer to Receive Change'
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {isCredit && (
           <div className='sm:col-span-2 space-y-3 p-3.5 bg-emerald-50/70 border border-emerald-200'>
@@ -535,5 +692,20 @@ export default function AddSaleModal({
         )}
       </form>
     </Modal>
+
+    <VoucherAuthModal
+      isOpen={isVoucherModalOpen}
+      businessId={businessId}
+      requiredAmount={currentTotal}
+      initialCustomer={voucherCustomer}
+      onClose={() => setIsVoucherModalOpen(false)}
+      onAuthorized={({ customerId, customerName: cName, stepUpToken, availableBalance }) => {
+        setVoucherCustomer({ id: customerId, businessId, name: cName, isActive: true, createdAt: new Date().toISOString() });
+        setCustomerName(cName);
+        setVoucherStepUpToken(stepUpToken || null);
+        setVoucherBalance(availableBalance);
+      }}
+    />
+  </>
   );
 }

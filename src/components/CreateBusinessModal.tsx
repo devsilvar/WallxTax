@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { X, Building2 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import toast from 'react-hot-toast';
@@ -46,6 +47,8 @@ export default function CreateBusinessModal({
       : user?.isOwnerAccount !== false;
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [newBusinessName, setNewBusinessName] = useState('');
   const [form, setForm] = useState({
     businessName: '',
     ownerName: '',
@@ -83,6 +86,10 @@ export default function CreateBusinessModal({
       const business = await createBusiness(payload);
       setActiveBusiness(business);
       toast.success('Business created successfully!');
+      
+      // Store business name for welcome modal
+      setNewBusinessName(form.businessName.trim());
+      
       setForm({
         businessName: '',
         ownerName: '',
@@ -94,11 +101,17 @@ export default function CreateBusinessModal({
       });
       onClose();
 
+      // Check if user is on free trial and show welcome modal
       const signupPlan = localStorage.getItem('signupPlan');
-      localStorage.removeItem('signupPlan');
-
-      if (signupPlan && ['starter', 'business', 'scale'].includes(signupPlan)) {
-        navigate(`/subscription?plan=${signupPlan}&new=true`);
+      const trialStartedAt = localStorage.getItem('wallx_trial_started_at');
+      
+      if (trialStartedAt || signupPlan === 'free') {
+        // User is on free trial, show welcome modal
+        setShowWelcomeModal(true);
+      } else if (signupPlan && ['starter', 'business', 'scale'].includes(signupPlan)) {
+        // Paid plan user - redirect to subscription page
+        localStorage.removeItem('signupPlan');
+        navigate(`/subscription?new=true&plan=${signupPlan}`);
       } else {
         sessionStorage.setItem('justCreatedFirstBiz', 'true');
       }
@@ -111,7 +124,7 @@ export default function CreateBusinessModal({
     }
   };
 
-  return createPortal(
+  const modal = createPortal(
     <div className='fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden'>
       {/* Backdrop */}
       <div
@@ -252,5 +265,18 @@ export default function CreateBusinessModal({
       </form>
     </div>,
     document.body,
+  );
+
+  return (
+    <>
+      {modal}
+      <TrialWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+        businessName={newBusinessName}
+        userName={user?.fullName || user?.email?.split('@')[0]}
+        trigger="business_creation"
+      />
+    </>
   );
 }

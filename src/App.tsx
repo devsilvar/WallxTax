@@ -39,6 +39,7 @@ const InvoiceForm = lazy(() => import('@/pages/InvoiceForm.tsx'));
 const InvoiceDetail = lazy(() => import('@/pages/InvoiceDetail.tsx'));
 const Debtors = lazy(() => import('@/pages/Debtors.tsx'));
 const DebtorDetail = lazy(() => import('@/pages/DebtorDetail.tsx'));
+const Customers = lazy(() => import('@/pages/Customers.tsx'));
 const AIAssistant = lazy(() => import('@/pages/AIAssistant.tsx'));
 const isSimulatorEnabled =
   import.meta.env.VITE_ENABLE_TRANSFER_SIMULATOR === 'true';
@@ -68,6 +69,10 @@ const AdminUnverifiedInflows = lazy(
   () => import('@/pages/admin/AdminUnverifiedInflows.tsx'),
 );
 const AdminAISettings = lazy(() => import('@/pages/admin/AdminAISettings.tsx'));
+const AdminSubscriptions = lazy(
+  () => import('@/pages/admin/AdminSubscriptions.tsx'),
+);
+const AdminReviews = lazy(() => import('@/pages/admin/AdminReviews.tsx'));
 
 function SalesUnverifiedRedirect() {
   const [searchParams] = useSearchParams();
@@ -75,21 +80,22 @@ function SalesUnverifiedRedirect() {
   return <Navigate to={`/sales?tab=unverified${qs ? `&${qs}` : ''}`} replace />;
 }
 
-function SubscriptionRoute() {
+function SubscriptionGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const businessStoreLoading = useBusinessStore((s) => s.isLoading);
 
-  if (isAuthenticated) {
-    return (
-      <AppLayout>
-        <Subscription />
-      </AppLayout>
-    );
+  if (!isAuthenticated) {
+    return <Navigate to='/pricing' replace />;
+  }
+
+  if (businessStoreLoading) {
+    return <PageLoader />;
   }
 
   return (
-    <MarketingLayout>
-      <Pricing />
-    </MarketingLayout>
+    <AppLayout>
+      <Subscription />
+    </AppLayout>
   );
 }
 
@@ -174,6 +180,7 @@ export default function App() {
                 <Route path='/invoices/:id/edit' element={<InvoiceForm />} />
                 <Route path='/debtors' element={<Debtors />} />
                 <Route path='/debtors/:id' element={<DebtorDetail />} />
+                <Route path='/customers' element={<Customers />} />
                 <Route path='/ai' element={<AIAssistant />} />
                 <Route path='/tax' element={<TaxReports />} />
                 <Route
@@ -224,17 +231,25 @@ export default function App() {
                   path='/admin/ai-settings'
                   element={<AdminAISettings />}
                 />
+                <Route
+                  path='/admin/subscriptions'
+                  element={<AdminSubscriptions />}
+                />
+                <Route
+                  path='/admin/reviews'
+                  element={<AdminReviews />}
+                />
               </Route>
             </Route>
 
-            {/* Subscription desk — accessible both authenticated (AppLayout) and public (MarketingLayout) */}
-            <Route path='/subscription' element={<SubscriptionRoute />} />
-            <Route path='/pricing' element={<Navigate to='/subscription' replace />} />
+            {/* In-app subscription billing desk — authenticated users enter AppLayout, unauthenticated guests redirect to public /pricing */}
+            <Route path='/subscription' element={<SubscriptionGuard />} />
 
-            {/* Marketing editorial pages */}
+            {/* Marketing editorial pages — public pricing is always accessible here */}
             <Route element={<MarketingLayout />}>
               <Route path='/' element={<Home />} />
               <Route path='/about' element={<About />} />
+              <Route path='/pricing' element={<Pricing />} />
               <Route path='/contact' element={<Contact />} />
             </Route>
 

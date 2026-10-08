@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PhoneInput from '@/components/ui/PhoneInput.tsx';
+import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, ArrowRight, Check, X, Crown } from 'lucide-react';
 
@@ -40,8 +41,9 @@ const PLAN_DETAILS: Record<
     price: '₦0',
     period: 'for 10 days',
     term: '10-Day Free Trial',
-    badge: '10-Day Trial',
-    highlight: 'Everything in Starter, Business and ScaleUp',
+    badge: '10-Day Free Trial Account',
+    highlight:
+      'Full unrestricted access across Starter, Business & Scale-Up. No credit card required.',
   },
   starter: {
     name: 'Monthly PLAN (Starter)',
@@ -97,6 +99,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const register = useAuthStore((s) => s.register);
   const navigate = useNavigate();
 
@@ -126,18 +129,19 @@ export default function Register() {
       toast.error('Password does not meet requirements');
       return;
     }
+
     setIsLoading(true);
     try {
       const result = await register(email, phone, password);
       const userEmail = result.email || email;
       sessionStorage.setItem('pendingVerificationEmail', userEmail);
-      toast.success('Account created! Please check your email.');
-      navigate(`/verify-email-pending?email=${encodeURIComponent(userEmail)}`, {
-        state: {
-          email: userEmail,
-          verificationLink: result.verificationLink,
-        },
-      });
+      if (selectedPlan === 'free') {
+        localStorage.setItem('wallx_trial_started_at', Date.now().toString());
+      }
+      toast.success('Account created successfully!');
+      
+      // Show welcome modal first, then navigate to email verification
+      setShowWelcomeModal(true);
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: { error?: { message?: string } } } })
@@ -163,55 +167,71 @@ export default function Register() {
           const currentPlan = PLAN_DETAILS[selectedPlan] || PLAN_DETAILS.free;
           const isFree = selectedPlan === 'free';
           return (
-            <div className='mt-4 space-y-2.5'>
+            <div className='mt-4'>
               {isFree ? (
-                <div className='flex items-center justify-between p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/90 text-xs shadow-2xs'>
-                  <div className='flex items-center gap-2'>
-                    <span className='h-2 w-2 rounded-full bg-emerald-500 shrink-0' />
-                    <div>
-                      <span className='font-bold text-gray-900'>
-                        {currentPlan.name}
+                <div className='p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/40 to-white border border-emerald-300 text-xs shadow-xs'>
+                  <div className='flex items-start sm:items-center justify-between gap-3'>
+                    <div className='flex items-start sm:items-center gap-2.5'>
+                      <span className='relative flex h-2.5 w-2.5 shrink-0 mt-1 sm:mt-0'>
+                        <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
+                        <span className='relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500' />
                       </span>
-                      <span className='text-gray-500 ml-1.5 hidden sm:inline'>
-                        — {currentPlan.highlight}
+                      <div>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <span className='font-extrabold text-gray-900 text-sm'>
+                            {currentPlan.name}
+                          </span>
+                          <span className='px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200'>
+                            10-Day Free Trial Account
+                          </span>
+                        </div>
+                        <p className='text-xs text-gray-600 mt-1 leading-relaxed'>
+                          {currentPlan.highlight}
+                        </p>
+                      </div>
+                    </div>
+                    <div className='text-right shrink-0'>
+                      <span className='font-extrabold text-emerald-700 text-base tabular-nums'>
+                        ₦0
+                      </span>
+                      <span className='text-[10px] text-gray-500 block leading-tight'>
+                        for 10 days
                       </span>
                     </div>
                   </div>
-                  <span className='font-extrabold text-emerald-700 text-sm tabular-nums shrink-0 ml-2'>
-                    ₦0
-                  </span>
                 </div>
               ) : (
-                <div className='flex items-center justify-between p-3 rounded-xl bg-primary-50/80 border border-primary-200/90 text-xs shadow-2xs'>
-                  <div className='flex items-center gap-2'>
-                    <Crown className='h-4 w-4 text-primary-600 shrink-0' />
-                    <div>
-                      <div className='flex items-center gap-1.5'>
-                        <span className='font-bold text-gray-900'>
-                          {currentPlan.name}
-                        </span>
-                        {currentPlan.badge && (
-                          <span className='px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200'>
-                            {currentPlan.badge}
+                <div className='p-3.5 sm:p-4 rounded-xl bg-primary-50/80 border border-primary-200/90 text-xs shadow-xs'>
+                  <div className='flex items-start sm:items-center justify-between gap-3'>
+                    <div className='flex items-start sm:items-center gap-2.5'>
+                      <Crown className='h-4 w-4 text-primary-600 shrink-0 mt-0.5 sm:mt-0' />
+                      <div>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <span className='font-extrabold text-gray-900 text-sm'>
+                            {currentPlan.name}
                           </span>
-                        )}
-                      </div>
-                      <div className='text-[11px] text-gray-500 mt-0.5 hidden sm:block'>
-                        {currentPlan.highlight}
+                          {currentPlan.badge && (
+                            <span className='px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200'>
+                              {currentPlan.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className='text-xs text-gray-600 mt-1 leading-relaxed'>
+                          {currentPlan.highlight}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                  <div className='text-right shrink-0 ml-2'>
-                    <span className='font-extrabold text-primary-700 text-sm tabular-nums'>
-                      {currentPlan.price}
-                    </span>
-                    <span className='text-[10px] text-gray-500 block leading-tight'>
-                      {currentPlan.period}
-                    </span>
+                    <div className='text-right shrink-0'>
+                      <span className='font-extrabold text-primary-700 text-base tabular-nums'>
+                        {currentPlan.price}
+                      </span>
+                      <span className='text-[10px] text-gray-500 block leading-tight'>
+                        {currentPlan.period}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
-
             </div>
           );
         })()}
@@ -329,6 +349,20 @@ export default function Register() {
           </Link>
         </p>
       </div>
+
+      {/* Trial Welcome Modal */}
+      <TrialWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => {
+          setShowWelcomeModal(false);
+          const userEmail = email;
+          navigate(`/verify-email-pending?email=${encodeURIComponent(userEmail)}`, {
+            state: { email: userEmail },
+          });
+        }}
+        userName={email.split('@')[0] || 'there'}
+        trigger="registration"
+      />
     </div>
   );
 }

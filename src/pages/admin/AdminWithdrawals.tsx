@@ -340,7 +340,7 @@ export default function AdminWithdrawals() {
 
   const PayoutModeBadge = ({ withdrawal }: { withdrawal: WithdrawalRequest }) => (
     <StatusPill tone={withdrawal.autoPayoutEnabled ? 'success' : 'neutral'}>
-      {withdrawal.autoPayoutEnabled ? '⚡ Auto-Payout' : '🔒 Manual Review'}
+      {withdrawal.autoPayoutEnabled ? 'Auto-Payout' : 'Manual Review'}
     </StatusPill>
   );
 
@@ -438,93 +438,102 @@ export default function AdminWithdrawals() {
           />
         </Panel>
       ) : (
-        <Panel className='overflow-hidden' >
-          {/* Stacked cards rather than a table — the amount/reference/action
-              combination doesn't survive horizontal scroll on a phone. */}
-          <div className='space-y-px bg-hairline p-px'>
-            {withdrawals.map((w) => (
-              <article
-                key={w.id}
-                className='bg-panel px-3 py-2.5 transition-colors hover:bg-panel-subtle'
-              >
-                <div className='flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between'>
-                  <div className='flex min-w-0 items-start gap-2.5'>
-                    <span className='flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary-50 text-primary-600'>
-                      <Building2 className='h-3.5 w-3.5' aria-hidden='true' />
-                    </span>
-                    <div className='min-w-0'>
-                      <div className='flex flex-wrap items-center gap-1.5'>
-                        <p className='truncate text-xs font-semibold text-ink'>{w.businessName}</p>
-                        <WithdrawalStatus withdrawal={w} />
-                      </div>
-                      <p className='mt-0.5 truncate font-mono text-[10px] text-ink-subtle'>
+        <Panel className='overflow-hidden'>
+          <div className='overflow-x-auto'>
+            <table className='w-full text-left text-xs'>
+              <thead>
+                <tr className='border-b border-hairline bg-panel-subtle/50 text-[11px] font-medium text-ink-subtle'>
+                  <th className='py-3 pl-4 pr-3'>Requested</th>
+                  <th className='px-3 py-3'>Business</th>
+                  <th className='px-3 py-3'>Destination</th>
+                  <th className='px-3 py-3 text-right'>Amount</th>
+                  <th className='px-3 py-3 text-center'>Status</th>
+                  <th className='py-3 pl-3 pr-4 text-right'>Actions</th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-hairline'>
+                {withdrawals.map((w) => (
+                  <tr key={w.id} className='group hover:bg-panel-subtle/50 transition-colors'>
+                    <td className='py-3 pl-4 pr-3 whitespace-nowrap tabular-nums text-ink-muted'>
+                      {formatStamp(w.initiatedAt)}
+                    </td>
+
+                    <td className='px-3 py-3'>
+                      <div className='font-semibold text-ink'>{w.businessName}</div>
+                      <button
+                        type='button'
+                        onClick={() => handleCopy(w.transferReference, 'Transfer reference')}
+                        title='Copy transfer reference'
+                        className='mt-0.5 flex items-center gap-1.5 font-mono text-[10px] text-ink-subtle transition-colors hover:text-primary-500'
+                      >
+                        {copiedField === 'Transfer reference' ? (
+                          <Check className='h-3 w-3 text-success-600' />
+                        ) : (
+                          <Copy className='h-3 w-3' />
+                        )}
                         {w.transferReference}
-                      </p>
-                    </div>
-                  </div>
+                      </button>
+                    </td>
 
-                  <div className='shrink-0 sm:text-right'>
-                    <p className='font-mono text-base font-semibold tabular-nums text-ink'>
-                      {formatNaira(w.amount)}
-                    </p>
-                    <p className='text-[10px] text-ink-muted'>
-                      Net{' '}
-                      <span className='font-mono font-medium text-ink'>
-                        {formatNaira(net(w))}
-                      </span>
-                      {w.fee > 0 && ` · ${formatNaira(w.fee)} fee`}
-                    </p>
-                  </div>
-                </div>
-
-                <div className='mt-2 flex flex-col gap-2 border-t border-hairline pt-2 lg:flex-row lg:items-center lg:justify-between'>
-                  <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5'>
-                    <PayoutModeBadge withdrawal={w} />
-                    <span className='flex items-center gap-1.5 text-[11px]'>
+                    <td className='px-3 py-3 whitespace-nowrap'>
                       <span className='text-ink'>{w.destinationBankName}</span>
-                      <span className='font-mono text-ink-subtle'>
+                      <span className='ml-2 font-mono text-[10px] text-ink-subtle'>
                         •••• {w.destinationAccountNum.slice(-4)}
                       </span>
-                    </span>
-                    <span className='text-[11px] text-ink-muted'>{formatStamp(w.initiatedAt)}</span>
-                  </div>
+                    </td>
 
-                  <div className='flex flex-wrap items-center gap-1.5'>
-                    <Button variant='secondary' size='sm' onClick={() => goToDetail(w)}>
-                      <Eye className='h-3.5 w-3.5' />
-                      View Details &amp; Actions
-                    </Button>
+                    <td className='px-3 py-3 text-right whitespace-nowrap'>
+                      <div className='font-mono font-semibold tabular-nums text-ink'>
+                        {formatNaira(w.amount)}
+                      </div>
+                      <div className='text-[10px] text-ink-muted'>
+                        Net{' '}
+                        <span className='font-mono font-medium text-ink'>{formatNaira(net(w))}</span>
+                        {w.fee > 0 && ` · ${formatNaira(w.fee)} fee`}
+                      </div>
+                    </td>
 
-                    {w.status === 'pending' && (
-                      <>
-                        <Button size='sm' onClick={() => openApproveModal(w)}>
-                          <CheckCircle2 className='h-3.5 w-3.5' />
-                          Approve
+                    <td className='px-3 py-3 text-center'>
+                      <WithdrawalStatus withdrawal={w} />
+                    </td>
+
+                    <td className='py-3 pl-3 pr-4 text-right whitespace-nowrap'>
+                      <div className='flex items-center justify-end gap-1.5'>
+                        <Button variant='secondary' size='sm' onClick={() => goToDetail(w)}>
+                          <Eye className='h-3.5 w-3.5' />
+                          View Details &amp; Actions
                         </Button>
-                        <Button variant='secondary' size='sm' onClick={() => openRejectModal(w)}>
-                          <XCircle className='h-3.5 w-3.5' />
-                          Reject
-                        </Button>
-                      </>
-                    )}
 
-                    {w.status === 'processing' && (
-                      <Button variant='secondary' size='sm' disabled={processing} onClick={() => handleRequery(w)}>
-                        <Loader2 className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />
-                        Re-query
-                      </Button>
-                    )}
+                        {w.status === 'pending' && (
+                          <>
+                            <Button size='sm' onClick={() => openApproveModal(w)}>
+                              <CheckCircle2 className='h-3.5 w-3.5' />
+                              Approve
+                            </Button>
+                            <Button variant='secondary' size='sm' onClick={() => openRejectModal(w)}>
+                              <XCircle className='h-3.5 w-3.5' />
+                              Reject
+                            </Button>
+                          </>
+                        )}
 
-                    {w.status === 'failed' && (
-                      <Button variant='secondary' size='sm' onClick={() => openManualSettleModal(w)}>
-                        <Building2 className='h-3.5 w-3.5' />
-                        Settle Offline
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
+                        {w.status === 'processing' && (
+                          <Button
+                            variant='secondary'
+                            size='sm'
+                            disabled={processing}
+                            onClick={() => handleRequery(w)}
+                          >
+                            <Loader2 className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />
+                            Re-query
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           <PaginationBar

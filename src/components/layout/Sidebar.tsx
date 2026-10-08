@@ -19,6 +19,7 @@ import {
   Bot,
   BookOpen,
   Crown,
+  Users,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -70,6 +71,12 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           label: t('Debtors', { defaultValue: 'Debtors' }),
           icon: BookOpen,
           permission: 'debtors.read',
+        },
+        {
+          to: '/customers',
+          label: t('customers', { defaultValue: 'Customer CRM' }),
+          icon: Users,
+          permission: 'customers.read',
         },
         { to: '/ai', label: t('Ai Assistant'), icon: Bot, permission: 'ai.use' },
       ],

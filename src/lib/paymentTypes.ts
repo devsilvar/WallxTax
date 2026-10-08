@@ -15,6 +15,7 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   invoice: 'Invoice',
   manual: 'Cash (legacy)',
   credit: 'Credit / Debt (Buy Now, Pay Later)',
+  store_voucher: 'Store Voucher',
 };
 
 export function paymentTypeLabel(source: string): string {

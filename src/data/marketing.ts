@@ -178,7 +178,7 @@ export const freeTrialPlan: PricingPlan = {
     'Everything in Starter, Business and ScaleUp',
   ],
   ctaText: 'Start 10-Day Free Trial',
-  ctaLink: '/register',
+  ctaLink: '/register?plan=free',
 };
 
 export const paidPricingPlans: PricingPlan[] = [

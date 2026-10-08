@@ -7,6 +7,7 @@ import {
   FileText,
   TrendingUp,
   Users,
+  CreditCard,
 } from 'lucide-react';
 import type { AdminDashboardStats } from '@/types/index.ts';
 import { HairlineGrid, Panel, PanelHeader } from '../shared/Panel';
@@ -113,6 +114,31 @@ export default function OverviewTab({ stats }: { stats: AdminDashboardStats }) {
           </Link>
         </div>
       )}
+
+      {stats.pendingSubscriptionsCount ? (
+        <div
+          role='status'
+          className='flex flex-col items-start justify-between gap-2 rounded-panel border border-primary-200 bg-primary-50 px-3 py-2 sm:flex-row sm:items-center'
+        >
+          <div className='flex items-center gap-2.5'>
+            <CreditCard className='h-4 w-4 shrink-0 text-primary-700' aria-hidden='true' />
+            <div>
+              <p className='flex flex-wrap items-center gap-2 text-xs font-semibold text-ink'>
+                {stats.pendingSubscriptionsCount} subscription payment{stats.pendingSubscriptionsCount === 1 ? '' : 's'} awaiting verification
+              </p>
+              <p className='mt-0.5 text-[11px] text-ink-muted'>
+                Bank transfer proof submitted to Zenith Bank. Review and activate user plans.
+              </p>
+            </div>
+          </div>
+          <Link
+            to='/admin/subscriptions?status=pending'
+            className='shrink-0 self-start rounded border border-hairline-strong bg-panel px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-panel-subtle sm:self-auto'
+          >
+            Review subscriptions &rarr;
+          </Link>
+        </div>
+      ) : null}
 
       <HairlineGrid columns={4}>
         {STATS.map(({ key, label, sublabel, icon, route, isCurrency }) => {
