@@ -42,12 +42,14 @@ import {
   Users,
   ChevronRight,
   RefreshCw,
+  Crown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/types/index.ts';
 
@@ -551,6 +553,7 @@ export default function Dashboard() {
   const businesses = useBusinessStore((s) => s.businesses);
   const businessStoreLoading = useBusinessStore((s) => s.isLoading);
   const user = useAuthStore((s) => s.user);
+  const subStatus = useSubscriptionStatus();
 
   const isOwnerAccount =
     businesses.length > 0
@@ -1136,6 +1139,30 @@ export default function Dashboard() {
                     {health.score}%
                   </span>
                 </div>
+
+                {/* Subscription Plan Badge */}
+                <Link
+                  to='/subscription'
+                  className='flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 px-3 py-1 text-xs text-white hover:bg-white/20 transition-all hover:scale-[1.02]'
+                  title={`Current Plan: ${subStatus.planName} (${subStatus.formattedCountdown})`}
+                >
+                  <Crown className='h-3.5 w-3.5 text-amber-300' />
+                  <span className='text-[11px] text-purple-200 font-medium'>Plan:</span>
+                  <span className='font-bold text-white text-[11px]'>
+                    {subStatus.planName}
+                  </span>
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
+                      subStatus.isPaid
+                        ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30'
+                        : subStatus.isExpired
+                          ? 'bg-rose-500/20 text-rose-200 border border-rose-400/30'
+                          : 'bg-amber-400/20 text-amber-200 border border-amber-400/30'
+                    }`}
+                  >
+                    {subStatus.formattedCountdown}
+                  </span>
+                </Link>
               </div>
             </div>
           </div>

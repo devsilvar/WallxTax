@@ -15,7 +15,7 @@ import api, { getErrorMessage } from '@/lib/axios.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDocumentTitle } from '@/components/marketing/useDocumentTitle.ts';
-import { useTrialTimer } from '@/hooks/useTrialTimer.ts';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus.ts';
 import zenithLogo from '@/assets/zenith.png';
 
 // Real Zenith Bank lockup (asset is opaque with a white ground — only valid on
@@ -83,7 +83,7 @@ const PLANS: PlanOption[] = [
       'Manage Up to 2 businesses/branches',
       'Unlimited invoices (custom branding) & Auto Collection',
       'Excel & CSV bulk sales import',
-      '30 AI CFO queries / month',
+      '15 AI CFO queries / month',
       'Payment/Debtors/ Mgt & Reminders',
       'Business Profit/Loss Summary',
       'Expense Management',
@@ -242,8 +242,39 @@ export default function Subscription() {
   const payableAmount = selectedPricing.amount;
   const billingCycle = selectedPricing.cycle;
 
-  const { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining, isExpired } =
-    useTrialTimer(activeBusiness?.createdAt || user?.createdAt);
+  const sub = useSubscriptionStatus();
+  const currentPlan = PLANS.find((p) => p.id === sub.tier) || PLANS[0];
+  const onCurrentPlan = selectedPlanId === sub.tier;
+  const isFreeTier = sub.tier === 'free';
+  const isExpired = sub.isExpired && !sub.hasAccess ? true : sub.isExpired && sub.isReadOnlyGrace ? false : sub.isExpired;
+
+  // Live countdown derived from the server-backed expiry (trialEndsAt or
+  // subscriptionExpiresAt). This is the single source of truth for every
+  // tier — it updates when the admin re-assigns a plan, including the 10-day
+  // trial reset which writes a fresh trialEndsAt.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1_000);
+    return () => clearInterval(id);
+  }, []);
+  const live = (() => {
+    if (!sub.expiresAt) return null;
+    const remainingMs = Math.max(0, sub.expiresAt.getTime() - nowMs);
+    const totalMs = isFreeTier ? 10 * 24 * 60 * 60 * 1000 : null;
+    const daysLeft = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+    const hoursLeft = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutesLeft = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+    const secondsLeft = Math.floor((remainingMs % (60 * 1000)) / 1000);
+    const percentRemaining =
+      totalMs != null ? Math.max(0, Math.min(100, Math.round((remainingMs / totalMs) * 100))) : 0;
+    return { remainingMs, daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining };
+  })();
+  const statusLabel = sub.formattedCountdown;
+  const countdown = live
+    ? `${live.daysLeft}d : ${live.hoursLeft}h : ${live.minutesLeft}m : ${live.secondsLeft}s Left`
+    : statusLabel;
+  const countdownLabel = live ? countdown : statusLabel;
+  const percentRemaining = live?.percentRemaining ?? 0;
 
   // Form fields
   const [name, setName] = useState(user?.fullName || '');
@@ -370,14 +401,69 @@ export default function Subscription() {
         !isAuthenticated ? 'mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10' : ''
       }`}
     >
+      {/* ── 0. Current subscription banner ── */}
+      <div className='flex flex-col gap-3 rounded-2xl border border-gray-200/90 bg-white p-4 sm:p-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex items-start gap-3 min-w-0'>
+          <div
+            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+              sub.isPaid
+                ? 'bg-primary-600 text-white'
+                : sub.hasAccess
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            <Crown className='h-5 w-5' />
+          </div>
+          <div className='min-w-0'>
+            <p className='text-[11px] font-semibold uppercase tracking-wider text-gray-500'>
+              Current Subscription
+            </p>
+            <p className='text-base sm:text-lg font-bold text-gray-900 truncate'>
+              {sub.planName}
+              <span
+                className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  sub.isPaid
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : sub.hasAccess
+                      ? 'bg-gray-100 text-gray-700'
+                      : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {sub.isPaid ? 'Paid' : sub.hasAccess ? 'Free Trial' : 'Expired'}
+              </span>
+            </p>
+            <p className='text-xs text-gray-600 mt-0.5'>
+              {sub.isPaid
+                ? sub.expiresAt
+                  ? `Active until ${new Date(sub.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} — ${sub.formattedCountdown}`
+                  : 'Active — no expiry'
+                : sub.expiresAt
+                  ? `Trial ends ${new Date(sub.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`
+                  : statusLabel}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── 1. Page Header ── */}
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-2'>
           <h1 className='text-xl sm:text-2xl font-bold tracking-tight text-gray-900'>
             Subscription & Plans
           </h1>
-          <span className='inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600'>
-            Free Plan Active
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              isExpired
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            {isFreeTier
+              ? isExpired
+                ? 'Trial Ended'
+                : 'Free Trial Active'
+              : 'Paid Plan Active'}
           </span>
         </div>
 
@@ -461,10 +547,10 @@ export default function Subscription() {
               </span>
               <div className='flex items-baseline gap-2'>
                 <span className='font-bold text-xs sm:text-sm tracking-tight text-white uppercase'>
-                  {PLANS[0].name}
+                  {isFreeTier ? PLANS[0].name : currentPlan.name}
                 </span>
                 <span className='text-emerald-400 font-extrabold text-sm sm:text-base'>
-                  — ₦0
+                  — {isFreeTier ? '₦0' : `₦${getPlanPricingDetails(currentPlan).amount.toLocaleString()}`}
                 </span>
               </div>
             </div>
@@ -487,24 +573,36 @@ export default function Subscription() {
                     }`}
                   />
                   <span>
-                    {isExpired
-                      ? 'Trial Period Concluded'
-                      : `${daysLeft}d : ${hoursLeft}h : ${minutesLeft}m : ${secondsLeft}s Left`}
+                    {isFreeTier
+                      ? isExpired
+                        ? 'Trial Period Concluded'
+                        : countdownLabel
+                      : isExpired
+                        ? 'Plan Expired'
+                        : countdownLabel}
                   </span>
                 </div>
                 <div className='min-w-0'>
                   <p className='text-xs sm:text-sm text-gray-800 font-semibold leading-snug'>
-                    {isExpired
-                      ? 'Your 10-day trial has concluded'
-                      : 'Full unrestricted access active across Starter, Business & Scale-Up'}
+                    {isFreeTier
+                      ? isExpired
+                        ? 'Your 10-day trial has concluded'
+                        : 'Full unrestricted access active across Starter, Business & Scale-Up'
+                      : isExpired
+                        ? `Your ${sub.planName} plan has expired`
+                        : `${sub.planName} plan active across your account`}
                     <span className='text-gray-500 font-normal hidden lg:inline ml-1.5'>
                       •{' '}
-                      {isExpired
-                        ? 'Upgrade below to retain access.'
-                        : 'Upgrade below to lock in permanent capacity.'}
+                      {isFreeTier
+                        ? isExpired
+                          ? 'Upgrade below to retain access.'
+                          : 'Upgrade below to lock in permanent capacity.'
+                        : isExpired
+                          ? 'Upgrade below to retain access.'
+                          : 'Renew below to extend your term.'}
                     </span>
                   </p>
-                  {!isExpired && (
+                  {!isExpired && isFreeTier && (
                     <div className='w-36 h-1.5 rounded-full bg-gray-200 overflow-hidden mt-1'>
                       <div
                         className='h-full rounded-full bg-emerald-500 transition-all duration-500'
@@ -527,15 +625,15 @@ export default function Subscription() {
                     className={`h-3.5 w-3.5 ${isExpired ? 'text-amber-600' : 'text-emerald-600'}`}
                   />
                   <span>
-                    {isExpired ? 'Upgrade Required' : 'Freemium Active'}
+                    {isExpired ? 'Upgrade Required' : isFreeTier ? 'Freemium Active' : `${sub.planName} Active`}
                   </span>
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 3 Executive Subscription Cards Grid (Sharp, Wide, WallX Inspired) */}
-          <fieldset className='grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch pt-2'>
+          {/* 3 Subscription Cards — compact dashboard variant (landing page Pricing.tsx keeps its own larger treatment) */}
+          <fieldset className='grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-stretch pt-2'>
             <legend className='sr-only'>Choose a subscription plan</legend>
             {PLANS.slice(1).map((plan) => {
               const isSelected = selectedPlanId === plan.id;
@@ -547,25 +645,32 @@ export default function Subscription() {
                 : isAnnual
                   ? 'Annual • Best Value'
                   : 'Monthly Plan';
+              const isCurrentPlan = plan.id === sub.tier;
+              const isCurrentActive = isCurrentPlan && sub.hasAccess;
 
               return (
                 <div
                   key={plan.id}
-                  onClick={() => setSelectedPlanId(plan.id)}
+                  onClick={() => {
+                    if (isCurrentActive) return;
+                    setSelectedPlanId(plan.id);
+                  }}
                   style={{ fontFamily: "'Montserrat', sans-serif" }}
-                  className={`h-full flex flex-col justify-between rounded-2xl p-6 sm:p-7 lg:p-8 transition-all duration-200 relative cursor-pointer ${
+                  className={`h-full flex flex-col justify-between rounded-xl p-4 sm:p-5 transition-all duration-200 relative ${
+                    isCurrentActive ? 'cursor-default' : 'cursor-pointer'
+                  } ${
                     isQuarterly
                       ? `bg-[#352778] text-white border-2 ${
                           isSelected
                             ? 'border-orange-400 ring-4 ring-orange-400/40 shadow-2xl'
                             : 'border-purple-400/40 shadow-xl shadow-[#352778]/30'
-                        } transform lg:-translate-y-1.5`
+                        } ${!isCurrentActive ? 'lg:-translate-y-1' : ''}`
                       : `bg-white border ${
                           isSelected
                             ? 'border-[#352778] ring-4 ring-[#352778]/20 shadow-xl'
                             : 'border-gray-200 shadow-md shadow-gray-200/50 hover:border-[#352778]/40'
                         }`
-                  }`}
+                  } ${isCurrentActive ? 'opacity-[0.98] ring-2 ring-emerald-400/30' : ''}`}
                 >
                   <input
                     type='radio'
@@ -596,31 +701,45 @@ export default function Subscription() {
                       <div className='flex items-center justify-between'>
                         <h3
                           style={{ fontFamily: "'Montserrat', sans-serif" }}
-                          className={`text-2xl sm:text-[26px] font-extrabold tracking-tight ${
+                          className={`text-lg sm:text-xl font-extrabold tracking-tight ${
                             isQuarterly ? 'text-white' : 'text-[#352778]'
                           }`}
                         >
                           {plan.name}
                         </h3>
                         <span
-                          className={`h-6 w-6 rounded-full flex items-center justify-center border-2 transition-all ${
-                            isSelected
-                              ? isQuarterly
-                                ? 'border-orange-400 bg-[#E85918] text-white'
-                                : 'border-[#352778] bg-[#352778] text-white'
-                              : isQuarterly
-                                ? 'border-purple-400/60 bg-transparent'
-                                : 'border-gray-300 bg-white'
+                          className={`h-5 w-5 rounded-full flex items-center justify-center border-2 transition-all shrink-0 ${
+                            isCurrentActive
+                              ? 'border-emerald-400 bg-emerald-500 text-white'
+                              : isSelected
+                                ? isQuarterly
+                                  ? 'border-orange-400 bg-[#E85918] text-white'
+                                  : 'border-[#352778] bg-[#352778] text-white'
+                                : isQuarterly
+                                  ? 'border-purple-400/60 bg-transparent'
+                                  : 'border-gray-300 bg-white'
                           }`}
                         >
-                          {isSelected && (
-                            <Check className='h-3.5 w-3.5 stroke-[3]' />
+                          {(isCurrentActive || isSelected) && (
+                            <Check className='h-3 w-3 stroke-[3]' />
                           )}
                         </span>
                       </div>
+                      {plan.id === sub.tier && (
+                        <span
+                          className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            isQuarterly
+                              ? 'bg-white/15 text-white'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          <CheckCircle2 className='h-3 w-3' />
+                          Your Current Plan
+                        </span>
+                      )}
                       <p
                         style={{ fontFamily: "'Montserrat', sans-serif" }}
-                        className={`mt-2 text-xs sm:text-sm font-normal leading-relaxed min-h-[38px] ${
+                        className={`mt-1.5 text-xs font-normal leading-relaxed min-h-[32px] ${
                           isQuarterly ? 'text-purple-100/90' : 'text-gray-600'
                         }`}
                       >
@@ -628,27 +747,27 @@ export default function Subscription() {
                       </p>
                     </div>
 
-                    {/* Features List — Razor-sharp Montserrat Regular with Crisp Check Icons */}
+                    {/* Features List */}
                     <div
-                      className={`my-5 pt-4 border-t ${
+                      className={`my-3 pt-3 border-t ${
                         isQuarterly ? 'border-purple-500/30' : 'border-gray-100'
                       }`}
                     >
                       <ul
-                        className='space-y-3'
+                        className='space-y-2'
                         style={{ fontFamily: "'Montserrat', sans-serif" }}
                       >
                         {plan.features.map((feat) => (
-                          <li key={feat} className='flex items-start gap-3'>
+                          <li key={feat} className='flex items-start gap-2'>
                             <CheckCircle2
-                              className={`h-5.5 w-5.5 sm:h-6 sm:w-6 shrink-0 mt-0.5 ${
+                              className={`h-4 w-4 shrink-0 mt-0.5 ${
                                 isQuarterly ? 'text-white/95' : 'text-[#352778]'
                               }`}
                               strokeWidth={1.8}
                             />
                             <span
                               style={{ fontFamily: "'Montserrat', sans-serif" }}
-                              className={`text-[13.5px] sm:text-[14px] font-normal leading-snug tracking-[-0.01em] antialiased ${
+                              className={`text-xs font-normal leading-snug tracking-[-0.01em] antialiased ${
                                 isQuarterly ? 'text-white' : 'text-gray-900'
                               }`}
                             >
@@ -662,14 +781,14 @@ export default function Subscription() {
 
                   {/* Pricing and Action CTA Block */}
                   <div
-                    className={`mt-6 pt-4 border-t ${
+                    className={`mt-4 pt-3 border-t ${
                       isQuarterly ? 'border-purple-500/30' : 'border-gray-100'
                     }`}
                   >
                     <div>
                       <span
                         style={{ fontFamily: "'Montserrat', sans-serif" }}
-                        className={`text-xs uppercase font-bold tracking-wider block mb-1 ${
+                        className={`text-[11px] uppercase font-bold tracking-wider block mb-1 ${
                           isQuarterly ? 'text-purple-200/80' : 'text-gray-500'
                         }`}
                       >
@@ -678,7 +797,7 @@ export default function Subscription() {
                       <div className='flex items-baseline gap-1.5'>
                         <span
                           style={{ fontFamily: "'Montserrat', sans-serif" }}
-                          className={`text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums ${
+                          className={`text-2xl font-extrabold tracking-tight tabular-nums ${
                             isQuarterly ? 'text-white' : 'text-gray-900'
                           }`}
                         >
@@ -686,7 +805,7 @@ export default function Subscription() {
                         </span>
                         <span
                           style={{ fontFamily: "'Montserrat', sans-serif" }}
-                          className={`text-sm sm:text-base font-normal ${
+                          className={`text-xs font-normal ${
                             isQuarterly ? 'text-purple-200' : 'text-gray-500'
                           }`}
                         >
@@ -720,24 +839,39 @@ export default function Subscription() {
 
                     <button
                       type='button'
+                      disabled={isCurrentActive}
+                      title={isCurrentActive ? 'You are already on this plan' : undefined}
+                      aria-disabled={isCurrentActive}
                       style={{ fontFamily: "'Montserrat', sans-serif" }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (isCurrentActive) return;
                         setSelectedPlanId(plan.id);
                         goToPayment();
                       }}
-                      className={`w-full py-3.5 sm:py-4 px-6 rounded-full text-sm sm:text-base font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-[0.98] mt-5 ${
-                        isQuarterly
-                          ? 'bg-[#E85918] hover:bg-[#D44E12] text-white shadow-orange-950/25 hover:shadow-lg'
-                          : 'bg-[#352778] hover:bg-[#2A1E63] text-white shadow-purple-950/20 hover:shadow-lg'
+                      className={`w-full py-2.5 px-5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-md mt-4 ${
+                        isCurrentActive
+                          ? 'bg-gray-100 text-gray-500 border border-gray-200 cursor-not-allowed shadow-none'
+                          : isQuarterly
+                            ? 'bg-[#E85918] hover:bg-[#D44E12] text-white shadow-orange-950/25 hover:shadow-lg active:scale-[0.98]'
+                            : 'bg-[#352778] hover:bg-[#2A1E63] text-white shadow-purple-950/20 hover:shadow-lg active:scale-[0.98]'
                       }`}
                     >
-                      <span>
-                        {isSelected
-                          ? `Pay ₦${pricing.amount.toLocaleString()} via Transfer`
-                          : `Choose ${plan.name}`}
-                      </span>
-                      <ArrowRight className='h-4 w-4' />
+                      {isCurrentActive ? (
+                        <>
+                          <CheckCircle2 className='h-3.5 w-3.5' />
+                          <span>Current Plan</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            {isSelected
+                              ? `Pay ₦${pricing.amount.toLocaleString()} via Transfer`
+                              : `Choose ${plan.name}`}
+                          </span>
+                          <ArrowRight className='h-3.5 w-3.5' />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -760,7 +894,9 @@ export default function Subscription() {
               </button>
               <div>
                 <h2 className='text-sm font-bold text-gray-900'>
-                  You're upgrading to {selectedPlan.name}
+                  {onCurrentPlan
+                    ? `You're renewing your ${sub.planName} plan`
+                    : `You're upgrading to ${selectedPlan.name}`}
                 </h2>
                 <p className='text-xs text-gray-600 mt-0.5'>
                   One transfer away from unlocking it —{' '}

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { TRIAL_DAYS, TRIAL_STORAGE_KEY } from '@/config/subscription';
 
-const TRIAL_DURATION_DAYS = 10;
+const TRIAL_DURATION_DAYS = TRIAL_DAYS;
 const TRIAL_DURATION_MS = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
-const STORAGE_KEY = 'wallx_trial_started_at';
+const STORAGE_KEY = TRIAL_STORAGE_KEY;
 
 export interface TrialTimerState {
   hasStarted: boolean;

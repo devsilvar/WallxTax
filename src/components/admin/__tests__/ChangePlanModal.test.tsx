@@ -197,7 +197,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
         success: true,
         data: {
           id: mockUser.id,
-          subscriptionTier: 'scale_up',
+          subscriptionTier: 'scale',
           subscriptionExpiresAt: null,
         },
       },
@@ -223,7 +223,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith('/admin/users/user-456/subscription', {
-        tier: 'scale_up',
+        tier: 'scale',
         durationDays: null,
         resetTrial: false,
         customExpiresAt: undefined,
@@ -234,7 +234,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
     expect(defaultProps.onSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'user-456',
-        subscriptionTier: 'scale_up',
+        subscriptionTier: 'scale',
         subscriptionExpiresAt: null,
       })
     );

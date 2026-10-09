@@ -639,8 +639,62 @@ export interface UserFeedback {
   } | null;
 }
 
+export interface AdminUserBusiness {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  taxId?: string | null;
+  businessType?: string | null;
+  address?: string | null;
+  state?: string | null;
+  city?: string | null;
+  virtualAccountNumber?: string | null;
+  virtualAccountBank?: string | null;
+  settlementAccountNumber?: string | null;
+  settlementBankName?: string | null;
+  settlementAccountName?: string | null;
+  createdAt: string;
+  _count?: {
+    sales: number;
+    expenses: number;
+    invoices: number;
+    customers: number;
+  };
+}
+
+export interface AdminUserSubscriptionSubmission {
+  id: string;
+  plan: string;
+  billingCycle: string;
+  amount: number;
+  receiptUrl?: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  notes?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+
+export interface AdminUserFeedback {
+  id: string;
+  rating: number;
+  sentiment?: string | null;
+  comment?: string | null;
+  tags: string[];
+  createdAt: string;
+}
+
+export interface AdminUserWalletBalance {
+  balance: number;
+  lockedBalance: number;
+  currency: string;
+}
+
 export interface AdminUserDetail extends AdminUser {
-  businesses: Business[];
+  updatedAt?: string;
+  walletBalance?: AdminUserWalletBalance | null;
+  businesses: AdminUserBusiness[];
+  subscriptionSubmissions?: AdminUserSubscriptionSubmission[];
+  feedbacks?: AdminUserFeedback[];
 }
 
 export interface AdminBusiness {

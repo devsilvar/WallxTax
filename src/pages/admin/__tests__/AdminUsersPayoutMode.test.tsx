@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import AdminUsers from '../AdminUsers';
 import api from '@/lib/axios';
@@ -70,16 +70,12 @@ describe('AdminUsers Payout Mode Tests', () => {
     // Payout Mode header should be in the table
     expect(screen.getByText('Payout Mode')).toBeDefined();
 
-    // Verify badges and switch buttons are present
+    // Verify badges are present
     expect(screen.getByText(/🔒 Manual/i)).toBeDefined();
     expect(screen.getByText(/⚡ Automatic/i)).toBeDefined();
   });
 
-  it('toggles user account payout mode via PATCH /admin/users/:id/auto-payout', async () => {
-    (api.patch as any).mockResolvedValue({
-      data: { success: true, message: 'User payout mode updated' },
-    });
-
+  it('renders Details link to User Details page for granular management', async () => {
     render(
       <BrowserRouter>
         <AdminUsers />
@@ -90,16 +86,9 @@ describe('AdminUsers Payout Mode Tests', () => {
       expect(screen.getByText('merchant1@example.com')).toBeDefined();
     });
 
-    // Find "To Auto" button for user-001 (which is currently Manual)
-    const toAutoButtons = screen.getAllByText('To Auto');
-    expect(toAutoButtons.length).toBeGreaterThan(0);
-
-    fireEvent.click(toAutoButtons[0]);
-
-    await waitFor(() => {
-      expect(api.patch).toHaveBeenCalledWith('/admin/users/user-001/auto-payout', {
-        enabled: true,
-      });
-    });
+    const detailLinks = screen.getAllByRole('link', { name: /Details/i });
+    expect(detailLinks.length).toBe(2);
+    expect(detailLinks[0]).toHaveAttribute('href', '/admin/users/user-001');
+    expect(detailLinks[1]).toHaveAttribute('href', '/admin/users/user-002');
   });
 });

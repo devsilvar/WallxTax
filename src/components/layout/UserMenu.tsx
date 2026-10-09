@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User as UserIcon, Settings as SettingsIcon, LogOut, Shield, Globe } from 'lucide-react';
+import { User as UserIcon, Settings as SettingsIcon, LogOut, Shield, Globe, Crown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useLanguageStore } from '@/stores/language.store';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 /**
  * Top-bar user menu. Replaces the static avatar tile and the user/logout
@@ -61,6 +62,7 @@ export default function UserMenu() {
 
   const displayName = user?.email?.split('@')[0] ?? 'Account';
   const isAdmin = user?.role === 'admin';
+  const subStatus = useSubscriptionStatus();
 
   return (
     <div className="relative">
@@ -92,6 +94,34 @@ export default function UserMenu() {
               <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
               <p className="text-xs text-gray-500 truncate">{user?.email ?? ''}</p>
             </div>
+          </div>
+
+          {/* Subscription status block */}
+          <div className="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-600 shrink-0">
+                <Crown className="h-3.5 w-3.5" strokeWidth={2.5} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-900 truncate">
+                  {subStatus.planName}
+                </p>
+                <p className="text-[10px] text-gray-500 capitalize leading-none mt-0.5">
+                  {subStatus.isTrial
+                    ? `Free Trial (${subStatus.formattedCountdown})`
+                    : subStatus.isExpired
+                      ? 'Expired'
+                      : 'Active'}
+                </p>
+              </div>
+            </div>
+            <button
+              role="menuitem"
+              onClick={() => go('/subscription')}
+              className="text-[11px] font-medium text-primary-600 hover:text-primary-700 bg-white border border-gray-200 hover:border-primary-300 rounded-md px-2 py-1 shadow-2xs transition-colors shrink-0"
+            >
+              Manage
+            </button>
           </div>
 
           {/* Items */}

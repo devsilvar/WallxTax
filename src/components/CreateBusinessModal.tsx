@@ -46,7 +46,6 @@ export default function CreateBusinessModal({
       : user?.isOwnerAccount !== false;
 
   const [isLoading, setIsLoading] = useState(false);
-  const [newBusinessName, setNewBusinessName] = useState('');
   const [form, setForm] = useState({
     businessName: '',
     ownerName: '',
@@ -84,9 +83,6 @@ export default function CreateBusinessModal({
       const business = await createBusiness(payload);
       setActiveBusiness(business);
       toast.success('Business created successfully!');
-      
-      // Store business name for welcome modal
-      setNewBusinessName(form.businessName.trim());
       
       setForm({
         businessName: '',

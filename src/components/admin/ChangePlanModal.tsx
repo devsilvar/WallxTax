@@ -3,6 +3,7 @@ import { Sparkles, Calendar, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '@/components/ui/Modal';
 import api, { getErrorMessage } from '@/lib/axios';
+import { useAuthStore } from '@/stores/auth.store';
 import type { AdminUser } from '@/types/index';
 
 interface ChangePlanModalProps {
@@ -13,13 +14,25 @@ interface ChangePlanModalProps {
 }
 
 const TIERS = [
-  { id: 'starter', name: 'Starter', price: '₦15,000/mo', desc: '2 Businesses, 3 Team Members, 30 AI Queries' },
-  { id: 'business', name: 'Business', price: '₦45,000/mo', desc: '5 Businesses, 10 Team Members, BNPL Credits' },
-  { id: 'scale_up', name: 'Scale-Up', price: '₦90,000/mo', desc: 'Unlimited Businesses & Members, VIP Support' },
+  { id: 'starter', name: 'Starter', price: '₦5,000/mo', desc: '2 Businesses, 3 Team Members, 15 AI Queries' },
+  { id: 'business', name: 'Business', price: '₦12,000/qtr', desc: '5 Businesses, 10 Team Members, BNPL Credits' },
+  { id: 'scale', name: 'Scale-Up', price: '₦45,000/yr', desc: 'Unlimited Businesses & Members, VIP Support' },
   { id: 'free', name: 'Free Trial', price: '₦0', desc: '10-Day Free Trial Evaluation' },
 ] as const;
 
 type PresetDuration = '30' | '90' | '365' | 'lifetime' | 'reset_trial' | 'custom';
+
+const TIER_ALIASES: Record<string, string> = {
+  scale_up: 'scale',
+  scaleup: 'scale',
+  free_trial: 'free',
+  trial: 'free',
+};
+
+function canonicalTier(raw: string): string {
+  const normalized = raw.toLowerCase().trim();
+  return TIER_ALIASES[normalized] ?? normalized;
+}
 
 export default function ChangePlanModal({
   isOpen,
@@ -35,7 +48,8 @@ export default function ChangePlanModal({
 
   useEffect(() => {
     if (user) {
-      setSelectedTier(user.subscriptionTier || 'starter');
+      const normalized = canonicalTier(user.subscriptionTier || 'starter');
+      setSelectedTier(normalized);
       setDurationPreset('30');
       setCustomDate('');
       setReason('');
@@ -90,6 +104,9 @@ export default function ChangePlanModal({
         trialEndsAt: res.data?.data?.trialEndsAt || null,
       });
       onClose();
+      if (user.id === useAuthStore.getState().user?.id) {
+        void useAuthStore.getState().fetchMe();
+      }
     } catch (err: any) {
       toast.error(getErrorMessage(err, 'Failed to update user subscription'));
     } finally {

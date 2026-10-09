@@ -424,8 +424,12 @@ export default function TeamSettingsTab() {
   const activeInvitedCount =
     cap?.activeInvitedCount ?? members.filter((m) => m.role !== 'owner').length;
   const pendingCount = cap?.pendingCount ?? pendingInvitations.length;
+  const maxSeats = cap?.maxInvitedMembers ?? 3;
+  const isUnlimited = maxSeats === -1 || maxSeats >= 999999;
+  const displayMax = isUnlimited ? 'Unlimited' : String(maxSeats);
   const remainingSlots =
-    cap?.remainingSlots ?? Math.max(0, 3 - activeInvitedCount - pendingCount);
+    cap?.remainingSlots ??
+    (isUnlimited ? 999999 : Math.max(0, maxSeats - activeInvitedCount - pendingCount));
 
   return (
     <div className='space-y-6'>
@@ -436,12 +440,15 @@ export default function TeamSettingsTab() {
             <div className='flex items-center gap-2'>
               <h2 className='text-lg font-bold text-gray-900'>Team & Roles</h2>
               <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-50 text-primary-700 border border-primary-100'>
-                {activeInvitedCount} of 3 Seats Used
+                {isUnlimited
+                  ? `${activeInvitedCount} Seats Used`
+                  : `${activeInvitedCount} of ${displayMax} Seats Used`}
               </span>
             </div>
             <p className='text-sm text-gray-500 mt-1'>
-              Invite up to 3 staff members, managers, or accountants to
-              collaborate on {activeBusiness?.businessName}.
+              {isUnlimited
+                ? `Invite staff members, managers, or accountants to collaborate on ${activeBusiness?.businessName} — no cap on your plan.`
+                : `Invite up to ${displayMax} staff members, managers, or accountants to collaborate on ${activeBusiness?.businessName}.`}
             </p>
           </div>
 
@@ -486,12 +493,16 @@ export default function TeamSettingsTab() {
           <div className='w-full bg-gray-100 rounded-full h-2 overflow-hidden flex'>
             <div
               className='bg-primary-600 h-full transition-all duration-300'
-              style={{ width: `${(activeInvitedCount / 3) * 100}%` }}
+              style={{
+                width: `${isUnlimited ? 100 : (activeInvitedCount / maxSeats) * 100}%`,
+              }}
               title={`${activeInvitedCount} active member(s)`}
             />
             <div
               className='bg-amber-400 h-full transition-all duration-300'
-              style={{ width: `${(pendingCount / 3) * 100}%` }}
+              style={{
+                width: `${isUnlimited ? 0 : (pendingCount / maxSeats) * 100}%`,
+              }}
               title={`${pendingCount} pending invitation(s)`}
             />
           </div>
@@ -505,7 +516,9 @@ export default function TeamSettingsTab() {
               <span>Pending Invites ({pendingCount})</span>
             </div>
             <span className='text-gray-300'>•</span>
-            <span>Owner is exempt from the 3-seat cap</span>
+            <span>
+              Owner is exempt from the {displayMax.toLowerCase()}-seat cap
+            </span>
           </div>
         </div>
       </div>

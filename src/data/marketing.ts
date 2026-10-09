@@ -196,7 +196,7 @@ export const paidPricingPlans: PricingPlan[] = [
       'Manage Up to 2 businesses/branches',
       'Unlimited invoices (custom branding) & Auto Collection',
       'Excel & CSV bulk sales import',
-      '30 AI CFO queries / month',
+      '15 AI CFO queries / month',
       'Payment/Debtors/ Mgt & Reminders',
       'Business Profit/Loss Summary',
       'Expense Management',
@@ -310,14 +310,14 @@ export const planComparisonMatrix: MatrixRow[] = [
       },
       {
         feature: 'Team Member Seats',
-        free: 'Unlimited (trial)',
+        free: 'Up to 10 team members (trial)',
         starter: 'Up to 3 team members',
         business: 'Up to 10 team members',
         scale: 'Unlimited team members',
       },
       {
         feature: 'Businesses / Branches Managed',
-        free: 'Unlimited (trial)',
+        free: 'Up to 5 businesses/branches (trial)',
         starter: 'Manage Up to 2 businesses/branches',
         business: 'Manage Up to 5 businesses/branches',
         scale: 'Manage Up to Unlimited businesses/branches',
@@ -370,7 +370,7 @@ export const planComparisonMatrix: MatrixRow[] = [
       {
         feature: 'AI CFO Queries / Month',
         free: '30 AI CFO queries / month',
-        starter: '30 AI CFO queries / month',
+        starter: '15 AI CFO queries / month',
         business: '30 AI CFO queries / month',
         scale: '30 AI CFO queries / month',
       },
@@ -390,7 +390,7 @@ export const planComparisonMatrix: MatrixRow[] = [
       },
       {
         feature: 'Automated Reminders & Triggers',
-        free: '30 Automated Reminders & Triggers',
+        free: '19 Automated Reminders & Triggers',
         starter: 'Standard Reminders',
         business: '19 Automated Reminders & Triggers',
         scale: '30 Automated Reminders & Triggers',

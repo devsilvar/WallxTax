@@ -7,7 +7,7 @@
  * @author WallX Engineering Team
  */
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 
 export type SubscriptionTier = 'free' | 'starter' | 'business' | 'scale';
@@ -34,13 +34,83 @@ const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
   scale: 'Scale-Up',
 };
 
-const TRIAL_DAYS = 10;
-const GRACE_DAYS = 2;
+/**
+ * Legacy tier spellings that must resolve to a catalog key. `scale_up` was
+ * written by an earlier admin override path; treating it as unknown would
+ * render the subscriber as a free trial.
+ */
+const TIER_ALIASES: Record<string, SubscriptionTier> = {
+  scale_up: 'scale',
+  scaleup: 'scale',
+  free_trial: 'free',
+  trial: 'free',
+};
+
+function canonicalTier(raw: string | null | undefined): SubscriptionTier {
+  const normalized = (raw || 'free').toLowerCase().trim();
+  return TIER_ALIASES[normalized] ?? (normalized as SubscriptionTier);
+}
+
+import { TRIAL_DAYS, GRACE_DAYS, TRIAL_STORAGE_KEY } from '@/config/subscription';
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
 
 export function useSubscriptionStatus(): SubscriptionStatus {
   const user = useAuthStore((s) => s.user);
+  const [, setTick] = useState(0);
+  const lastFetchRef = useRef(0);
+
+  useEffect(() => {
+    if (user) void useAuthStore.getState().fetchMe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const maybeFetch = () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastFetchRef.current < 30_000) return;
+      lastFetchRef.current = now;
+      void useAuthStore.getState().fetchMe();
+    };
+    window.addEventListener('focus', maybeFetch);
+    document.addEventListener('visibilitychange', maybeFetch);
+    return () => {
+      window.removeEventListener('focus', maybeFetch);
+      document.removeEventListener('visibilitychange', maybeFetch);
+    };
+  }, [user]);
+
+  // Keep the legacy localStorage trial clock in sync with the server.
+  // useTrialTimer (and any re-used tab) derives its countdown from
+  // wallx_trial_started_at. When the admin flips the user to a paid plan we
+  // must clear that clock, and when the admin resets the user back to the
+  // 10-day free trial we must seed it from the fresh trialEndsAt so the
+  // counter starts at exactly 10 days rather than resuming from an old
+  // stale value.
+  useEffect(() => {
+    if (!user) return;
+    const tier = canonicalTier(user.subscriptionTier);
+    try {
+      if (tier === 'free' && user.trialEndsAt) {
+        const trialEndMs = new Date(user.trialEndsAt).getTime();
+        if (!Number.isNaN(trialEndMs)) {
+          const startMs = trialEndMs - TRIAL_DAYS * MS_PER_DAY;
+          localStorage.setItem(TRIAL_STORAGE_KEY, String(startMs));
+        }
+      } else if (tier !== 'free') {
+        localStorage.removeItem(TRIAL_STORAGE_KEY);
+      }
+    } catch {
+      // private browsing / quota — non-fatal
+    }
+  }, [user?.subscriptionTier, user?.trialEndsAt]);
 
   return useMemo(() => {
     if (!user) {
@@ -60,10 +130,7 @@ export function useSubscriptionStatus(): SubscriptionStatus {
       };
     }
 
-    const rawTier = (user.subscriptionTier || 'free').toLowerCase();
-    const tier: SubscriptionTier = (['free', 'starter', 'business', 'scale'].includes(rawTier)
-      ? rawTier
-      : 'free') as SubscriptionTier;
+    const tier = canonicalTier(user.subscriptionTier);
 
     const isPaid = tier !== 'free';
     const planName = TIER_DISPLAY_NAMES[tier] || 'Free Trial';

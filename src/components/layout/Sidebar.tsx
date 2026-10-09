@@ -27,6 +27,7 @@ import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import type { PermissionKey } from '@/types/index.ts';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -39,6 +40,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
+  const subStatus = useSubscriptionStatus();
 
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -375,7 +377,22 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                           className={`h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-primary-600' : ''}`}
                           strokeWidth={isActive ? 2 : 1.8}
                         />
-                        {label}
+                        <span className="truncate">{label}</span>
+                        {to === '/subscription' && (
+                          <span
+                            className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize shrink-0 ${
+                              subStatus.tier === 'free'
+                                ? 'bg-gray-100 text-gray-600'
+                                : subStatus.tier === 'scale'
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : subStatus.tier === 'business'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {subStatus.tier === 'scale' ? 'Scale-Up' : subStatus.tier}
+                          </span>
+                        )}
                       </>
                     )}
                   </NavLink>
