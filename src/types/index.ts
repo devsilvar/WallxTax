@@ -575,6 +575,7 @@ export interface AdminUser {
   autoPayoutEnabled?: boolean;
   subscriptionTier?: string | null;
   subscriptionExpiresAt?: string | null;
+  trialEndsAt?: string | null;
 }
 
 export interface SubscriptionSubmission {

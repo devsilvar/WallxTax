@@ -4,6 +4,7 @@ import {
   Eye,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   ToggleLeft,
   ToggleRight,
   Users,
@@ -12,11 +13,26 @@ import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { AdminUser, Pagination } from '@/types/index.ts';
+import ChangePlanModal from '@/components/admin/ChangePlanModal';
 import PageHeader from './shared/PageHeader';
 import PaginationBar from './shared/Pagination';
 import { Panel, PanelEmpty } from './shared/Panel';
 import StatusPill from './shared/StatusPill';
 import { formatDate } from './shared/format';
+
+const getPlanBadge = (u: AdminUser) => {
+  const tier = (u.subscriptionTier || 'free').toLowerCase();
+  if (tier === 'scale_up' || tier === 'scale') {
+    return { tone: 'info' as const, label: 'Scale-Up' };
+  }
+  if (tier === 'business') {
+    return { tone: 'success' as const, label: 'Business' };
+  }
+  if (tier === 'starter') {
+    return { tone: 'info' as const, label: 'Starter' };
+  }
+  return { tone: 'warning' as const, label: 'Free Trial' };
+};
 
 const iconButton =
   'rounded p-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none';
@@ -29,6 +45,7 @@ export default function AdminUsers() {
   const [toggling, setToggling] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [togglingPayout, setTogglingPayout] = useState<string | null>(null);
+  const [selectedUserForPlan, setSelectedUserForPlan] = useState<AdminUser | null>(null);
 
   const fetchUsers = useCallback(() => {
     setIsLoading(true);
@@ -106,11 +123,12 @@ export default function AdminUsers() {
                   <th scope='col' className='px-3 py-1.5'>Email</th>
                   <th scope='col' className='px-3 py-1.5'>Role</th>
                   <th scope='col' className='w-[70px] px-3 py-1.5 text-right'>Biz.</th>
+                  <th scope='col' className='px-3 py-1.5'>Plan</th>
                   <th scope='col' className='px-3 py-1.5'>Payout Mode</th>
                   <th scope='col' className='px-3 py-1.5'>Verified</th>
                   <th scope='col' className='px-3 py-1.5'>Status</th>
                   <th scope='col' className='px-3 py-1.5'>Joined</th>
-                  <th scope='col' className='w-[110px] px-3 py-1.5 text-right'>Actions</th>
+                  <th scope='col' className='w-[130px] px-3 py-1.5 text-right'>Actions</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-hairline'>
@@ -133,6 +151,21 @@ export default function AdminUsers() {
                     </td>
                     <td className='px-3 py-1.5 text-right font-mono tabular-nums text-ink-muted'>
                       {u._count.businesses}
+                    </td>
+                    <td className='px-3 py-1.5'>
+                      <div className='flex items-center gap-1.5'>
+                        <StatusPill tone={getPlanBadge(u).tone}>
+                          {getPlanBadge(u).label}
+                        </StatusPill>
+                        <button
+                          type='button'
+                          onClick={() => setSelectedUserForPlan(u)}
+                          title='Assign or adjust subscription plan'
+                          className='text-[11px] font-medium text-primary-600 hover:text-primary-700 hover:underline focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none'
+                        >
+                          Change
+                        </button>
+                      </div>
                     </td>
                     <td className='px-3 py-1.5'>
                       <div className='flex items-center gap-1.5'>
@@ -180,6 +213,14 @@ export default function AdminUsers() {
                         >
                           {u.isVerified ? <ShieldCheck className='h-3.5 w-3.5' /> : <ShieldAlert className='h-3.5 w-3.5' />}
                         </button>
+                        <button
+                          onClick={() => setSelectedUserForPlan(u)}
+                          aria-label={`Change plan for ${u.email}`}
+                          title='Change subscription plan'
+                          className={`${iconButton} text-ink-subtle hover:bg-primary-50 hover:text-primary-600`}
+                        >
+                          <Sparkles className='h-3.5 w-3.5' />
+                        </button>
                         <Link
                           to={`/admin/users/${u.id}`}
                           aria-label={`View ${u.email}`}
@@ -212,6 +253,17 @@ export default function AdminUsers() {
           {pagination && <PaginationBar pagination={pagination} onPageChange={setPage} noun='users' />}
         </Panel>
       )}
+
+      <ChangePlanModal
+        isOpen={!!selectedUserForPlan}
+        onClose={() => setSelectedUserForPlan(null)}
+        user={selectedUserForPlan}
+        onSuccess={(updated) => {
+          setUsers((prev) =>
+            prev.map((usr) => (usr.id === updated.id ? { ...usr, ...updated } : usr))
+          );
+        }}
+      />
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { X, Building2 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
-import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import toast from 'react-hot-toast';
@@ -47,7 +46,6 @@ export default function CreateBusinessModal({
       : user?.isOwnerAccount !== false;
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [newBusinessName, setNewBusinessName] = useState('');
   const [form, setForm] = useState({
     businessName: '',
@@ -101,13 +99,20 @@ export default function CreateBusinessModal({
       });
       onClose();
 
-      // Check if user is on free trial and show welcome modal
+      // Check if user is on free trial and schedule welcome modal
       const signupPlan = localStorage.getItem('signupPlan');
       const trialStartedAt = localStorage.getItem('wallx_trial_started_at');
       
       if (trialStartedAt || signupPlan === 'free') {
-        // User is on free trial, show welcome modal
-        setShowWelcomeModal(true);
+        // Store timestamp for when business was created
+        const now = Date.now();
+        sessionStorage.setItem('businessCreatedAt', now.toString());
+        sessionStorage.setItem('businessCreatedName', form.businessName.trim());
+        
+        // Inform user that welcome info is coming
+        toast.success('🎉 Welcome info coming in 1 minute!', {
+          duration: 4000,
+        });
       } else if (signupPlan && ['starter', 'business', 'scale'].includes(signupPlan)) {
         // Paid plan user - redirect to subscription page
         localStorage.removeItem('signupPlan');
@@ -267,16 +272,5 @@ export default function CreateBusinessModal({
     document.body,
   );
 
-  return (
-    <>
-      {modal}
-      <TrialWelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
-        businessName={newBusinessName}
-        userName={user?.fullName || user?.email?.split('@')[0]}
-        trigger="business_creation"
-      />
-    </>
-  );
+  return modal;
 }

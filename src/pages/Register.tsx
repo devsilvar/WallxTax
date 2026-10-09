@@ -4,7 +4,6 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PhoneInput from '@/components/ui/PhoneInput.tsx';
-import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, ArrowRight, Check, X, Crown } from 'lucide-react';
 
@@ -99,7 +98,6 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const register = useAuthStore((s) => s.register);
   const navigate = useNavigate();
 
@@ -140,8 +138,10 @@ export default function Register() {
       }
       toast.success('Account created successfully!');
       
-      // Show welcome modal first, then navigate to email verification
-      setShowWelcomeModal(true);
+      // Navigate directly to email verification
+      navigate(`/verify-email-pending?email=${encodeURIComponent(userEmail)}`, {
+        state: { email: userEmail },
+      });
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: { error?: { message?: string } } } })
@@ -349,20 +349,6 @@ export default function Register() {
           </Link>
         </p>
       </div>
-
-      {/* Trial Welcome Modal */}
-      <TrialWelcomeModal
-        isOpen={showWelcomeModal}
-        onClose={() => {
-          setShowWelcomeModal(false);
-          const userEmail = email;
-          navigate(`/verify-email-pending?email=${encodeURIComponent(userEmail)}`, {
-            state: { email: userEmail },
-          });
-        }}
-        userName={email.split('@')[0] || 'there'}
-        trigger="registration"
-      />
     </div>
   );
 }

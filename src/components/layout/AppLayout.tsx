@@ -10,7 +10,9 @@ import ReviewPromptModal from '@/components/ReviewPromptModal.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 import SubscriptionGraceBanner from '@/components/subscription/SubscriptionGraceBanner.tsx';
 import SubscriptionExpiredModal from '@/components/subscription/SubscriptionExpiredModal.tsx';
+import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import { resolvePageTitle } from '@/lib/pageTitles.ts';
+import { useAuthStore } from '@/stores/auth.store.ts';
 
 // Mac users get ⌘K, everyone else gets Ctrl+K. Detected once at module load — the
 // platform doesn't change mid-session.
@@ -27,6 +29,60 @@ export default function AppLayout({
   const mainContentRef = useRef<HTMLElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showTrialWelcome, setShowTrialWelcome] = useState(false);
+  const [welcomeBusinessName, setWelcomeBusinessName] = useState('');
+  const user = useAuthStore((s) => s.user);
+
+  // Check for pending trial welcome modal (1 minute after business creation)
+  useEffect(() => {
+    const checkTrialWelcome = () => {
+      const businessCreatedAt = sessionStorage.getItem('businessCreatedAt');
+      const businessName = sessionStorage.getItem('businessCreatedName');
+      
+      if (businessCreatedAt && businessName) {
+        const createdTime = parseInt(businessCreatedAt, 10);
+        const elapsed = Date.now() - createdTime;
+        const oneMinute = 60000; // 60 seconds in milliseconds
+        
+        if (elapsed >= oneMinute) {
+          // Show modal immediately if 1 minute has passed
+          setWelcomeBusinessName(businessName);
+          setShowTrialWelcome(true);
+          sessionStorage.removeItem('businessCreatedAt');
+          sessionStorage.removeItem('businessCreatedName');
+        } else {
+          // Schedule modal to show after remaining time
+          const remainingTime = oneMinute - elapsed;
+          const timer = setTimeout(() => {
+            setWelcomeBusinessName(businessName);
+            setShowTrialWelcome(true);
+            sessionStorage.removeItem('businessCreatedAt');
+            sessionStorage.removeItem('businessCreatedName');
+          }, remainingTime);
+          
+          return () => clearTimeout(timer);
+        }
+      } else {
+        // Check if user is on trial and hasn't seen the welcome modal yet
+        const hasSeenWelcome = localStorage.getItem('hasSeenTrialWelcome');
+        const trialStartedAt = localStorage.getItem('wallx_trial_started_at');
+        
+        if (trialStartedAt && !hasSeenWelcome && user) {
+          // User is on trial and hasn't seen the welcome modal
+          // Show it after 2 seconds (give them time to land)
+          const timer = setTimeout(() => {
+            setWelcomeBusinessName('Your Business');
+            setShowTrialWelcome(true);
+            localStorage.setItem('hasSeenTrialWelcome', 'true');
+          }, 2000); // 2 seconds delay
+          
+          return () => clearTimeout(timer);
+        }
+      }
+    };
+    
+    checkTrialWelcome();
+  }, [user]);
 
   // When pathname or tab changes, close mobile sidebar and reset scroll to top
   const currentTab = new URLSearchParams(location.search).get('tab');
@@ -116,6 +172,18 @@ export default function AppLayout({
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <ReviewPromptModal />
       <SubscriptionExpiredModal />
+      <TrialWelcomeModal
+        isOpen={showTrialWelcome}
+        onClose={() => {
+          setShowTrialWelcome(false);
+          // Mark as seen so it doesn't show again
+          localStorage.setItem('hasSeenTrialWelcome', 'true');
+        }}
+        businessName={welcomeBusinessName}
+        userName={user?.fullName || user?.email?.split('@')[0]}
+        trigger="business_creation"
+        createdAt={user?.createdAt}
+      />
     </div>
   );
 }

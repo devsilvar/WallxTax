@@ -1,16 +1,46 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import api from '@/lib/axios';
 
-const THREE_MINUTES_MS = 180 * 1000;
 const SNOOZE_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-const KEY_FIRST_SEEN = 'wallx_dashboard_first_seen_at';
 const KEY_SUBMITTED = 'wallx_review_submitted';
 const KEY_SNOOZED_UNTIL = 'wallx_review_snoozed_until';
 
 export function useReviewPrompt() {
   const [isOpen, setIsOpen] = useState(false);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const [serverEligibility, setServerEligibility] = useState<{
+    eligible: boolean;
+    delaySeconds: number;
+  } | null>(null);
+
+  const sessionStartTimeRef = useRef<number>(Date.now());
+
+  // 1. Fetch server eligibility once authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setServerEligibility(null);
+      return;
+    }
+
+    let isMounted = true;
+    api
+      .get('/feedback/prompt-eligibility')
+      .then((res) => {
+        if (isMounted && res.data?.data) {
+          setServerEligibility(res.data.data);
+        }
+      })
+      .catch(() => {
+        // Non-blocking: if network fails, gracefully degrade
+        if (isMounted) setServerEligibility({ eligible: false, delaySeconds: 0 });
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
 
   const checkEligibility = useCallback(() => {
     if (!isAuthenticated) return false;
@@ -25,12 +55,12 @@ export function useReviewPrompt() {
       return true;
     }
 
-    // 1. Never show if already submitted
-    if (localStorage.getItem(KEY_SUBMITTED) === 'true') {
+    // Must have affirmative server eligibility
+    if (!serverEligibility || !serverEligibility.eligible) {
       return false;
     }
 
-    // 2. Check snooze timestamp
+    // Check snooze timestamp
     const snoozedUntil = localStorage.getItem(KEY_SNOOZED_UNTIL);
     if (snoozedUntil) {
       const parsedSnooze = parseInt(snoozedUntil, 10);
@@ -39,20 +69,14 @@ export function useReviewPrompt() {
       }
     }
 
-    // 3. Track or read first seen timestamp
-    let firstSeen = localStorage.getItem(KEY_FIRST_SEEN);
-    const now = Date.now();
-    if (!firstSeen) {
-      localStorage.setItem(KEY_FIRST_SEEN, now.toString());
+    // Check session duration delay (e.g. 150 seconds = 2.5 minutes)
+    const requiredDelayMs = (serverEligibility.delaySeconds || 150) * 1000;
+    const sessionElapsedMs = Date.now() - sessionStartTimeRef.current;
+    if (sessionElapsedMs < requiredDelayMs) {
       return false;
     }
 
-    const firstSeenMs = parseInt(firstSeen, 10);
-    if (Number.isNaN(firstSeenMs) || now - firstSeenMs < THREE_MINUTES_MS) {
-      return false;
-    }
-
-    // 4. Anti-fatigue check: User is actively typing into an input/textarea/select
+    // Anti-fatigue check 1: User is actively typing into an input/textarea/select
     const activeEl = document.activeElement;
     if (
       activeEl &&
@@ -61,7 +85,7 @@ export function useReviewPrompt() {
       return false;
     }
 
-    // 5. Anti-fatigue check: Another modal is already open
+    // Anti-fatigue check 2: Another modal is already open
     const hasOpenModal = Boolean(
       document.querySelector('[role="dialog"]') ||
         document.querySelector('.modal-open') ||
@@ -72,12 +96,12 @@ export function useReviewPrompt() {
     }
 
     return true;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, serverEligibility]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Evaluate on mount and tick every 10 seconds
+    // Evaluate periodically every 10 seconds
     const evaluate = () => {
       if (checkEligibility()) {
         setIsOpen(true);

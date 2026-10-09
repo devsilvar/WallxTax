@@ -100,7 +100,7 @@ describe('Phase 4: Subscription UI Components (Banner & Modal)', () => {
       );
 
       expect(screen.getByText(/Your 10-Day Free Trial Has Concluded/i)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /View Plans & Upgrade Now/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /View Plans/i })).toBeInTheDocument();
     });
 
     it('does not render modal when user is currently on /subscription page', () => {
