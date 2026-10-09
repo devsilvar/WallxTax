@@ -17,6 +17,7 @@ export const PATH_CHUNKS: Record<string, readonly (() => Promise<unknown>)[]> = 
     () => import('@/pages/Debtors.tsx'),
     () => import('@/pages/DebtorDetail.tsx'),
   ],
+  '/customers': [() => import('@/pages/Customers.tsx')],
   '/ai': [() => import('@/pages/AIAssistant.tsx')],
   '/tax': [() => import('@/pages/TaxReports.tsx')],
   '/transactions': [() => import('@/pages/Transactions.tsx')],

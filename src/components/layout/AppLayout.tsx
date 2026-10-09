@@ -8,6 +8,8 @@ import RouteTransitionLoader from './RouteTransitionLoader.tsx';
 import CommandPalette from '@/components/CommandPalette.tsx';
 import ReviewPromptModal from '@/components/ReviewPromptModal.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
+import SubscriptionGraceBanner from '@/components/subscription/SubscriptionGraceBanner.tsx';
+import SubscriptionExpiredModal from '@/components/subscription/SubscriptionExpiredModal.tsx';
 import { resolvePageTitle } from '@/lib/pageTitles.ts';
 
 // Mac users get ⌘K, everyone else gets Ctrl+K. Detected once at module load — the
@@ -99,6 +101,8 @@ export default function AppLayout({
           </div>
         </header>
 
+        <SubscriptionGraceBanner />
+
         {/* Main content */}
         <main ref={mainContentRef} className="relative flex-1 overflow-y-auto">
           <Suspense fallback={<RouteTransitionLoader />}>
@@ -111,6 +115,7 @@ export default function AppLayout({
 
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <ReviewPromptModal />
+      <SubscriptionExpiredModal />
     </div>
   );
 }

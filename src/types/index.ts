@@ -27,6 +27,7 @@ export interface User {
   isOwnerAccount?: boolean;
   subscriptionTier?: string | null;
   subscriptionExpiresAt?: string | null;
+  trialEndsAt?: string | null;
 }
 
 export type BusinessRole = 'owner' | 'manager' | 'sales_staff' | 'accountant' | 'viewer';

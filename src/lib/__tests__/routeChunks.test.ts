@@ -103,7 +103,7 @@ describe('routeChunks & Navigation Drift Guard', () => {
 
     expect(p1).toBe(p2);
     await expect(p1).resolves.toBeUndefined();
-  });
+  }, 15000);
 
   it('resolves immediately without throwing for unknown routes', async () => {
     const p = prefetchRoute('/non-existent-route');

@@ -8,6 +8,7 @@ export const pageTitles: Record<string, string> = {
   '/expenses': 'Expenses',
   '/invoices': 'Invoices',
   '/debtors': 'Debtors',
+  '/customers': 'Customers',
   '/tax': 'Tax Reports',
   '/payments': 'Payments',
   '/reminders': 'Reminders',
@@ -19,7 +20,7 @@ export const pageTitles: Record<string, string> = {
   '/admin': 'Admin Dashboard',
 };
 
-const PREFIX_ROUTES = ['/invoices', '/debtors', '/sales'] as const;
+const PREFIX_ROUTES = ['/invoices', '/debtors', '/sales', '/customers'] as const;
 
 export function resolvePageTitle(pathname: string): string {
   if (pageTitles[pathname]) {
