@@ -15,7 +15,8 @@ interface AuthState {
   register: (
     email: string,
     phone: string,
-    password: string
+    password: string,
+    requestedPlan?: string
   ) => Promise<{ email: string; verificationLink?: string }>;
   setAuthSession: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void;
@@ -35,8 +36,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isAuthenticated: true });
   },
 
-  register: async (email, phone, password) => {
-    const { data } = await api.post('/auth/register', { email, phone, password });
+  register: async (email, phone, password, requestedPlan) => {
+    const { data } = await api.post('/auth/register', {
+      email,
+      phone,
+      password,
+      ...(requestedPlan ? { requestedPlan } : {}),
+    });
     return {
       email: data.data?.user?.email || email,
       verificationLink: data.data?.verificationLink,
@@ -60,6 +66,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('activeBusinessId');
+    localStorage.removeItem('signupPlan');
+    localStorage.removeItem('wallx_trial_started_at');
     useReminderStore.getState().clear();
     useBusinessStore.getState().clear();
     useInvoiceStore.getState().clear();

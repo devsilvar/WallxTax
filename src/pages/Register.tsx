@@ -130,11 +130,13 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      const result = await register(email, phone, password);
+      const result = await register(email, phone, password, selectedPlan);
       const userEmail = result.email || email;
       sessionStorage.setItem('pendingVerificationEmail', userEmail);
       if (selectedPlan === 'free') {
         localStorage.setItem('wallx_trial_started_at', Date.now().toString());
+      } else {
+        localStorage.removeItem('wallx_trial_started_at');
       }
       toast.success('Account created successfully!');
       

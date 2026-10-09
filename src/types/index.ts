@@ -28,6 +28,8 @@ export interface User {
   subscriptionTier?: string | null;
   subscriptionExpiresAt?: string | null;
   trialEndsAt?: string | null;
+  pendingPlan?: string | null;
+  hasPendingSubmission?: boolean;
 }
 
 export type BusinessRole = 'owner' | 'manager' | 'sales_staff' | 'accountant' | 'viewer';

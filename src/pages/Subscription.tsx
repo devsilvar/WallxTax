@@ -290,6 +290,36 @@ export default function Subscription() {
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [startingTrial, setStartingTrial] = useState(false);
+  const pendingPlan = (user as any)?.pendingPlan as string | null | undefined;
+  const hasActiveTrial = !!user?.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now();
+  const isPaywalled = !!pendingPlan && pendingPlan !== 'free' && sub.tier === 'free' && !hasActiveTrial;
+  const pendingPlanLabel = pendingPlan ? (PLANS.find(p => p.id === pendingPlan)?.name ?? pendingPlan) : '';
+
+  const handleStartTrial = async () => {
+    setStartingTrial(true);
+    try {
+      await api.post('/subscription/start-trial');
+      await useAuthStore.getState().fetchMe();
+      localStorage.removeItem('signupPlan');
+      toast.success('Free trial activated — welcome!');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not start trial'));
+    } finally {
+      setStartingTrial(false);
+    }
+  };
+
+  // Evict stale signupPlan when server already confirms activation/trial,
+  // even if user lands directly on /subscription without visiting Dashboard.
+  useEffect(() => {
+    if (!user) return;
+    const sp = localStorage.getItem('signupPlan');
+    if (!sp || sp === 'free') return;
+    const tier = (user.subscriptionTier || 'free').toLowerCase();
+    const hasTrial = hasActiveTrial;
+    if (tier !== 'free' || hasTrial) localStorage.removeItem('signupPlan');
+  }, [user, hasActiveTrial]);
 
   useEffect(() => {
     if (user?.fullName && !name) setName(user.fullName);
@@ -445,6 +475,31 @@ export default function Subscription() {
           </div>
         </div>
       </div>
+
+      {isPaywalled && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 sm:p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-gray-900">You selected {pendingPlanLabel} — choose how to continue</h2>
+          <p className="text-xs text-gray-600 mt-1">Start your free trial or pay for {pendingPlanLabel} to get activated by an admin.</p>
+          <div className="mt-4 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleStartTrial}
+              disabled={startingTrial}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm px-6 py-3 transition-colors"
+            >
+              {startingTrial ? 'Activating…' : 'Start Free Trial (10 days)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { const id = pendingPlan as PlanOption['id']; if (['starter','business','scale'].includes(id)) setSelectedPlanId(id); setStep('payment'); document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary-600 hover:bg-primary-700 text-white font-bold text-sm px-6 py-3 transition-colors"
+            >
+              Pay for {pendingPlanLabel}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 1. Page Header ── */}
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>

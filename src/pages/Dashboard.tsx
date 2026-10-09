@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import PinModal from '@/components/PinModal.tsx';
 import FreeWelcomeModal from '@/components/FreeWelcomeModal.tsx';
+import PendingActivationModal from '@/components/PendingActivationModal.tsx';
 import DashboardSkeleton from '@/pages/Dashboard.skeleton.tsx';
 import { STALE, isFresh } from '@/lib/cache.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
@@ -579,15 +580,44 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
 
-  // Free Plan Welcome Modal state
+  const paywallPendingPlan = useMemo(() => {
+    const serverPending = (user as any)?.pendingPlan as string | null | undefined;
+    if (serverPending) return serverPending;
+    // Server is source of truth once loaded. Only fall back to localStorage
+    // before fetchMe (user null) or while hasPendingSubmission is still
+    // undefined (fetch in-flight). Once server says hasPendingSubmission===false
+    // we must NOT resurrect a stale signupPlan from a previous session.
+    const serverLoaded = user != null && (user as any)?.hasPendingSubmission !== undefined;
+    if (serverLoaded) return null;
+    const local = localStorage.getItem('signupPlan');
+    return local && local !== 'free' ? local : null;
+  }, [user]);
+  const paywallHasTrial = !!user?.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now();
+  const paywallTier = (user?.subscriptionTier || 'free').toLowerCase();
+  const showPaywall = !!paywallPendingPlan && paywallTier === 'free' && !paywallHasTrial;
+
+  // Once server confirms activation (tier !== free) or trial start, evict any
+  // stale signupPlan so it doesn't survive a logout/login on the same device.
+  // logout() also clears it; this is the happy-path eviction for the current session.
+  useEffect(() => {
+    if (!user) return;
+    const sp = localStorage.getItem('signupPlan');
+    if (!sp || sp === 'free') return;
+    if (paywallTier !== 'free' || paywallHasTrial) {
+      localStorage.removeItem('signupPlan');
+    }
+  }, [user, paywallTier, paywallHasTrial]);
+
+  // Free Plan Welcome Modal state — suppressed while paywalled
   const [showFreeWelcomeModal, setShowFreeWelcomeModal] = useState(false);
 
   useEffect(() => {
+    if (showPaywall) return;
     if (activeBusiness && sessionStorage.getItem('justCreatedFirstBiz') === 'true') {
       sessionStorage.removeItem('justCreatedFirstBiz');
       setShowFreeWelcomeModal(true);
     }
-  }, [activeBusiness]);
+  }, [activeBusiness, showPaywall]);
 
   // Sections the last load was permitted to read but failed to fetch. Drives
   // the error banner and the fatal-error state — see fetchSection().
@@ -2098,12 +2128,15 @@ export default function Dashboard() {
         subtitle='Enter your 4-digit transaction PIN to view your full BVN.'
       />
 
-      {/* ── Free Plan Welcome Modal ────────────────────── */}
-      <FreeWelcomeModal
-        isOpen={showFreeWelcomeModal}
-        onClose={() => setShowFreeWelcomeModal(false)}
-        businessName={activeBusiness?.businessName}
-      />
+      {showPaywall ? (
+        <PendingActivationModal isOpen requestedPlan={paywallPendingPlan!} />
+      ) : (
+        <FreeWelcomeModal
+          isOpen={showFreeWelcomeModal}
+          onClose={() => setShowFreeWelcomeModal(false)}
+          businessName={activeBusiness?.businessName}
+        />
+      )}
     </div>
   );
 }
