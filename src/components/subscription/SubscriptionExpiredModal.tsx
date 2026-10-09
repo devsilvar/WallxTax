@@ -9,7 +9,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { Lock, ArrowRight, ShieldCheck, Sparkles, MessageCircle } from 'lucide-react';
+import { LockKeyhole, ArrowRight, CheckCircle2, MessageSquare } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 const WHATSAPP_SUPPORT_URL =
@@ -41,60 +41,78 @@ export default function SubscriptionExpiredModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="subscription-expired-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-purple-900/30 via-black/50 to-black/60 backdrop-blur-md animate-in fade-in duration-300"
     >
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all">
-        {/* Top brand header */}
-        <div className="bg-linear-to-br from-purple-700 via-purple-800 to-indigo-900 p-6 text-white text-center relative">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md mb-4 border border-white/20">
-            <Lock className="h-7 w-7 text-amber-300" />
+      <div className="w-full max-w-[360px] bg-white rounded-xl shadow-2xl overflow-hidden border border-purple-100/50">
+        {/* Brand accent bar */}
+        <div className="h-1 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700" />
+        
+        {/* Content */}
+        <div className="px-5 pt-6 pb-5">
+          {/* Icon with brand accent */}
+          <div className="flex justify-center mb-4">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary-500/10 rounded-lg blur-lg" />
+              <div className="relative h-11 w-11 rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center border border-primary-200/50">
+                <LockKeyhole className="h-5 w-5 text-primary-700" strokeWidth={2} />
+              </div>
+            </div>
           </div>
+
+          {/* Heading */}
           <h2
             id="subscription-expired-title"
-            className="text-xl sm:text-2xl font-bold tracking-tight text-white"
+            className="text-lg font-semibold text-gray-900 text-center mb-2 leading-tight tracking-tight"
           >
             {heading}
           </h2>
-          <p className="mt-2 text-sm text-purple-200">
-            Choose a plan that fits your business to resume sales recording, automated invoicing, and tax filings.
+          
+          <p className="text-gray-600 text-center text-[13px] leading-relaxed mb-5">
+            Choose a plan to continue using WallXERP.
           </p>
-        </div>
 
-        {/* Modal body */}
-        <div className="p-6 sm:p-8 space-y-6">
-          <div className="space-y-3 bg-purple-50/60 p-4 rounded-xl border border-purple-100 text-sm">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
-              <p className="text-gray-700">
-                <strong>Your records are 100% safe:</strong> All historical sales, expenses, invoices, and debtor records remain securely preserved.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Sparkles className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
-              <p className="text-gray-700">
-                <strong>Instant activation:</strong> Simply transfer to our Zenith Bank account and upload proof for instant confirmation.
-              </p>
-            </div>
+          {/* Feature list with CheckCircle2 matching subscription boxes */}
+          <div className="mb-5">
+            <ul className="space-y-2.5">
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2
+                  className="h-5 w-5 shrink-0 mt-px text-primary-600"
+                  strokeWidth={1.8}
+                />
+                <span className="text-[13.5px] font-normal leading-snug tracking-[-0.01em] antialiased text-gray-900">
+                  Your data is safe and securely preserved
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <CheckCircle2
+                  className="h-5 w-5 shrink-0 mt-px text-primary-600"
+                  strokeWidth={1.8}
+                />
+                <span className="text-[13.5px] font-normal leading-snug tracking-[-0.01em] antialiased text-gray-900">
+                  Instant activation after payment verification
+                </span>
+              </li>
+            </ul>
           </div>
 
-          {/* Action buttons */}
-          <div className="space-y-3 pt-2">
+          {/* Actions with brand styling */}
+          <div className="space-y-2">
             <Link
               to="/subscription"
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              className="group w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-primary-600 to-primary-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 hover:shadow-xl hover:shadow-primary-600/30 hover:from-primary-700 hover:to-primary-800 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
-              <span>View Plans & Upgrade Now</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>View Plans</span>
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
             </Link>
 
             <a
               href={WHATSAPP_SUPPORT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-5 py-2.5 text-sm font-medium text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[13px] font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
             >
-              <MessageCircle className="h-4 w-4 text-emerald-600" />
-              <span>Need help? Chat with billing on WhatsApp</span>
+              <MessageSquare className="h-3.5 w-3.5 text-gray-600" strokeWidth={2} />
+              <span>Chat with support</span>
             </a>
           </div>
         </div>
