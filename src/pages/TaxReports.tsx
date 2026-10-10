@@ -818,6 +818,7 @@ function TaxReportsList({
                           <Button
                             size='sm'
                             variant='outline'
+                            subscriptionExempt={true}
                             onClick={(e) => {
                               const d = new Date(r.taxMonth);
                               handleDownloadPnlStatement(
@@ -837,6 +838,7 @@ function TaxReportsList({
                           <Button
                             size='sm'
                             variant='outline'
+                            subscriptionExempt={true}
                             onClick={(e) => handleDownloadTaxSlip(r, e)}
                             isLoading={downloadingSlipId === r.id}
                             className='h-8 px-2.5 text-xs border-purple-200 text-purple-900 hover:bg-purple-50 font-medium'
@@ -1082,6 +1084,7 @@ function TaxReportsList({
                         <Button
                           size='sm'
                           variant='outline'
+                          subscriptionExempt={true}
                           onClick={(e) => handleDownloadTaxSlip(r, e)}
                           isLoading={downloadingSlipId === r.id}
                           className='border-gray-300 text-gray-700 hover:bg-white text-xs font-semibold'
@@ -1092,6 +1095,7 @@ function TaxReportsList({
                         <Button
                           size='sm'
                           variant='outline'
+                          subscriptionExempt={true}
                           onClick={(e) => {
                             const d = new Date(r.taxMonth);
                             handleDownloadPnlStatement(

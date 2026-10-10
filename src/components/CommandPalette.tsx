@@ -23,6 +23,7 @@ import {
 import api from '@/lib/axios.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 interface SearchResults {
   invoices: Array<{
@@ -94,6 +95,7 @@ export default function CommandPalette({
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
+  const { blockIfNeeded } = useSubscriptionWriteGate();
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -253,7 +255,10 @@ export default function CommandPalette({
           label: 'Create new invoice',
           hint: 'Open the invoice form',
           icon: FileText,
-          onSelect: close(() => navigate('/invoices/new')),
+          onSelect: close(() => {
+            if (blockIfNeeded()) return;
+            navigate('/invoices/new');
+          }),
         },
         {
           id: 'act-tax',

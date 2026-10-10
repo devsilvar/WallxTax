@@ -216,6 +216,7 @@ export default function PinModal({
               <Button
                 onClick={() => submitPin()}
                 isLoading={verifying}
+                subscriptionExempt={true}
                 disabled={digits.some((d) => !d) || verifying}
                 className="w-full mt-5 rounded-none py-2.5 text-xs font-semibold"
               >

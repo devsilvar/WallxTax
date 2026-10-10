@@ -152,7 +152,7 @@ export default function Account() {
           You do not have permission to view dedicated bank account details or wallet balances for <strong>{biz.businessName}</strong>. Access is restricted to the Business Owner, Manager, and Accountant.
         </p>
         <div className="mt-6 flex justify-center">
-          <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')} className="text-xs">
+          <Button variant="secondary" size="sm" subscriptionExempt={true} onClick={() => navigate('/dashboard')} className="text-xs">
             Return to Dashboard
           </Button>
         </div>

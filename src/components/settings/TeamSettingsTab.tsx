@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import { useTeamStore } from '@/stores/team.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import type {
   BusinessRole,
   BusinessMember,
@@ -163,6 +164,7 @@ export default function TeamSettingsTab() {
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
   const user = useAuthStore((s) => s.user);
+  const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
 
   const {
     members,
@@ -221,6 +223,7 @@ export default function TeamSettingsTab() {
   }, [activeBusiness?.id, fetchTeam, fetchRoleDefaults]);
 
   const handleOpenInvite = () => {
+    if (blockIfNeeded()) return;
     setInviteName('');
     setInviteEmail('');
     setInviteRole('sales_staff');
@@ -231,6 +234,7 @@ export default function TeamSettingsTab() {
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id || !inviteEmail.trim() || !inviteName.trim()) return;
 
     setIsSubmitting(true);
@@ -267,6 +271,7 @@ export default function TeamSettingsTab() {
   };
 
   const handleOpenEdit = (member: BusinessMember) => {
+    if (blockIfNeeded()) return;
     setSelectedMember(member);
     const resolvedName =
       member.user.fullName ||
@@ -287,6 +292,7 @@ export default function TeamSettingsTab() {
   };
 
   const handleSaveMember = async () => {
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id || !selectedMember) return;
     const trimmedName = editFullName.trim();
     if (trimmedName.length > 0 && trimmedName.length < 2) {
@@ -356,6 +362,7 @@ export default function TeamSettingsTab() {
   };
 
   const handleRemoveMember = async (member: BusinessMember) => {
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id) return;
     if (
       !confirm(
@@ -375,6 +382,7 @@ export default function TeamSettingsTab() {
   };
 
   const handleResendInvite = async (inv: TeamInvitation) => {
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id) return;
     setResendingId(inv.id);
     try {
@@ -390,6 +398,7 @@ export default function TeamSettingsTab() {
   };
 
   const handleRevokeInvite = async (inv: TeamInvitation) => {
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id) return;
     if (!confirm(`Revoke invitation for ${inv.email}?`)) return;
 
@@ -466,9 +475,9 @@ export default function TeamSettingsTab() {
             {canManageTeam && (
               <button
                 onClick={handleOpenInvite}
-                disabled={remainingSlots <= 0}
+                disabled={remainingSlots <= 0 || writesBlocked}
                 className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl shadow-sm transition-all ${
-                  remainingSlots <= 0
+                  remainingSlots <= 0 || writesBlocked
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98]'
                 }`}

@@ -51,6 +51,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/types/index.ts';
 
@@ -579,6 +580,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(!seed);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
+  const { blockIfNeeded } = useSubscriptionWriteGate();
 
   const paywallPendingPlan = useMemo(() => {
     const serverPending = (user as any)?.pendingPlan as string | null | undefined;
@@ -884,7 +886,10 @@ export default function Dashboard() {
         </p>
         {isOwnerAccount && (
           <>
-            <Button onClick={() => setShowCreateBiz(true)}>Get Started</Button>
+            <Button onClick={() => {
+              if (blockIfNeeded()) return;
+              setShowCreateBiz(true);
+            }}>Get Started</Button>
             <CreateBusinessModal
               isOpen={showCreateBiz}
               onClose={() => setShowCreateBiz(false)}
@@ -923,11 +928,11 @@ export default function Dashboard() {
           empty account.
         </p>
         <div className='flex items-center gap-3'>
-          <Button onClick={handleRetry} isLoading={isRefreshing}>
+          <Button onClick={handleRetry} isLoading={isRefreshing} subscriptionExempt={true}>
             Try again
           </Button>
           <Link to='/sales'>
-            <Button variant='secondary'>Go to Sales</Button>
+            <Button variant='secondary' subscriptionExempt={true}>Go to Sales</Button>
           </Link>
         </div>
       </div>
@@ -1017,6 +1022,7 @@ export default function Dashboard() {
           <Button
             size='sm'
             variant='secondary'
+            subscriptionExempt={true}
             onClick={handleRetry}
             isLoading={isRefreshing}
             className='self-start sm:self-auto shrink-0'
@@ -1666,6 +1672,7 @@ export default function Dashboard() {
                 <Button
                   size='sm'
                   variant='secondary'
+                  subscriptionExempt={true}
                   className='text-xs rounded-lg'
                 >
                   Calculate Tax
@@ -2256,6 +2263,7 @@ function EmptyMini({
         <Button
           size='sm'
           variant='secondary'
+          subscriptionExempt={true}
           className='text-[13px] rounded-lg'
         >
           {linkLabel}

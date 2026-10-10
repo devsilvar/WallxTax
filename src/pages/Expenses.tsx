@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import AddExpenseModal from '@/components/AddExpenseModal.tsx';
 import ReportExportModal from '@/components/ReportExportModal.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
@@ -160,6 +161,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // ─── Component ──────────────────────────────────────────────
 
 export default function Expenses() {
+  const { writesBlocked, blockIfNeeded } = useSubscriptionWriteGate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const fetchExpensesSeqRef = useRef(0);
   const fetchSummarySeqRef = useRef(0);
@@ -335,7 +337,7 @@ export default function Expenses() {
           <p className="mt-1 font-body text-sm text-gray-500">Track your business expenses.</p>
         </div>
         <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-          <Button variant="secondary" onClick={() => setShowReportModal(true)}>
+          <Button variant="secondary" subscriptionExempt={true} onClick={() => setShowReportModal(true)}>
             <Download className="h-4 w-4" /> PDF Report
           </Button>
           <Button onClick={() => { setEditExpense(null); setShowAddModal(true); }}>
@@ -555,7 +557,17 @@ export default function Expenses() {
                       </span>
                     ) : (
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(exp)} className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit expense"><Pencil className="h-4 w-4" /></button>
+                        <button
+                          onClick={() => {
+                            if (blockIfNeeded()) return;
+                            openEdit(exp);
+                          }}
+                          disabled={writesBlocked}
+                          className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={writesBlocked ? 'Upgrade your plan to enable this action' : 'Edit expense'}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         {/* <button onClick={() => handleDelete(exp.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */}
                       </div>
                     )}
@@ -595,7 +607,17 @@ export default function Expenses() {
                       Auto · CITA §25
                     </span>
                   ) : (
-                    <button onClick={() => openEdit(exp)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="Edit expense"><Pencil className="h-4 w-4" /></button>
+                    <button
+                      onClick={() => {
+                        if (blockIfNeeded()) return;
+                        openEdit(exp);
+                      }}
+                      disabled={writesBlocked}
+                      className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={writesBlocked ? 'Upgrade your plan to enable this action' : 'Edit expense'}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
                     /* <button onClick={() => handleDelete(exp.id)} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"><Trash2 className="h-4 w-4" /></button> */
                   )}
                 </div>
@@ -756,9 +778,13 @@ export default function Expenses() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
                               <button
-                                onClick={() => openEdit(t as unknown as Expense)}
-                                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                                title="Edit Expense"
+                                onClick={() => {
+                                  if (blockIfNeeded()) return;
+                                  openEdit(t as unknown as Expense);
+                                }}
+                                disabled={writesBlocked}
+                                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={writesBlocked ? 'Upgrade your plan to enable this action' : 'Edit Expense'}
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>

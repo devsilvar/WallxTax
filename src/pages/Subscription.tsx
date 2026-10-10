@@ -61,11 +61,11 @@ interface PlanOption {
 const PLANS: PlanOption[] = [
   {
     id: 'free',
-    name: '10-days FREE Trial (Freemiums)',
+    name: '30-days FREE Trial (Freemiums)',
     priceMonth: 0,
     priceQuarter: 0,
     priceAnnual: 0,
-    trialBadge: '10-Day Free Trial',
+    trialBadge: '30-Day Free Trial',
     tagline: 'Full exploratory trial for growing businesses and sole vendors.',
     features: ['Everything in Starter, Business and ScaleUp'],
   },
@@ -232,9 +232,9 @@ export default function Subscription() {
       amount: 0,
       period: '',
       cycle: 'trial',
-      billingLabel: '10-Day Free Trial',
-      termLabel: '10-Day Free Trial',
-      subtext: 'Free for 10 days',
+      billingLabel: '30-Day Free Trial',
+      termLabel: '30-Day Free Trial',
+      subtext: 'Free for 30 days',
     };
   };
 
@@ -250,7 +250,7 @@ export default function Subscription() {
 
   // Live countdown derived from the server-backed expiry (trialEndsAt or
   // subscriptionExpiresAt). This is the single source of truth for every
-  // tier — it updates when the admin re-assigns a plan, including the 10-day
+  // tier — it updates when the admin re-assigns a plan, including the 30-day
   // trial reset which writes a fresh trialEndsAt.
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -487,7 +487,7 @@ export default function Subscription() {
               disabled={startingTrial}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm px-6 py-3 transition-colors"
             >
-              {startingTrial ? 'Activating…' : 'Start Free Trial (10 days)'}
+              {startingTrial ? 'Activating…' : 'Start Free Trial (30 days)'}
             </button>
             <button
               type="button"
@@ -641,7 +641,7 @@ export default function Subscription() {
                   <p className='text-xs sm:text-sm text-gray-800 font-semibold leading-snug'>
                     {isFreeTier
                       ? isExpired
-                        ? 'Your 10-day trial has concluded'
+                        ? 'Your 30-day trial has concluded'
                         : 'Full unrestricted access active across Starter, Business & Scale-Up'
                       : isExpired
                         ? `Your ${sub.planName} plan has expired`

@@ -83,10 +83,10 @@ export const AccountQrModal: React.FC<AccountQrModalProps> = ({
         </div>
 
         <div className="flex gap-2">
-          <Button className="flex-1 text-xs rounded-none" onClick={handleCopy}>
+          <Button className="flex-1 text-xs rounded-none" subscriptionExempt={true} onClick={handleCopy}>
             <Copy className="h-3.5 w-3.5" /> Copy Details
           </Button>
-          <Button variant="outline" size="sm" onClick={onClose} className="text-xs rounded-none">
+          <Button variant="outline" size="sm" subscriptionExempt={true} onClick={onClose} className="text-xs rounded-none">
             Close
           </Button>
         </div>

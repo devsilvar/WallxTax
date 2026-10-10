@@ -18,7 +18,7 @@ import {
 export default function Pricing() {
   useDocumentTitle(
     'Subscription Plans | WallXERP',
-    'Simple, predictable subscription plans for Nigerian SMEs. 10-days FREE Trial, Starter at ₦5,000/mo, Business at ₦12,000/quarter, and Scale-Up at ₦45,000/yr.',
+    'Simple, predictable subscription plans for Nigerian SMEs. 30-days FREE Trial, Starter at ₦5,000/mo, Business at ₦12,000/quarter, and Scale-Up at ₦45,000/yr.',
   );
 
   const user = useAuthStore((s) => s.user);
@@ -33,7 +33,7 @@ export default function Pricing() {
     secondsLeft,
     percentRemaining,
     startTrial,
-  } = useTrialTimer(activeBusiness?.createdAt || user?.createdAt);
+  } = useTrialTimer(isAuthenticated ? (activeBusiness?.createdAt || user?.createdAt) : null);
 
   return (
     <div className='bg-white'>
@@ -53,7 +53,7 @@ export default function Pricing() {
             </h1>
 
             <p className='mt-4 sm:mt-5 text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed'>
-              Start with a 10-days FREE Trial with full unrestricted access across all features. No credit card required. Upgrade whenever you need higher capacity and multi-branch management.
+              Start with a 30-days FREE Trial with full unrestricted access across all features. No credit card required. Upgrade whenever you need higher capacity and multi-branch management.
             </p>
           </ScrollReveal>
         </div>
@@ -82,7 +82,7 @@ export default function Pricing() {
 
             {/* Right Block: Personalized Countdown Timer OR Standard Invitation + Rounded Pill Button */}
             <div className='flex-1 px-4 sm:px-6 py-3 sm:py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 bg-emerald-50/20 md:bg-transparent md:rounded-r-full'>
-              {hasStarted && !isExpired ? (
+              {isAuthenticated && hasStarted && !isExpired ? (
                 <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3.5 min-w-0'>
                   <div className='inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold border border-emerald-200/90 shadow-2xs shrink-0'>
                     <span className='h-2 w-2 rounded-full bg-emerald-600 animate-pulse' />
@@ -90,7 +90,7 @@ export default function Pricing() {
                   </div>
                   <div className='min-w-0'>
                     <p className='text-xs sm:text-sm text-gray-800 font-semibold leading-snug'>
-                      Personalized 10-Day Trial Active
+                      Personalized 30-Day Trial Active
                       <span className='text-gray-500 font-normal hidden lg:inline ml-1.5'>
                         • Full unrestricted access across all tiers.
                       </span>
@@ -103,10 +103,10 @@ export default function Pricing() {
                     </div>
                   </div>
                 </div>
-              ) : isExpired ? (
+              ) : isAuthenticated && isExpired ? (
                 <div>
                   <p className='text-xs sm:text-sm font-bold text-gray-900 leading-snug'>
-                    10-Day Trial Period Concluded
+                    30-Day Trial Period Concluded
                   </p>
                   <p className='text-xs text-gray-500 mt-0.5'>
                     Select an executive plan below to lock in permanent capacity.
@@ -353,8 +353,8 @@ export default function Pricing() {
       <FinalCta
         title='Ready to get started? Test WallXERP with zero risk.'
         accentWord='zero'
-        subtitle='Sign up in under 2 minutes. Start with a 10-day free trial with complete access across all features.'
-        buttonText='Start 10-Day Free Trial'
+        subtitle='Sign up in under 2 minutes. Start with a 30-day free trial with complete access across all features.'
+        buttonText='Start 30-Day Free Trial'
         buttonLink='/register?plan=free'
       />
     </div>

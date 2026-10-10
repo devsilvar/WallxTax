@@ -60,11 +60,11 @@ interface PlanOption {
 const PLANS: PlanOption[] = [
   {
     id: 'free',
-    name: '10-days FREE Trial (Freemiums)',
+    name: '30-days FREE Trial (Freemiums)',
     priceMonth: 0,
     priceQuarter: 0,
     priceAnnual: 0,
-    trialBadge: '10-Day Free Trial',
+    trialBadge: '30-Day Free Trial',
     tagline: 'Full exploratory trial for growing businesses and sole vendors.',
     features: ['Everything in Starter, Business and ScaleUp'],
   },
@@ -231,9 +231,9 @@ export default function Subscription() {
       amount: 0,
       period: '',
       cycle: 'trial',
-      billingLabel: '10-Day Free Trial',
-      termLabel: '10-Day Free Trial',
-      subtext: 'Free for 10 days',
+      billingLabel: '30-Day Free Trial',
+      termLabel: '30-Day Free Trial',
+      subtext: 'Free for 30 days',
     };
   };
 
@@ -506,7 +506,7 @@ export default function Subscription() {
                 <div className='min-w-0'>
                   <p className='text-xs sm:text-sm text-gray-800 font-semibold leading-snug'>
                     {isExpired
-                      ? 'Your 10-day trial has concluded'
+                      ? 'Your 30-day trial has concluded'
                       : 'Full unrestricted access active across Starter, Business & Scale-Up'}
                     <span className='text-gray-500 font-normal hidden lg:inline ml-1.5'>
                       •{' '}

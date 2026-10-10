@@ -11,6 +11,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination, Invoice, CustomerCredit } from '@/types';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 interface TransactionClassification {
   id: string;
@@ -44,6 +45,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
   const biz = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
+  const { blockIfNeeded } = useSubscriptionWriteGate();
   
   const [searchParams] = useSearchParams();
   const targetTxnId = searchParams.get('txnId') || searchParams.get('highlightId');
@@ -146,6 +148,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
   }
 
   async function handleVerify() {
+    if (blockIfNeeded()) return;
     if (!biz || !verifyModal || !selectedClassification) {
       toast.error('Please select a classification');
       return;
@@ -220,6 +223,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
   }
 
   async function handleInvoiceReconcile() {
+    if (blockIfNeeded()) return;
     if (!biz || !verifyModal || !selectedInvoiceId) {
       toast.error('Please select an invoice to match');
       return;
@@ -276,6 +280,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
   }
 
   async function handleCreditReconcile() {
+    if (blockIfNeeded()) return;
     if (!biz || !verifyModal || !selectedCreditId) {
       toast.error('Please select a debtor to match');
       return;
@@ -310,6 +315,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
   }
 
   function openVerifyModal(transaction: SalesTransaction) {
+    if (blockIfNeeded()) return;
     setVerifyModal({ transaction });
     setTargetBusinessId(biz?.id || '');
     setWizardStep('primary');
@@ -559,6 +565,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
             <Button
               size="sm"
               variant="secondary"
+              subscriptionExempt={true}
               onClick={() => setPage(page - 1)}
               disabled={!pagination.hasPrev || loading}
             >
@@ -567,6 +574,7 @@ export default function UnverifiedTransactions({ embedded = false }: UnverifiedT
             <Button
               size="sm"
               variant="secondary"
+              subscriptionExempt={true}
               onClick={() => setPage(page + 1)}
               disabled={!pagination.hasNext || loading}
             >

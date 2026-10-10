@@ -1,10 +1,12 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
+  subscriptionExempt?: boolean;
   children: ReactNode;
 }
 
@@ -26,17 +28,27 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   isLoading,
+  subscriptionExempt,
   children,
   disabled,
+  title,
   className = '',
   ...props
 }: ButtonProps) {
+  const sub = useSubscriptionStatus();
+  const writesBlocked = !sub.canWrite && !!sub.expiresAt;
+  const shouldGate = writesBlocked && !subscriptionExempt;
+
+  const isDisabled = disabled || isLoading || shouldGate;
+  const resolvedTitle = shouldGate ? 'Upgrade your plan to enable this action' : title;
+
   const roundedClass = className.includes('rounded-') ? '' : 'rounded-lg';
 
   return (
     <button
       className={`inline-flex items-center justify-center gap-2 ${roundedClass} font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
-      disabled={disabled || isLoading}
+      disabled={isDisabled}
+      title={resolvedTitle}
       {...props}
     >
       {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}

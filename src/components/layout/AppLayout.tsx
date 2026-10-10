@@ -9,7 +9,6 @@ import CommandPalette from '@/components/CommandPalette.tsx';
 import ReviewPromptModal from '@/components/ReviewPromptModal.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 import SubscriptionGraceBanner from '@/components/subscription/SubscriptionGraceBanner.tsx';
-import SubscriptionExpiredModal from '@/components/subscription/SubscriptionExpiredModal.tsx';
 import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import { resolvePageTitle } from '@/lib/pageTitles.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
@@ -171,7 +170,6 @@ export default function AppLayout({
 
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <ReviewPromptModal />
-      <SubscriptionExpiredModal />
       <TrialWelcomeModal
         isOpen={showTrialWelcome}
         onClose={() => {

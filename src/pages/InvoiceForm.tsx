@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
@@ -60,6 +61,7 @@ function buildPaymentTerms(
 const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '' });
 
 export default function InvoiceForm() {
+  const { blockIfNeeded } = useSubscriptionWriteGate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
@@ -251,6 +253,7 @@ export default function InvoiceForm() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (blockIfNeeded()) return;
     if (!biz) return;
 
     const err = validate();
@@ -637,6 +640,7 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
             <Button
               type="button"
               variant="secondary"
+              subscriptionExempt={true}
               onClick={() => navigate(isEdit ? `/invoices/${id}` : '/invoices')}
             >
               Cancel

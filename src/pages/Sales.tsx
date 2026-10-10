@@ -28,6 +28,7 @@ import TransactionDetailPanel, { type TransactionDetailData } from '@/components
 const LazyUnverified = lazy(() => import('./UnverifiedTransactions.tsx'));
 
 import Button from '@/components/ui/Button.tsx';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import ErrorState from '@/components/ui/ErrorState.tsx';
 import EmptyState from '@/components/ui/EmptyState.tsx';
@@ -150,6 +151,7 @@ const SOURCE_COLORS: Record<string, string> = {
 // ─── Component ──────────────────────────────────────────────
 
 export default function Sales() {
+  const { writesBlocked, blockIfNeeded } = useSubscriptionWriteGate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const creditSummary = useCreditStore((s) => s.summary);
   const fetchCreditSummary = useCreditStore((s) => s.fetchSummary);
@@ -461,7 +463,7 @@ export default function Sales() {
           </p>
         </div>
         <div className='flex flex-wrap gap-2 self-start sm:self-auto'>
-          <Button variant='secondary' onClick={() => setShowReportModal(true)}>
+          <Button variant='secondary' subscriptionExempt={true} onClick={() => setShowReportModal(true)}>
             <Download className='h-4 w-4' /> PDF Report
           </Button>
           <Button variant='secondary' onClick={() => setShowImport(true)}>
@@ -947,9 +949,13 @@ export default function Sales() {
                           <FileText className='h-4 w-4' />
                         </button>
                         <button
-                          onClick={() => openEdit(s)}
-                          className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                          title='Edit Sale'
+                          onClick={() => {
+                            if (blockIfNeeded()) return;
+                            openEdit(s);
+                          }}
+                          disabled={writesBlocked}
+                          className='rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
+                          title={writesBlocked ? 'Upgrade your plan to enable this action' : 'Edit Sale'}
                         >
                           <Pencil className='h-4 w-4' />
                         </button>
@@ -1011,9 +1017,13 @@ export default function Sales() {
                       <FileText className='h-4 w-4' />
                     </button>
                     <button
-                      onClick={() => openEdit(s)}
-                      className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                      title='Edit Sale'
+                      onClick={() => {
+                        if (blockIfNeeded()) return;
+                        openEdit(s);
+                      }}
+                      disabled={writesBlocked}
+                      className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
+                      title={writesBlocked ? 'Upgrade your plan to enable this action' : 'Edit Sale'}
                     >
                       <Pencil className='h-4 w-4' />
                     </button>
@@ -1203,11 +1213,13 @@ export default function Sales() {
                                 <FileText className='h-4 w-4' />
                               </button>
                               <button
-                                onClick={() =>
-                                  openEdit(t as unknown as SalesTransaction)
-                                }
-                                className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                                title='Edit Sale'
+                                onClick={() => {
+                                  if (blockIfNeeded()) return;
+                                  openEdit(t as unknown as SalesTransaction);
+                                }}
+                                disabled={writesBlocked}
+                                className='rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed'
+                                title={writesBlocked ? 'Upgrade your plan to enable this action' : 'Edit Sale'}
                               >
                                 <Pencil className='h-4 w-4' />
                               </button>

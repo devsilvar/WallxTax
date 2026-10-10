@@ -67,7 +67,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
     expect(screen.getByText(/90 Days \(Quarter\)/i)).toBeInTheDocument();
     expect(screen.getByText(/1 Year \(Annual\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Lifetime \(No Expiry\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Reset 10-Day Trial/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reset 30-Day Trial/i)).toBeInTheDocument();
     expect(screen.getByText(/Custom Date/i)).toBeInTheDocument();
   });
 
@@ -141,7 +141,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('handles resetting 10-day trial correctly', async () => {
+  it('handles resetting 30-day trial correctly', async () => {
     (api.patch as any).mockResolvedValueOnce({
       data: {
         success: true,
@@ -150,7 +150,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
           id: mockUser.id,
           subscriptionTier: 'free',
           subscriptionExpiresAt: null,
-          trialEndsAt: new Date(Date.now() + 10 * 86400000).toISOString(),
+          trialEndsAt: new Date(Date.now() + 30 * 86400000).toISOString(),
         },
       },
     });
@@ -161,13 +161,13 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
     const freeCard = screen.getByText('Free Trial');
     fireEvent.click(freeCard);
 
-    // Select Reset 10-Day Trial preset
-    const resetTrialBtn = screen.getByText(/Reset 10-Day Trial/i);
+    // Select Reset 30-Day Trial preset
+    const resetTrialBtn = screen.getByText(/Reset 30-Day Trial/i);
     fireEvent.click(resetTrialBtn);
 
     // Fill in reason
     const reasonInput = screen.getByPlaceholderText(/Paid via GTBank direct transfer/i);
-    fireEvent.change(reasonInput, { target: { value: 'Courtesy 10-day sales evaluation extension' } });
+    fireEvent.change(reasonInput, { target: { value: 'Courtesy 30-day sales evaluation extension' } });
 
     // Submit
     const submitBtn = screen.getByRole('button', { name: /Save Plan Changes/i });
@@ -179,7 +179,7 @@ describe('Phase 2 Component Test: ChangePlanModal', () => {
         durationDays: undefined,
         resetTrial: true,
         customExpiresAt: undefined,
-        reason: 'Courtesy 10-day sales evaluation extension',
+        reason: 'Courtesy 30-day sales evaluation extension',
       });
     });
 

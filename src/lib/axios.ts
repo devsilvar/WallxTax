@@ -29,6 +29,14 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
     "Something went wrong on our end. Please try again in a moment.",
   INTERNAL_SERVER_ERROR:
     "Something went wrong on our end. Please try again in a moment.",
+  TRIAL_EXPIRED:
+    "Your 30-day free trial has ended. Existing records and money withdrawals are safe, but creating new records requires an active plan.",
+  TRIAL_IN_GRACE_PERIOD:
+    "Your free trial is in a 2-day grace period. Existing records and money withdrawals are safe, but creating new records requires an active plan.",
+  SUBSCRIPTION_EXPIRED:
+    "Your subscription has expired. Existing records and money withdrawals are safe, but creating new records requires renewing your plan.",
+  SUBSCRIPTION_IN_GRACE_PERIOD:
+    "Your subscription is in a grace period. Existing records and money withdrawals are safe, but creating new records requires renewing your plan.",
 };
 
 /** Patterns in raw error messages that indicate connectivity issues. */

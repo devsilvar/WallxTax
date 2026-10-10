@@ -64,7 +64,7 @@ export default function TrialWelcomeModal({
               <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
               <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
             </span>
-            <span>10-Day Free Trial Active</span>
+            <span>30-Day Free Trial Active</span>
           </div>
 
           <h2 className='text-xl font-bold text-gray-900 tracking-tight leading-tight'>

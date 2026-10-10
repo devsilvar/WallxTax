@@ -91,8 +91,8 @@ export function useSubscriptionStatus(): SubscriptionStatus {
   // useTrialTimer (and any re-used tab) derives its countdown from
   // wallx_trial_started_at. When the admin flips the user to a paid plan we
   // must clear that clock, and when the admin resets the user back to the
-  // 10-day free trial we must seed it from the fresh trialEndsAt so the
-  // counter starts at exactly 10 days rather than resuming from an old
+  // 30-day free trial we must seed it from the fresh trialEndsAt so the
+  // counter starts at exactly 30 days rather than resuming from an old
   // stale value.
   useEffect(() => {
     if (!user) return;
@@ -124,9 +124,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         isExpired: false,
         canWrite: true,
         expiresAt: null,
-        daysRemaining: 10,
+        daysRemaining: 30,
         graceHoursRemaining: 0,
-        formattedCountdown: '10 Days Left',
+        formattedCountdown: '30 Days Left',
       };
     }
 
@@ -215,10 +215,13 @@ export function useSubscriptionStatus(): SubscriptionStatus {
       };
     }
 
-    // 2. Free Trial Tier
+    // 2. Free Trial Tier — use longer of stored vs derived so a 10→30
+    // bump re-activates users whose stamp was written at the old length.
     let trialEndsAt: Date;
     if (user.trialEndsAt) {
-      trialEndsAt = new Date(user.trialEndsAt);
+      const stored = new Date(user.trialEndsAt);
+      const derived = new Date(new Date(user.createdAt || now).getTime() + TRIAL_DAYS * MS_PER_DAY);
+      trialEndsAt = stored.getTime() > derived.getTime() ? stored : derived;
     } else {
       const created = new Date(user.createdAt || now);
       trialEndsAt = new Date(created.getTime() + TRIAL_DAYS * MS_PER_DAY);

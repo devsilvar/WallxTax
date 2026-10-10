@@ -25,6 +25,7 @@ import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import LinkDvaInvoiceModal from '@/components/invoices/LinkDvaInvoiceModal.tsx';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { InvoiceStatus, InvoicePaymentMethod } from '@/types/index.ts';
@@ -550,6 +551,7 @@ export default function InvoiceDetail() {
           <Button
             variant='secondary'
             size='sm'
+            subscriptionExempt={true}
             onClick={handleDownload}
             isLoading={actionLoading === 'pdf'}
           >
@@ -891,6 +893,7 @@ function ShareCard(props: {
     onCopyLink,
     copied,
   } = props;
+  const { writesBlocked, blockIfNeeded } = useSubscriptionWriteGate();
   const hasPhone = Boolean(phone);
 
   const headline = isPaid
@@ -928,8 +931,12 @@ function ShareCard(props: {
         <div className='flex shrink-0 items-center gap-2 pl-12 sm:pl-0'>
           <button
             type='button'
-            onClick={onShare}
-            disabled={!hasPhone || loading || disabled}
+            onClick={() => {
+              if (blockIfNeeded()) return;
+              onShare();
+            }}
+            disabled={writesBlocked || !hasPhone || loading || disabled}
+            title={writesBlocked ? 'Upgrade your plan to enable this action' : undefined}
             className='inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#128C7E] focus:outline-none focus:ring-2 focus:ring-[#25D366]/40 disabled:cursor-not-allowed disabled:opacity-50'
           >
             {loading ? (

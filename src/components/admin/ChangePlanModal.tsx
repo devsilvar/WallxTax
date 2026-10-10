@@ -17,10 +17,17 @@ const TIERS = [
   { id: 'starter', name: 'Starter', price: '₦5,000/mo', desc: '2 Businesses, 3 Team Members, 15 AI Queries' },
   { id: 'business', name: 'Business', price: '₦12,000/qtr', desc: '5 Businesses, 10 Team Members, BNPL Credits' },
   { id: 'scale', name: 'Scale-Up', price: '₦45,000/yr', desc: 'Unlimited Businesses & Members, VIP Support' },
-  { id: 'free', name: 'Free Trial', price: '₦0', desc: '10-Day Free Trial Evaluation' },
+  { id: 'free', name: 'Free Trial', price: '₦0', desc: '30-Day Free Trial Evaluation' },
 ] as const;
 
 type PresetDuration = '30' | '90' | '365' | 'lifetime' | 'reset_trial' | 'custom';
+
+const TIER_DURATION: Record<string, PresetDuration> = {
+  free: 'reset_trial',
+  starter: '30',
+  business: '90',
+  scale: '365',
+};
 
 const TIER_ALIASES: Record<string, string> = {
   scale_up: 'scale',
@@ -174,8 +181,9 @@ export default function ChangePlanModal({
                   type='button'
                   onClick={() => {
                     setSelectedTier(tier.id);
-                    if (tier.id === 'free' && durationPreset !== 'reset_trial') {
-                      setDurationPreset('reset_trial');
+                    const autoDuration = TIER_DURATION[tier.id];
+                    if (autoDuration && autoDuration !== durationPreset) {
+                      setDurationPreset(autoDuration);
                     }
                   }}
                   className={`flex flex-col text-left p-2.5 rounded-lg border transition-all ${
@@ -255,7 +263,7 @@ export default function ChangePlanModal({
                   : 'border-hairline text-ink hover:bg-panel-subtle'
               }`}
             >
-              Reset 10-Day Trial
+              Reset 30-Day Trial
             </button>
             <button
               type='button'

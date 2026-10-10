@@ -11,7 +11,7 @@ describe('Phase 4: useSubscriptionStatus Hook Unit Tests', () => {
     useAuthStore.setState({ user: null, isAuthenticated: false });
   });
 
-  it('provides active trial status for a fresh account (within 10 days)', () => {
+  it('provides active trial status for a fresh account (within 30 days)', () => {
     const createdAt = new Date(Date.now() - 3 * ONE_DAY_MS).toISOString();
     const mockUser = {
       id: 'u-1',
@@ -33,11 +33,11 @@ describe('Phase 4: useSubscriptionStatus Hook Unit Tests', () => {
     expect(result.current.isTrial).toBe(true);
     expect(result.current.isPaid).toBe(false);
     expect(result.current.tier).toBe('free');
-    expect(result.current.daysRemaining).toBe(7);
+    expect(result.current.daysRemaining).toBe(27);
   });
 
-  it('activates 2-day read-only grace period on day 11', () => {
-    const createdAt = new Date(Date.now() - 11 * ONE_DAY_MS).toISOString();
+  it('activates 2-day read-only grace period on day 31', () => {
+    const createdAt = new Date(Date.now() - 31 * ONE_DAY_MS).toISOString();
     const mockUser = {
       id: 'u-2',
       email: 'grace@sme.ng',
@@ -59,8 +59,8 @@ describe('Phase 4: useSubscriptionStatus Hook Unit Tests', () => {
     expect(result.current.formattedCountdown).toContain('Grace period');
   });
 
-  it('completely marks expired and blocks access on day 13 (past grace period)', () => {
-    const createdAt = new Date(Date.now() - 13 * ONE_DAY_MS).toISOString();
+  it('completely marks expired and blocks access on day 33 (past grace period)', () => {
+    const createdAt = new Date(Date.now() - 33 * ONE_DAY_MS).toISOString();
     const mockUser = {
       id: 'u-3',
       email: 'expired@sme.ng',

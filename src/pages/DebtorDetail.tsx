@@ -21,6 +21,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CreditStatus } from '@/types/index.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 import RecordCreditPaymentModal from '@/components/debtors/RecordCreditPaymentModal.tsx';
 import LinkDvaCreditModal from '@/components/debtors/LinkDvaCreditModal.tsx';
@@ -109,6 +110,7 @@ export default function DebtorDetail() {
   const fetchCredit = useCreditStore((s) => s.fetchCredit);
   const clearActive = useCreditStore((s) => s.clearActive);
   const sendWhatsApp = useCreditStore((s) => s.sendWhatsApp);
+  const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [dvaModalOpen, setDvaModalOpen] = useState(false);
@@ -256,38 +258,56 @@ export default function DebtorDetail() {
         {canAct && (
           <div className='flex flex-wrap items-center gap-1.5 shrink-0'>
             <Button
-              onClick={() => setPaymentModalOpen(true)}
+              onClick={() => {
+                if (blockIfNeeded()) return;
+                setPaymentModalOpen(true);
+              }}
               className='text-xs font-semibold px-3 py-2 rounded-lg gap-1.5'
             >
               <CreditCard className='h-3.5 w-3.5' /> Record Payment
             </Button>
             <button
-              onClick={() => setDvaModalOpen(true)}
-              className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors'
+              onClick={() => {
+                if (blockIfNeeded()) return;
+                setDvaModalOpen(true);
+              }}
+              disabled={writesBlocked}
+              className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
             >
               <Landmark className='h-3.5 w-3.5 inline -mt-px mr-1' />
               DVA
             </button>
             {c.customerPhone && (
               <button
-                onClick={handleWhatsApp}
-                disabled={isSendingWhatsApp}
-                className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40'
+                onClick={() => {
+                  if (blockIfNeeded()) return;
+                  handleWhatsApp();
+                }}
+                disabled={isSendingWhatsApp || writesBlocked}
+                className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
               >
                 <MessageCircle className='h-3.5 w-3.5 inline -mt-px mr-1' />
                 WhatsApp
               </button>
             )}
             <button
-              onClick={() => setEditModalOpen(true)}
-              className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors'
+              onClick={() => {
+                if (blockIfNeeded()) return;
+                setEditModalOpen(true);
+              }}
+              disabled={writesBlocked}
+              className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
             >
               <Pencil className='h-3.5 w-3.5 inline -mt-px mr-1' />
               Edit
             </button>
             <button
-              onClick={() => setWriteOffModalOpen(true)}
-              className='text-xs font-medium px-2.5 py-2 rounded-lg border border-gray-200 text-gray-400 hover:text-rose-600 hover:border-rose-200 transition-colors'
+              onClick={() => {
+                if (blockIfNeeded()) return;
+                setWriteOffModalOpen(true);
+              }}
+              disabled={writesBlocked}
+              className='text-xs font-medium px-2.5 py-2 rounded-lg border border-gray-200 text-gray-400 hover:text-rose-600 hover:border-rose-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
               title='Write off'
             >
               <Ban className='h-3.5 w-3.5' />
@@ -387,8 +407,12 @@ export default function DebtorDetail() {
                 </p>
                 {canAct && (
                   <button
-                    onClick={() => setPaymentModalOpen(true)}
-                    className='mt-4 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors'
+                    onClick={() => {
+                      if (blockIfNeeded()) return;
+                      setPaymentModalOpen(true);
+                    }}
+                    disabled={writesBlocked}
+                    className='mt-4 text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
                   >
                     Record first payment →
                   </button>

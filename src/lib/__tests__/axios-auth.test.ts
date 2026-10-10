@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
-import api from '../axios';
+import api, { getErrorMessage } from '../axios';
 
 describe('Axios Authentication & Interceptor Suite', () => {
   let originalLocation: Location;
@@ -218,6 +218,46 @@ describe('Axios Authentication & Interceptor Suite', () => {
 
       await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
       expect(window.location.href).toBe('/login');
+    });
+  });
+
+  describe('Subscription Error Message Mapping', () => {
+    it('returns friendly message for TRIAL_EXPIRED code', () => {
+      const error = {
+        isAxiosError: true,
+        response: {
+          status: 403,
+          data: {
+            error: {
+              code: 'TRIAL_EXPIRED',
+              message: 'Raw server trial expired message',
+            },
+          },
+        },
+      };
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      const msg = getErrorMessage(error);
+      expect(msg).toContain('30-day free trial has ended');
+    });
+
+    it('returns friendly message for TRIAL_IN_GRACE_PERIOD code', () => {
+      const error = {
+        isAxiosError: true,
+        response: {
+          status: 403,
+          data: {
+            error: {
+              code: 'TRIAL_IN_GRACE_PERIOD',
+              message: 'Raw server grace period message',
+            },
+          },
+        },
+      };
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      const msg = getErrorMessage(error);
+      expect(msg).toContain('2-day grace period');
     });
   });
 });

@@ -98,7 +98,8 @@ export default function AddSaleModal({
   // Virtual store voucher state
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [voucherCustomer, setVoucherCustomer] = useState<Customer | null>(null);
-  const [voucherStepUpToken, setVoucherStepUpToken] = useState<string | null>(null);
+  const [voucherPin, setVoucherPin] = useState<string | null>(null);
+  const [voucherLast4, setVoucherLast4] = useState<string | null>(null);
   const [voucherBalance, setVoucherBalance] = useState<number | null>(null);
 
   // Cash change-to-voucher state
@@ -129,7 +130,8 @@ export default function AddSaleModal({
   useEffect(() => {
     if (!isOpen) return;
     setVoucherCustomer(null);
-    setVoucherStepUpToken(null);
+    setVoucherPin(null);
+    setVoucherLast4(null);
     setVoucherBalance(null);
     setAmountReceived('');
     setCreditChangeToVoucher(false);
@@ -315,7 +317,7 @@ export default function AddSaleModal({
     }
 
     if (source === 'store_voucher') {
-      if (!voucherCustomer) {
+      if (!voucherCustomer || !voucherPin || !voucherLast4) {
         toast.error('Please authenticate customer store voucher before recording sale');
         setIsVoucherModalOpen(true);
         setSaving(false);
@@ -323,7 +325,8 @@ export default function AddSaleModal({
       }
       body.metadata = {
         voucherCustomerId: voucherCustomer.id,
-        voucherStepUpToken: voucherStepUpToken || undefined,
+        voucherPin: voucherPin,
+        voucherLast4: voucherLast4,
       };
       body.customerId = voucherCustomer.id;
     } else if (source === 'cash' && creditChangeToVoucher && !isEdit) {
@@ -699,10 +702,11 @@ export default function AddSaleModal({
       requiredAmount={currentTotal}
       initialCustomer={voucherCustomer}
       onClose={() => setIsVoucherModalOpen(false)}
-      onAuthorized={({ customerId, customerName: cName, stepUpToken, availableBalance }) => {
+      onAuthorized={({ customerId, customerName: cName, voucherPin: pin, voucherLast4: last4, availableBalance }) => {
         setVoucherCustomer({ id: customerId, businessId, name: cName, isActive: true, createdAt: new Date().toISOString() });
         setCustomerName(cName);
-        setVoucherStepUpToken(stepUpToken || null);
+        setVoucherPin(pin);
+        setVoucherLast4(last4);
         setVoucherBalance(availableBalance);
       }}
     />

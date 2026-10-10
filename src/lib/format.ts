@@ -36,3 +36,18 @@ export function formatDate(date: string | Date | undefined | null): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Extract the last 4 digits of a phone number for voucher authentication.
+ * Returns empty string if phone is too short or invalid.
+ * 
+ * @example
+ * maskPhoneSuffix('08012345678') // '5678'
+ * maskPhoneSuffix('+234 803 456 7890') // '7890'
+ */
+export function maskPhoneSuffix(phone: string | undefined | null): string {
+  if (!phone) return '';
+  const cleaned = phone.trim().replace(/\D/g, ''); // Remove non-digits
+  if (cleaned.length < 4) return '';
+  return cleaned.slice(-4);
+}

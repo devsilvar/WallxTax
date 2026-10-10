@@ -20,6 +20,7 @@ import { useBusinessStore } from '@/stores/business.store';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 interface Message {
   id: string;
@@ -329,6 +330,7 @@ function TypingDots() {
 export default function AIAssistant() {
   const biz = useBusinessStore((s) => s.activeBusiness);
   const bizId = biz?.id ?? '';
+  const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
 
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -428,6 +430,7 @@ export default function AIAssistant() {
   }, []);
 
   const sendMessage = async (text: string, base?: Message[]) => {
+    if (blockIfNeeded()) return;
     if (!text.trim() || !bizId || loading) return;
 
     const query = text.trim();
@@ -885,13 +888,13 @@ export default function AIAssistant() {
                   }
                 }}
                 rows={1}
-                disabled={loading}
-                placeholder='Ask about sales, expenses, margins, debtors or tax…'
+                disabled={loading || writesBlocked}
+                placeholder={writesBlocked ? 'Subscription expired — renew to ask AI questions' : 'Ask about sales, expenses, margins, debtors or tax…'}
                 className='max-h-40 min-h-[2.25rem] flex-1 resize-none bg-transparent px-3 py-1.5 text-[0.9375rem] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-hidden disabled:opacity-60'
               />
               <button
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim() || loading}
+                disabled={!input.trim() || loading || writesBlocked}
                 aria-label='Send message'
                 className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white transition-all hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400'
               >

@@ -1,8 +1,9 @@
 /**
  * SubscriptionGraceBanner — WallXERP
  *
- * Renders an alert banner during the 2-day read-only grace period,
- * informing users that their records are safe while reminding them to upgrade.
+ * Renders an alert banner during the 2-day read-only grace period and post-trial
+ * read-only lockout, informing users that their records and withdrawals are safe
+ * while reminding them to upgrade without blocking dashboard access.
  *
  * @author WallX Engineering Team
  */
@@ -13,25 +14,35 @@ import { AlertTriangle, ArrowRight, X } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 export default function SubscriptionGraceBanner() {
-  const { isReadOnlyGrace, graceHoursRemaining } = useSubscriptionStatus();
+  const { isReadOnlyGrace, isExpired, canWrite, graceHoursRemaining } = useSubscriptionStatus();
   const [dismissed, setDismissed] = useState(false);
 
-  if (!isReadOnlyGrace || dismissed) {
+  const shouldShow = !canWrite && !!isExpired; // covers grace AND expired
+  if (!shouldShow || dismissed) {
     return null;
   }
+
+  const isGrace = isReadOnlyGrace;
+  const message = isGrace ? (
+    <>
+      <strong>Read-Only Grace Period:</strong> You have{' '}
+      <span className="font-semibold underline">
+        {graceHoursRemaining > 0 ? `${graceHoursRemaining} hours left` : 'ending soon'}
+      </span>{' '}
+      to upgrade. Existing records and tax filings are safe, but new sales and invoices cannot be added.
+    </>
+  ) : (
+    <>
+      <strong>Your trial has ended.</strong> Upgrade to re-enable actions. Your data is safe and withdrawals remain available.
+    </>
+  );
 
   return (
     <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2.5 sm:px-6">
       <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
         <div className="flex items-center gap-2 text-amber-900">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-          <span>
-            <strong>Read-Only Grace Period:</strong> You have{' '}
-            <span className="font-semibold underline">
-              {graceHoursRemaining > 0 ? `${graceHoursRemaining} hours left` : 'ending soon'}
-            </span>{' '}
-            to upgrade. Existing records and tax filings are safe, but new sales and invoices cannot be added.
-          </span>
+          <span>{message}</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -45,7 +56,7 @@ export default function SubscriptionGraceBanner() {
           <button
             onClick={() => setDismissed(true)}
             aria-label="Dismiss banner"
-            className="text-amber-700 hover:text-amber-900 p-0.5 rounded transition-colors"
+            className="text-amber-700 hover:text-amber-900 p-0.5 rounded transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>

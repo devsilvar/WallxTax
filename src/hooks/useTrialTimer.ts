@@ -20,21 +20,21 @@ export interface TrialTimerState {
 }
 
 export function useTrialTimer(accountCreatedAt?: string | null): TrialTimerState {
-  // Determine start timestamp:
-  // 1. If accountCreatedAt exists (authenticated user), use its timestamp as ground truth.
-  // 2. Otherwise, check localStorage.
+  // Determine start timestamp — server truth only.
+  // When accountCreatedAt is explicitly null the caller is logged-out and
+  // the countdown must stay hidden (no localStorage fallback per product spec).
   const getInitialStartTimestamp = useCallback((): number | null => {
     if (accountCreatedAt) {
       const parsed = new Date(accountCreatedAt).getTime();
       if (!Number.isNaN(parsed) && parsed > 0) {
-        try {
-          localStorage.setItem(STORAGE_KEY, parsed.toString());
-        } catch {
-          // Ignore localStorage errors (private browsing)
-        }
         return parsed;
       }
     }
+
+    // Intentionally no localStorage fallback — pricing countdown is
+    // derived from the authenticated user's server tier/createdAt only.
+    // Passing null means "logged out — show no timer".
+    if (accountCreatedAt === null) return null;
 
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -87,11 +87,11 @@ export function useTrialTimer(accountCreatedAt?: string | null): TrialTimerState
     return {
       hasStarted: false,
       isExpired: false,
-      daysLeft: 10,
+      daysLeft: 30,
       hoursLeft: 0,
       minutesLeft: 0,
       secondsLeft: 0,
-      formattedTime: '10 Days',
+      formattedTime: '30 Days',
       percentRemaining: 100,
       startTrial,
       startedAt: null,

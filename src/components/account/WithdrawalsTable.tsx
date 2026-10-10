@@ -176,6 +176,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
               <Button
                 variant="primary"
                 size="sm"
+                subscriptionExempt={true}
                 onClick={onRequestWithdrawal}
                 className="mt-4 text-xs bg-purple-900 hover:bg-purple-950 text-white cursor-pointer"
               >

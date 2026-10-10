@@ -12,6 +12,8 @@ import {
   RefreshCw,
   UserCheck,
   Loader2,
+  Lock,
+  KeyRound,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
@@ -22,6 +24,8 @@ import EmptyState from '@/components/ui/EmptyState.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCustomerStore } from '@/stores/customer.store.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { maskPhoneSuffix } from '@/lib/format';
 import type { Customer } from '@/types/index.ts';
 
 function formatNaira(n: number) {
@@ -61,6 +65,7 @@ export default function Customers() {
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const myRole = activeBusiness?.myRole;
   const isManagerOrOwner = myRole === 'owner' || myRole === 'manager';
+  const { blockIfNeeded } = useSubscriptionWriteGate();
 
   const {
     customers,
@@ -80,6 +85,8 @@ export default function Customers() {
     fetchCustomerCard,
     activeCustomerCard,
     cardLoading,
+    resendVoucherPin,
+    changeVoucherPin,
   } = useCustomerStore();
 
   const [activeTab, setActiveTab] = useState<'customers' | 'logs'>('customers');
@@ -111,6 +118,13 @@ export default function Customers() {
   const [adjustAmount, setAdjustAmount] = useState<string>('');
   const [adjustReason, setAdjustReason] = useState<string>('');
   const [isSubmittingAdjust, setIsSubmittingAdjust] = useState(false);
+
+  // Change PIN Modal state
+  const [selectedCustomerForPinChange, setSelectedCustomerForPinChange] = useState<Customer | null>(null);
+  const [pinOldPin, setPinOldPin] = useState<string>('');
+  const [pinNewPin, setPinNewPin] = useState<string>('');
+  const [pinLast4, setPinLast4] = useState<string>('');
+  const [isSubmittingPinChange, setIsSubmittingPinChange] = useState(false);
 
   // History/Ledger Modal state
   const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<Customer | null>(null);
@@ -155,6 +169,7 @@ export default function Customers() {
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id || !newName.trim() || !newPhone.trim()) {
       toast.error('Customer name and phone number are required');
       return;
@@ -184,6 +199,7 @@ export default function Customers() {
 
   const handleTopUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id || !selectedCustomerForTopUp) return;
     const num = Number(topUpAmount);
     if (isNaN(num) || num <= 0) {
@@ -212,6 +228,7 @@ export default function Customers() {
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfNeeded()) return;
     if (!activeBusiness?.id || !selectedCustomerForAdjust) return;
     const num = Number(adjustAmount);
     if (isNaN(num) || num === 0) {
@@ -242,6 +259,54 @@ export default function Customers() {
     }
   };
 
+  const handleResendPin = async (customer: Customer) => {
+    if (blockIfNeeded()) return;
+    if (!activeBusiness?.id) return;
+    try {
+      const res = await resendVoucherPin(activeBusiness.id, customer.id);
+      toast.success(res.message || 'New PIN sent to customer email');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to resend PIN');
+    }
+  };
+
+  const handleChangePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (blockIfNeeded()) return;
+    if (!activeBusiness?.id || !selectedCustomerForPinChange) return;
+
+    if (!/^\d{6}$/.test(pinOldPin.trim())) {
+      toast.error('Old PIN must be exactly 6 digits');
+      return;
+    }
+    if (!/^\d{6}$/.test(pinNewPin.trim())) {
+      toast.error('New PIN must be exactly 6 digits');
+      return;
+    }
+    if (!/^\d{4}$/.test(pinLast4.trim())) {
+      toast.error('Last 4 digits of phone must be exactly 4 digits');
+      return;
+    }
+
+    setIsSubmittingPinChange(true);
+    try {
+      const res = await changeVoucherPin(activeBusiness.id, selectedCustomerForPinChange.id, {
+        oldPin: pinOldPin.trim(),
+        newPin: pinNewPin.trim(),
+        last4Phone: pinLast4.trim(),
+      });
+      toast.success(res.message || 'Voucher PIN changed successfully');
+      setSelectedCustomerForPinChange(null);
+      setPinOldPin('');
+      setPinNewPin('');
+      setPinLast4('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to change PIN');
+    } finally {
+      setIsSubmittingPinChange(false);
+    }
+  };
+
   const openHistoryModal = (c: Customer) => {
     if (!activeBusiness?.id) return;
     setSelectedCustomerForHistory(c);
@@ -266,6 +331,7 @@ export default function Customers() {
           <Button
             variant="secondary"
             size="sm"
+            subscriptionExempt={true}
             onClick={handleRefresh}
             className="flex items-center gap-1.5 text-xs"
           >
@@ -274,7 +340,10 @@ export default function Customers() {
           </Button>
           <Button
             size="sm"
-            onClick={() => setIsAddCustomerOpen(true)}
+            onClick={() => {
+              if (blockIfNeeded()) return;
+              setIsAddCustomerOpen(true);
+            }}
             className="flex items-center gap-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -453,8 +522,17 @@ export default function Customers() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono">
-                          {c.phone || '—'}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {c.phone ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-600">{c.phone}</span>
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-mono font-semibold border border-blue-100">
+                                ●●{maskPhoneSuffix(c.phone)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {c.card ? (
@@ -481,11 +559,12 @@ export default function Customers() {
                           {c.createdAt ? formatDate(c.createdAt) : '—'}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
                             <Button
                               variant="secondary"
                               size="sm"
                               onClick={() => {
+                                if (blockIfNeeded()) return;
                                 setSelectedCustomerForTopUp(c);
                                 setTopUpAmount('');
                                 setTopUpNotes('');
@@ -494,24 +573,52 @@ export default function Customers() {
                             >
                               + Top Up Voucher
                             </Button>
-                            {isManagerOrOwner && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedCustomerForAdjust(c);
-                                  setAdjustAmount('');
-                                  setAdjustReason('');
-                                }}
-                                className="text-xs py-1 px-2 text-gray-600 hover:text-gray-800"
-                                title="Adjust balance (Owner/Manager)"
-                              >
-                                <SlidersHorizontal className="w-3.5 h-3.5" />
-                              </Button>
+                            {isManagerOrOwner && c.card && (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleResendPin(c)}
+                                  className="text-xs py-1 px-2 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                                  title="Resend voucher PIN to customer email"
+                                >
+                                  <KeyRound className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (blockIfNeeded()) return;
+                                    setSelectedCustomerForPinChange(c);
+                                    setPinOldPin('');
+                                    setPinNewPin('');
+                                    setPinLast4('');
+                                  }}
+                                  className="text-xs py-1 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                  title="Change voucher PIN"
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (blockIfNeeded()) return;
+                                    setSelectedCustomerForAdjust(c);
+                                    setAdjustAmount('');
+                                    setAdjustReason('');
+                                  }}
+                                  className="text-xs py-1 px-2 text-gray-600 hover:text-gray-800"
+                                  title="Adjust balance (Owner/Manager)"
+                                >
+                                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                                </Button>
+                              </>
                             )}
                             <Button
                               variant="secondary"
                               size="sm"
+                              subscriptionExempt={true}
                               onClick={() => openHistoryModal(c)}
                               className="text-xs py-1 px-2 text-gray-600 hover:text-gray-800"
                               title="View voucher statement"
@@ -925,6 +1032,99 @@ export default function Customers() {
                   </>
                 ) : (
                   'Apply Adjustment'
+                )}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Change Voucher PIN Modal (Owner / Manager only) */}
+      {selectedCustomerForPinChange && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedCustomerForPinChange(null)}
+          title={`Change Voucher PIN — ${selectedCustomerForPinChange.name}`}
+          subtitle="Update customer's 6-digit voucher PIN"
+        >
+          <form onSubmit={handleChangePinSubmit} className="space-y-3.5 py-1">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Old 6-Digit PIN <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                maxLength={6}
+                placeholder="••••••"
+                value={pinOldPin}
+                onChange={(e) => setPinOldPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3 py-2 text-center text-lg font-mono tracking-[0.5em] border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                New 6-Digit PIN <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                maxLength={6}
+                placeholder="••••••"
+                value={pinNewPin}
+                onChange={(e) => setPinNewPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3 py-2 text-center text-lg font-mono tracking-[0.5em] border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Last 4 Digits of Phone <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                maxLength={4}
+                placeholder="●●●●"
+                value={pinLast4}
+                onChange={(e) => setPinLast4(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3 py-2 text-center text-lg font-mono tracking-[0.5em] border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                required
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Verification: {selectedCustomerForPinChange.phone || 'Phone on file'}
+              </p>
+            </div>
+
+            <div className="pt-3 border-t flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedCustomerForPinChange(null)}
+                disabled={isSubmittingPinChange}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  isSubmittingPinChange ||
+                  pinOldPin.length !== 6 ||
+                  pinNewPin.length !== 6 ||
+                  pinLast4.length !== 4
+                }
+                className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
+              >
+                {isSubmittingPinChange ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                    Changing...
+                  </>
+                ) : (
+                  'Change PIN'
                 )}
               </Button>
             </div>

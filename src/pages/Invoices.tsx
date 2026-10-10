@@ -18,6 +18,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { InvoiceStatus } from '@/types/index.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 const PAGE_SIZE = 15;
 
@@ -108,6 +109,7 @@ function urgencyMeta(row: Row) {
 export default function Invoices() {
   const biz = useBusinessStore((s) => s.activeBusiness);
   const navigate = useNavigate();
+  const { blockIfNeeded } = useSubscriptionWriteGate();
 
   const invoices = useInvoiceStore((s) => s.invoices);
   const pagination = useInvoiceStore((s) => s.pagination);
@@ -207,7 +209,10 @@ export default function Invoices() {
             marking one paid automatically records the sale
           </p>
         </div>
-        <Button onClick={() => navigate('/invoices/new')} className="self-start shadow-sm">
+        <Button onClick={() => {
+          if (blockIfNeeded()) return;
+          navigate('/invoices/new');
+        }} className="self-start shadow-sm">
           <Plus className="h-4 w-4" /> New Invoice
         </Button>
       </div>
@@ -365,7 +370,10 @@ export default function Invoices() {
                 Clear filters
               </button>
             ) : (
-              <Button variant="secondary" size="sm" className="mt-4" onClick={() => navigate('/invoices/new')}>
+              <Button variant="secondary" size="sm" className="mt-4" onClick={() => {
+                if (blockIfNeeded()) return;
+                navigate('/invoices/new');
+              }}>
                 <Plus className="h-3.5 w-3.5" /> Create your first invoice
               </Button>
             )}
@@ -496,6 +504,7 @@ export default function Invoices() {
               <Button
                 variant="ghost"
                 size="sm"
+                subscriptionExempt={true}
                 disabled={!pagination.hasPrev}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-label="Previous page"
@@ -508,6 +517,7 @@ export default function Invoices() {
               <Button
                 variant="ghost"
                 size="sm"
+                subscriptionExempt={true}
                 disabled={!pagination.hasNext}
                 onClick={() => setPage((p) => p + 1)}
                 aria-label="Next page"

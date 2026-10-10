@@ -28,6 +28,7 @@ import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import type { PermissionKey } from '@/types/index.ts';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -41,6 +42,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const businesses = useBusinessStore((s) => s.businesses);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
   const subStatus = useSubscriptionStatus();
+  const { blockIfNeeded } = useSubscriptionWriteGate();
 
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -222,7 +224,10 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           </button>
         ) : isOwnerAccount ? (
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              if (blockIfNeeded()) return;
+              setShowCreateModal(true);
+            }}
             className='flex w-full items-center gap-2 rounded-xl border border-dashed border-primary-200 px-3 py-2.5 text-[13px] font-medium text-primary-600 hover:bg-primary-50 hover:border-primary-300 transition-all'
           >
             <Plus className='h-4 w-4' />
@@ -288,6 +293,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <div className='border-t border-gray-50 mt-1 pt-1 px-1.5'>
                   <button
                     onClick={() => {
+                      if (blockIfNeeded()) return;
                       setShowCreateModal(true);
                       setShowBizDropdown(false);
                     }}

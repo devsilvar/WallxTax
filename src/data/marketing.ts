@@ -168,16 +168,16 @@ export interface PricingPlan {
 
 export const freeTrialPlan: PricingPlan = {
   id: 'free',
-  name: '10-days FREE Trial (Freemiums)',
-  tagline: 'Get 10 days of unrestricted access to every single feature across Starter, Business, and Scale-Up tiers.',
+  name: '30-days FREE Trial (Freemiums)',
+  tagline: 'Get 30 days of unrestricted access to every single feature across Starter, Business, and Scale-Up tiers.',
   monthlyPrice: 0,
   quarterlyPrice: 0,
   annualPrice: 0,
-  trialBadge: '10-Day Free Trial',
+  trialBadge: '30-Day Free Trial',
   features: [
     'Everything in Starter, Business and ScaleUp',
   ],
-  ctaText: 'Start 10-Day Free Trial',
+  ctaText: 'Start 30-Day Free Trial',
   ctaLink: '/register?plan=free',
 };
 
@@ -296,7 +296,7 @@ export const planComparisonMatrix: MatrixRow[] = [
     rows: [
       {
         feature: 'Billing / Commitment Term',
-        free: '10-days FREE Trial',
+        free: '30-days FREE Trial',
         starter: 'Monthly Plan',
         business: 'Quarterly Plan',
         scale: 'Annual Plan',

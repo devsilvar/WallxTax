@@ -30,13 +30,14 @@ export const AccountHeader: React.FC<AccountHeaderProps> = ({
           size="sm"
           onClick={onRefresh}
           isLoading={isRefreshing}
+          subscriptionExempt={true}
           className="text-xs"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} /> Refresh
         </Button>
         {isActive && (
           <Link to="/transactions">
-            <Button size="sm" variant="secondary" className="text-xs">
+            <Button size="sm" variant="secondary" subscriptionExempt={true} className="text-xs">
               Transaction History <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>

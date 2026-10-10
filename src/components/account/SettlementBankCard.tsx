@@ -213,6 +213,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
                 size="sm"
                 onClick={onWithdraw}
                 disabled={!isLinked}
+                subscriptionExempt={true}
                 className="w-full text-xs bg-purple-900 hover:bg-purple-950 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Withdraw Funds <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -312,6 +313,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
           <Button
             size="sm"
             disabled={!isOwner}
+            subscriptionExempt={true}
             title={!isOwner ? 'Only business owners can connect bank accounts' : undefined}
             onClick={() => {
               if (isOwner) setShowForm(true);
@@ -361,6 +363,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
             <div className="flex gap-2 pt-1">
               <Button
                 size="sm"
+                subscriptionExempt={true}
                 onClick={handleResolveSettlement}
                 isLoading={resolvingAccount}
               >
@@ -369,6 +372,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
+                subscriptionExempt={true}
                 onClick={() => {
                   setShowForm(false);
                   setSettlementError('');
@@ -392,6 +396,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
               <div className="flex gap-2">
                 <Button
                   size="sm"
+                  subscriptionExempt={true}
                   onClick={handleConnectSettlement}
                   isLoading={connectingSettlement}
                 >
@@ -400,6 +405,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
+                  subscriptionExempt={true}
                   onClick={() => {
                     setShowForm(false);
                     setResolvedName('');

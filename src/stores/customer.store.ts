@@ -64,24 +64,17 @@ interface CustomerState {
   ) => Promise<Customer>;
   fetchCustomerCard: (
     businessId: string,
-    customerId: string,
-    stepUpToken?: string
+    customerId: string
   ) => Promise<CustomerCardDetail>;
-  requestOtp: (
+  resendVoucherPin: (
     businessId: string,
     customerId: string
-  ) => Promise<{
-    bypassed?: boolean;
-    maskedPhone?: string;
-    message?: string;
-    silentSimulation?: boolean;
-    testCode?: string;
-  }>;
-  verifyOtp: (
+  ) => Promise<{ message: string }>;
+  changeVoucherPin: (
     businessId: string,
     customerId: string,
-    code: string
-  ) => Promise<{ token: string; cardCode: string; balance: number }>;
+    payload: { oldPin: string; newPin: string; last4Phone: string }
+  ) => Promise<{ message: string }>;
   topUpCard: (
     businessId: string,
     customerId: string,
@@ -183,13 +176,11 @@ export const useCustomerStore = create<CustomerState>((set) => ({
     }
   },
 
-  fetchCustomerCard: async (businessId, customerId, stepUpToken) => {
+  fetchCustomerCard: async (businessId, customerId) => {
     set({ cardLoading: true, cardError: null });
     try {
-      const headers = stepUpToken ? { 'x-voucher-auth': stepUpToken } : {};
       const res = await api.get(
-        `/businesses/${businessId}/customers/${customerId}/card`,
-        { headers }
+        `/businesses/${businessId}/customers/${customerId}/card`
       );
       const detail = res.data.data as CustomerCardDetail;
       set({ activeCustomerCard: detail, cardLoading: false });
@@ -201,10 +192,10 @@ export const useCustomerStore = create<CustomerState>((set) => ({
     }
   },
 
-  requestOtp: async (businessId, customerId) => {
+  resendVoucherPin: async (businessId, customerId) => {
     try {
       const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/otp/request`
+        `/businesses/${businessId}/customers/${customerId}/card/pin/resend`
       );
       return res.data;
     } catch (err: unknown) {
@@ -212,13 +203,13 @@ export const useCustomerStore = create<CustomerState>((set) => ({
     }
   },
 
-  verifyOtp: async (businessId, customerId, code) => {
+  changeVoucherPin: async (businessId, customerId, payload) => {
     try {
       const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/otp/verify`,
-        { code }
+        `/businesses/${businessId}/customers/${customerId}/card/pin/change`,
+        payload
       );
-      return res.data.data;
+      return res.data;
     } catch (err: unknown) {
       throw err;
     }

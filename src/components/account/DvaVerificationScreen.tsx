@@ -92,10 +92,10 @@ export const DvaVerificationScreen: React.FC<DvaVerificationScreenProps> = ({
         </div>
 
         <div className="flex items-center justify-center gap-3">
-          <Button onClick={onRefresh} isLoading={loading} size="sm">
+          <Button onClick={onRefresh} isLoading={loading} size="sm" subscriptionExempt={true}>
             <RefreshCw className="h-3.5 w-3.5" /> Refresh Status
           </Button>
-          <Button variant="ghost" size="sm" onClick={onEditDetails}>
+          <Button variant="ghost" size="sm" onClick={onEditDetails} subscriptionExempt={true}>
             Edit Details
           </Button>
         </div>

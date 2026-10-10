@@ -36,11 +36,11 @@ const PLAN_DETAILS: Record<
   }
 > = {
   free: {
-    name: '10-days FREE Trial (Freemiums)',
+    name: '30-days FREE Trial (Freemiums)',
     price: '₦0',
-    period: 'for 10 days',
-    term: '10-Day Free Trial',
-    badge: '10-Day Free Trial Account',
+    period: 'for 30 days',
+    term: '30-Day Free Trial',
+    badge: '30-Day Free Trial Account',
     highlight:
       'Full unrestricted access across Starter, Business & Scale-Up. No credit card required.',
   },
@@ -184,7 +184,7 @@ export default function Register() {
                             {currentPlan.name}
                           </span>
                           <span className='px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200'>
-                            10-Day Free Trial Account
+                            30-Day Free Trial Account
                           </span>
                         </div>
                         <p className='text-xs text-gray-600 mt-1 leading-relaxed'>
@@ -197,7 +197,7 @@ export default function Register() {
                         ₦0
                       </span>
                       <span className='text-[10px] text-gray-500 block leading-tight'>
-                        for 10 days
+                        for 30 days
                       </span>
                     </div>
                   </div>

@@ -446,12 +446,13 @@ export default function PayoutWithdrawalModal({
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-2.5 pt-2">
-                <Button variant="outline" size="sm" type="button" onClick={handleCloseAll} className="rounded-none text-xs">
+                <Button variant="outline" size="sm" type="button" subscriptionExempt={true} onClick={handleCloseAll} className="rounded-none text-xs">
                   Cancel
                 </Button>
                 <Button
                   size="sm"
                   type="submit"
+                  subscriptionExempt={true}
                   disabled={
                     !isAmountValid ||
                     available < 100 ||
@@ -593,6 +594,7 @@ export default function PayoutWithdrawalModal({
                   variant="outline"
                   size="sm"
                   type="button"
+                  subscriptionExempt={true}
                   onClick={() => setStage('input')}
                   disabled={verifyingPin || withdrawing}
                   className="rounded-none text-xs"
@@ -602,6 +604,7 @@ export default function PayoutWithdrawalModal({
                 <Button
                   size="sm"
                   type="button"
+                  subscriptionExempt={true}
                   onClick={() => executeWithdrawalWithPin()}
                   isLoading={verifyingPin || withdrawing}
                   disabled={digits.some((d) => !d) || verifyingPin || withdrawing}
@@ -681,6 +684,7 @@ export default function PayoutWithdrawalModal({
 
               <Button
                 size="sm"
+                subscriptionExempt={true}
                 className="w-full rounded-none text-xs mt-1"
                 onClick={handleCloseAll}
               >

@@ -19,6 +19,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CustomerCredit, CreditStatus } from '@/types/index.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 
 import CreateCreditModal from '@/components/debtors/CreateCreditModal.tsx';
 import RecordCreditPaymentModal from '@/components/debtors/RecordCreditPaymentModal.tsx';
@@ -131,6 +132,7 @@ export default function Debtors() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
 
   const [createModalOpen, setCreateModalOpen] = useState(initialNew);
   const [paymentModalCredit, setPaymentModalCredit] = useState<CustomerCredit | null>(null);
@@ -227,7 +229,10 @@ export default function Debtors() {
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
-          <Button onClick={() => setCreateModalOpen(true)} className="shadow-sm">
+          <Button onClick={() => {
+            if (blockIfNeeded()) return;
+            setCreateModalOpen(true);
+          }} className="shadow-sm">
             <Plus className="h-4 w-4" /> Record Debt
           </Button>
         </div>
@@ -350,7 +355,10 @@ export default function Debtors() {
                 Clear filters
               </button>
             ) : (
-              <Button onClick={() => setCreateModalOpen(true)} size="sm" className="mt-4">
+              <Button onClick={() => {
+                if (blockIfNeeded()) return;
+                setCreateModalOpen(true);
+              }} size="sm" className="mt-4">
                 <Plus className="h-3.5 w-3.5" /> Record first debt
               </Button>
             )}
@@ -401,20 +409,28 @@ export default function Debtors() {
 
                     {open && c.customerPhone && (
                       <button
-                        onClick={() => handleWhatsAppClick(c)}
+                        onClick={() => {
+                          if (blockIfNeeded()) return;
+                          handleWhatsAppClick(c);
+                        }}
+                        disabled={writesBlocked}
                         title={`WhatsApp reminder to ${c.customerPhone}`}
                         aria-label={`Send WhatsApp reminder to ${c.customerName}`}
-                        className="relative z-20 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                        className="relative z-20 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <MessageCircle className="h-4 w-4" />
                       </button>
                     )}
                     {open && (
                       <button
-                        onClick={() => setPaymentModalCredit(c)}
+                        onClick={() => {
+                          if (blockIfNeeded()) return;
+                          setPaymentModalCredit(c);
+                        }}
+                        disabled={writesBlocked}
                         title="Record payment"
                         aria-label={`Record payment from ${c.customerName}`}
-                        className="relative z-20 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                        className="relative z-20 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-gray-900 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <CreditCard className="h-4 w-4" />
                       </button>
@@ -454,18 +470,26 @@ export default function Debtors() {
                           <div className="flex items-center gap-1 shrink-0">
                             {open && c.customerPhone && (
                               <button
-                                onClick={() => handleWhatsAppClick(c)}
+                                onClick={() => {
+                                  if (blockIfNeeded()) return;
+                                  handleWhatsAppClick(c);
+                                }}
+                                disabled={writesBlocked}
                                 aria-label={`Send WhatsApp reminder to ${c.customerName}`}
-                                className="relative z-20 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                className="relative z-20 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <MessageCircle className="h-3.5 w-3.5" />
                               </button>
                             )}
                             {open && (
                               <button
-                                onClick={() => setPaymentModalCredit(c)}
+                                onClick={() => {
+                                  if (blockIfNeeded()) return;
+                                  setPaymentModalCredit(c);
+                                }}
+                                disabled={writesBlocked}
                                 aria-label={`Record payment from ${c.customerName}`}
-                                className="relative z-20 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                                className="relative z-20 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <CreditCard className="h-3.5 w-3.5" />
                               </button>
@@ -496,13 +520,13 @@ export default function Debtors() {
               {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, pagination.total)} of {pagination.total}
             </span>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" disabled={!pagination.hasPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button variant="ghost" size="sm" subscriptionExempt={true} disabled={!pagination.hasPrev} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <span className="text-gray-400 tabular-nums">
                 {page} / {pagination.totalPages}
               </span>
-              <Button variant="ghost" size="sm" disabled={!pagination.hasNext} onClick={() => setPage((p) => p + 1)}>
+              <Button variant="ghost" size="sm" subscriptionExempt={true} disabled={!pagination.hasNext} onClick={() => setPage((p) => p + 1)}>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
