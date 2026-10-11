@@ -457,7 +457,7 @@ export default function Customers() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by customer name or phone..."
+                placeholder="Search by customer name, phone, or voucher code..."
                 value={customerSearch}
                 onChange={(e) => {
                   setCustomerSearch(e.target.value);

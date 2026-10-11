@@ -96,6 +96,17 @@ export function useSubscriptionStatus(): SubscriptionStatus {
   // stale value.
   useEffect(() => {
     if (!user) return;
+    
+    // Admin users don't have trials, so clear the trial clock
+    if (user.role === 'admin') {
+      try {
+        localStorage.removeItem(TRIAL_STORAGE_KEY);
+      } catch {
+        // private browsing / quota — non-fatal
+      }
+      return;
+    }
+    
     const tier = canonicalTier(user.subscriptionTier);
     try {
       if (tier === 'free' && user.trialEndsAt) {
@@ -104,13 +115,19 @@ export function useSubscriptionStatus(): SubscriptionStatus {
           const startMs = trialEndMs - TRIAL_DAYS * MS_PER_DAY;
           localStorage.setItem(TRIAL_STORAGE_KEY, String(startMs));
         }
+      } else if (tier === 'free' && user.createdAt) {
+        // Fallback: use createdAt if trialEndsAt is not set
+        const createdMs = new Date(user.createdAt).getTime();
+        if (!Number.isNaN(createdMs)) {
+          localStorage.setItem(TRIAL_STORAGE_KEY, String(createdMs));
+        }
       } else if (tier !== 'free') {
         localStorage.removeItem(TRIAL_STORAGE_KEY);
       }
     } catch {
       // private browsing / quota — non-fatal
     }
-  }, [user?.subscriptionTier, user?.trialEndsAt]);
+  }, [user?.role, user?.subscriptionTier, user?.trialEndsAt, user?.createdAt]);
 
   return useMemo(() => {
     if (!user) {
@@ -127,6 +144,24 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         daysRemaining: 30,
         graceHoursRemaining: 0,
         formattedCountdown: '30 Days Left',
+      };
+    }
+
+    // Admin users bypass all subscription checks - unlimited access
+    if (user.role === 'admin') {
+      return {
+        tier: 'free' as SubscriptionTier, // Use 'free' as the tier type
+        planName: 'System Administrator',
+        isPaid: true,
+        isTrial: false,
+        hasAccess: true,
+        isReadOnlyGrace: false,
+        isExpired: false,
+        canWrite: true,
+        expiresAt: null,
+        daysRemaining: 999,
+        graceHoursRemaining: 0,
+        formattedCountdown: 'Active',
       };
     }
 

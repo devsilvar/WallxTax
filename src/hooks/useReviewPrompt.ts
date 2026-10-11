@@ -55,6 +55,12 @@ export function useReviewPrompt() {
       return true;
     }
 
+    // CRITICAL: Check if user already submitted feedback - never prompt again
+    const hasSubmitted = localStorage.getItem(KEY_SUBMITTED);
+    if (hasSubmitted === 'true') {
+      return false;
+    }
+
     // Must have affirmative server eligibility
     if (!serverEligibility || !serverEligibility.eligible) {
       return false;

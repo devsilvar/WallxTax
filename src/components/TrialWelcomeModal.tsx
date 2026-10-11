@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { X, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { useTrialTimer } from '@/hooks/useTrialTimer';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 interface TrialWelcomeModalProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface TrialWelcomeModalProps {
   userName?: string;
   businessName?: string;
   trigger: 'registration' | 'business_creation';
-  createdAt?: string; // Pass account creation timestamp
+  createdAt?: string; // Kept for interface compatibility but no longer used
 }
 
 export default function TrialWelcomeModal({
@@ -19,9 +19,30 @@ export default function TrialWelcomeModal({
   userName,
   businessName,
   trigger,
-  createdAt,
 }: TrialWelcomeModalProps) {
-  const { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining } = useTrialTimer(createdAt);
+  const subscriptionStatus = useSubscriptionStatus();
+  
+  // Real-time countdown derived from subscription status (server-backed trialEndsAt)
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1_000);
+    return () => clearInterval(id);
+  }, [isOpen]);
+
+  const { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining } = (() => {
+    if (!subscriptionStatus.expiresAt) {
+      return { daysLeft: 30, hoursLeft: 0, minutesLeft: 0, secondsLeft: 0, percentRemaining: 100 };
+    }
+    const remainingMs = Math.max(0, subscriptionStatus.expiresAt.getTime() - nowMs);
+    const totalMs = 30 * 24 * 60 * 60 * 1000; // 30-day trial
+    const daysLeft = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+    const hoursLeft = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutesLeft = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+    const secondsLeft = Math.floor((remainingMs % (60 * 1000)) / 1000);
+    const percentRemaining = Math.max(0, Math.min(100, Math.round((remainingMs / totalMs) * 100)));
+    return { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining };
+  })();
 
   useEffect(() => {
     if (!isOpen) return;
