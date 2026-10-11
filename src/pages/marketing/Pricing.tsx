@@ -33,7 +33,7 @@ export default function Pricing() {
     secondsLeft,
     percentRemaining,
     startTrial,
-  } = useTrialTimer(isAuthenticated ? (activeBusiness?.createdAt || user?.createdAt) : null);
+  } = useTrialTimer(isAuthenticated ? user?.trialEndsAt ?? null : null);
 
   return (
     <div className='bg-white'>

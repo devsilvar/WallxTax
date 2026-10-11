@@ -9,7 +9,7 @@
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { TrendingUp, Package, Banknote, HandCoins, CreditCard } from 'lucide-react';
+import { TrendingUp, Package, Banknote, HandCoins, CreditCard, ShieldCheck, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -505,41 +505,93 @@ export default function AddSaleModal({
         </div>
 
         {isVoucher && (
-          <div className='sm:col-span-2 p-3 bg-emerald-50/70 border border-emerald-200 rounded space-y-2'>
+          <div className='sm:col-span-2'>
             {voucherCustomer ? (
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='text-xs font-bold text-emerald-900 flex items-center gap-1.5'>
-                    <CreditCard className='w-4 h-4 text-emerald-600' />
-                    <span>Redeeming from: {voucherCustomer.name}</span>
+              <div className='p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3'>
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Voucher verified — ready to redeem
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+                    {voucherCustomer.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className='text-[11px] text-emerald-700 font-semibold mt-0.5'>
-                    Available Balance: ₦{voucherBalance?.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-emerald-900 truncate">{voucherCustomer.name}</div>
+                    <div className="text-xs text-emerald-700 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 bg-white border border-emerald-200 px-2 py-0.5 rounded-full">
+                        <ShieldCheck className="w-3 h-3" />
+                        PIN + last 4 verified
+                      </span>
+                      {voucherLast4 && <span className="text-[11px]">• Last 4: ••••{voucherLast4}</span>}
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="bg-white border border-emerald-200 rounded-lg px-2.5 py-2">
+                        <div className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Sale total</div>
+                        <div className="text-sm font-extrabold text-gray-900 tabular-nums">₦{currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div className={`border rounded-lg px-2.5 py-2 ${voucherBalance !== null && voucherBalance < currentTotal ? 'bg-red-50 border-red-200' : 'bg-white border-emerald-200'}`}>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" />
+                          Voucher balance
+                        </div>
+                        <div className={`text-sm font-extrabold tabular-nums ${voucherBalance !== null && voucherBalance < currentTotal ? 'text-red-700' : 'text-emerald-700'}`}>
+                          {voucherBalance !== null ? `₦${voucherBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : 'Verified on submit'}
+                        </div>
+                      </div>
+                    </div>
+                    {voucherBalance !== null && voucherBalance < currentTotal && (
+                      <div className="mt-2 flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-2">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Balance is low for this sale. Top up or reduce items — server will verify on Create.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Button
-                  type='button'
-                  variant='secondary'
-                  size='sm'
-                  onClick={() => setIsVoucherModalOpen(true)}
-                  className='text-xs'
-                >
-                  Change Voucher
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    size='sm'
+                    onClick={() => setIsVoucherModalOpen(true)}
+                    className='flex-1 rounded-full'
+                  >
+                    Change customer
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => { setVoucherCustomer(null); setVoucherPin(null); setVoucherLast4(null); setVoucherBalance(null); }}
+                    className='rounded-full'
+                  >
+                    Remove
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className='flex items-center justify-between'>
-                <div className='text-xs text-emerald-900'>
-                  Customer store voucher requires phone authorization before redemption.
+              <div className='p-4 bg-white border-2 border-dashed border-emerald-300 rounded-xl text-center space-y-3'>
+                <div className="mx-auto w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
                 </div>
-                <Button
-                  type='button'
-                  size='sm'
-                  onClick={() => setIsVoucherModalOpen(true)}
-                  className='bg-emerald-600 hover:bg-emerald-700 text-white text-xs'
-                >
-                  Authenticate Voucher
-                </Button>
+                <div>
+                  <div className='text-sm font-bold text-gray-900'>No voucher selected yet</div>
+                  <div className='text-xs text-gray-600 mt-1 max-w-sm mx-auto leading-relaxed'>
+                    To pay with a store voucher, pick the customer and enter their <strong>6-digit PIN</strong> + <strong>last 4 of phone</strong>. Works for every role — sales reps are verified securely on submit.
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button
+                    type='button'
+                    size='sm'
+                    onClick={() => setIsVoucherModalOpen(true)}
+                    className='bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5'
+                  >
+                    <Users className="w-4 h-4 mr-1.5" />
+                    Choose customer & authorize
+                  </Button>
+                  <span className="text-[11px] text-gray-500 self-center">Takes ~10 seconds</span>
+                </div>
               </div>
             )}
           </div>

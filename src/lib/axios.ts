@@ -234,6 +234,15 @@ api.interceptors.response.use(
 
       try {
         const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+        // Guard: logout may have fired while this refresh was in-flight.
+        // If the refreshToken we sent is no longer the one in storage,
+        // the session was intentionally destroyed — discard the new token
+        // instead of resurrecting a zombie session (root cause of the
+        // "logout bounces back to dashboard + trial modal" loop).
+        if (localStorage.getItem('refreshToken') !== refreshToken) {
+          processQueue(refreshError ?? null, null);
+          return Promise.reject(error);
+        }
         const newToken = data.data.accessToken;
         localStorage.setItem('accessToken', newToken);
         api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
@@ -248,7 +257,18 @@ api.interceptors.response.use(
         // is fine because by now both modules are fully evaluated.
         const { useAuthStore } = await import('@/stores/auth.store.ts');
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        // Don't fight React Router with a hard reload. The logout flips
+        // isAuthenticated -> ProtectedRoute/GuestRoute will soft-redirect.
+        // Hard replace only as a safety net if the router isn't mounted
+        // (e.g. refresh failed on initial boot before <BrowserRouter>).
+        const path = window.location.pathname;
+        const isAdminArea = path.startsWith('/admin');
+        const alreadyOnAuthPage =
+          path === '/login' || path === '/admin/login' || path === '/';
+        if (!alreadyOnAuthPage) {
+          // Use replace so back-button doesn't return to a dead session.
+          window.location.replace(isAdminArea ? '/admin/login' : '/login');
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

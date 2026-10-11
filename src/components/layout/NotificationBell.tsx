@@ -191,8 +191,21 @@ export default function NotificationBell() {
   const handleNavigate = (r: Reminder) => {
     setSelected(null);
     setOpen(false);
-    // Fallback to /dashboard if the backend ever sends a reminder type the
-    // frontend union doesn't know yet — avoids navigate(undefined).
+    // Prefer per-entity deep-link when the reminder carries a reference
+    // (e.g. invoice_overdue → /invoices/:id). Fallback to the type map
+    // and finally to /dashboard for unknown future types.
+    if (r.referenceType === 'invoice' && r.referenceId) {
+      navigate(`/invoices/${r.referenceId}`);
+      return;
+    }
+    if (r.referenceType === 'customer_credit' && r.referenceId) {
+      navigate(`/debtors/${r.referenceId}`);
+      return;
+    }
+    if (r.referenceType === 'payment' && r.referenceId) {
+      navigate('/payments');
+      return;
+    }
     navigate(ROUTE_FOR_REMINDER[r.reminderType] ?? '/dashboard');
   };
 

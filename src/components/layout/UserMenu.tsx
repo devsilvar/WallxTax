@@ -57,7 +57,10 @@ export default function UserMenu() {
   const handleLogout = () => {
     setOpen(false);
     logout();
-    navigate('/login');
+    // Staff portal always returns to /login. Use replace so back-button
+    // doesn't restore a dead session and trigger the "blip back to
+    // dashboard" that the old push + ProtectedRoute double-navigate caused.
+    navigate('/login', { replace: true });
   };
 
   const displayName = user?.email?.split('@')[0] ?? 'Account';

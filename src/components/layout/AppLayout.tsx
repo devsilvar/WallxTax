@@ -32,55 +32,61 @@ export default function AppLayout({
   const [welcomeBusinessName, setWelcomeBusinessName] = useState('');
   const user = useAuthStore((s) => s.user);
 
-  // Check for pending trial welcome modal (1 minute after business creation)
+  // Check for pending trial welcome modal (1 minute after business creation).
+  // Fixed: previous version returned the clearTimeout handle to an inner
+  // function instead of the effect itself, so the timer leaked past logout
+  // and fired the modal on a dead session (the "blip back to dashboard"
+  // with 30-Day Trial modal).
   useEffect(() => {
-    const checkTrialWelcome = () => {
-      const businessCreatedAt = sessionStorage.getItem('businessCreatedAt');
-      const businessName = sessionStorage.getItem('businessCreatedName');
-      
-      if (businessCreatedAt && businessName) {
-        const createdTime = parseInt(businessCreatedAt, 10);
-        const elapsed = Date.now() - createdTime;
-        const oneMinute = 60000; // 60 seconds in milliseconds
-        
-        if (elapsed >= oneMinute) {
-          // Show modal immediately if 1 minute has passed
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const businessCreatedAt = sessionStorage.getItem('businessCreatedAt');
+    const businessName = sessionStorage.getItem('businessCreatedName');
+
+    if (businessCreatedAt && businessName) {
+      const createdTime = parseInt(businessCreatedAt, 10);
+      const elapsed = Date.now() - createdTime;
+      const oneMinute = 60000;
+
+      if (elapsed >= oneMinute) {
+        // Guard: don't pop a trial modal after an explicit logout
+        // that happened while this effect was waiting to fire.
+        if (!useAuthStore.getState().isAuthenticated) return;
+        setWelcomeBusinessName(businessName);
+        setShowTrialWelcome(true);
+        sessionStorage.removeItem('businessCreatedAt');
+        sessionStorage.removeItem('businessCreatedName');
+      } else {
+        const remainingTime = oneMinute - elapsed;
+        timer = setTimeout(() => {
+          if (!useAuthStore.getState().isAuthenticated) return;
           setWelcomeBusinessName(businessName);
           setShowTrialWelcome(true);
           sessionStorage.removeItem('businessCreatedAt');
           sessionStorage.removeItem('businessCreatedName');
-        } else {
-          // Schedule modal to show after remaining time
-          const remainingTime = oneMinute - elapsed;
-          const timer = setTimeout(() => {
-            setWelcomeBusinessName(businessName);
-            setShowTrialWelcome(true);
-            sessionStorage.removeItem('businessCreatedAt');
-            sessionStorage.removeItem('businessCreatedName');
-          }, remainingTime);
-          
-          return () => clearTimeout(timer);
-        }
-      } else {
-        // Check if user is on trial and hasn't seen the welcome modal yet
-        const hasSeenWelcome = localStorage.getItem('hasSeenTrialWelcome');
-        const trialStartedAt = localStorage.getItem('wallx_trial_started_at');
-        
-        if (trialStartedAt && !hasSeenWelcome && user) {
-          // User is on trial and hasn't seen the welcome modal
-          // Show it after 2 seconds (give them time to land)
-          const timer = setTimeout(() => {
-            setWelcomeBusinessName('Your Business');
-            setShowTrialWelcome(true);
-            localStorage.setItem('hasSeenTrialWelcome', 'true');
-          }, 2000); // 2 seconds delay
-          
-          return () => clearTimeout(timer);
-        }
+        }, remainingTime);
       }
+    } else {
+      const hasSeenWelcome = localStorage.getItem('hasSeenTrialWelcome');
+      // Backend is the clock — trialEndsAt is set on admin Save Plan Changes
+      // (or startFreeTrial). No wallx_trial_started_at mirror.
+      const hasTrial = !!user?.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now();
+      const tier = (user?.subscriptionTier || 'free').toLowerCase();
+      const isFreeTier = tier === 'free' || tier === 'free_trial' || tier === 'trial';
+
+      if (hasTrial && isFreeTier && !hasSeenWelcome && user) {
+        timer = setTimeout(() => {
+          if (!useAuthStore.getState().isAuthenticated) return;
+          setWelcomeBusinessName('Your Business');
+          setShowTrialWelcome(true);
+          localStorage.setItem('hasSeenTrialWelcome', 'true');
+        }, 2000);
+      }
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
     };
-    
-    checkTrialWelcome();
   }, [user]);
 
   // When pathname or tab changes, close mobile sidebar and reset scroll to top

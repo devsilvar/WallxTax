@@ -276,7 +276,7 @@ export default function CommandPalette({
           icon: LogOut,
           onSelect: close(() => {
             logout();
-            navigate('/login');
+            navigate('/login', { replace: true });
           }),
         },
       ],

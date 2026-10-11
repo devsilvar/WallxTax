@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -28,8 +28,14 @@ export default function AdminSidebar({
   isOpen = false,
   onClose,
 }: AdminSidebarProps) {
+  const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/admin/login', { replace: true });
+  };
   const pendingWithdrawals = useAdminStatsStore((s) => s.stats?.withdrawalSla?.pendingCount ?? 0);
   const unverifiedInflows = useAdminStatsStore((s) => s.stats?.unverifiedInflows?.count ?? 0);
   const pendingSubscriptions = useAdminStatsStore((s) => s.stats?.pendingSubscriptionsCount ?? 0);
@@ -170,7 +176,7 @@ export default function AdminSidebar({
             Switch to SME Portal
           </NavLink>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className='flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-xs font-medium text-danger-600 transition-colors hover:bg-danger-50 hover:text-danger-700 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:outline-none'
           >
             <LogOut className='h-3.5 w-3.5 shrink-0' aria-hidden='true' />

@@ -133,11 +133,8 @@ export default function Register() {
       const result = await register(email, phone, password, selectedPlan);
       const userEmail = result.email || email;
       sessionStorage.setItem('pendingVerificationEmail', userEmail);
-      if (selectedPlan === 'free') {
-        localStorage.setItem('wallx_trial_started_at', Date.now().toString());
-      } else {
-        localStorage.removeItem('wallx_trial_started_at');
-      }
+      // Trial clock is now purely backend-driven (User.trialEndsAt set on
+      // admin Save Plan Changes / startFreeTrial). No wallx_trial_started_at.
       toast.success('Account created successfully!');
       
       // Navigate directly to email verification
@@ -160,9 +157,7 @@ export default function Register() {
         <h2 className='text-2xl font-bold text-gray-900'>
           Create your account
         </h2>
-        <p className='mt-2 font-body text-[15px] text-gray-500'>
-          Start managing your taxes in minutes
-        </p>
+       
 
         {/* Selected Plan Display & Interactive Selector */}
         {(() => {

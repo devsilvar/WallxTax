@@ -51,7 +51,7 @@ function canonicalTier(raw: string | null | undefined): SubscriptionTier {
   return TIER_ALIASES[normalized] ?? (normalized as SubscriptionTier);
 }
 
-import { TRIAL_DAYS, GRACE_DAYS, TRIAL_STORAGE_KEY } from '@/config/subscription';
+import { TRIAL_DAYS, GRACE_DAYS } from '@/config/subscription';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -86,48 +86,6 @@ export function useSubscriptionStatus(): SubscriptionStatus {
       document.removeEventListener('visibilitychange', maybeFetch);
     };
   }, [user]);
-
-  // Keep the legacy localStorage trial clock in sync with the server.
-  // useTrialTimer (and any re-used tab) derives its countdown from
-  // wallx_trial_started_at. When the admin flips the user to a paid plan we
-  // must clear that clock, and when the admin resets the user back to the
-  // 30-day free trial we must seed it from the fresh trialEndsAt so the
-  // counter starts at exactly 30 days rather than resuming from an old
-  // stale value.
-  useEffect(() => {
-    if (!user) return;
-    
-    // Admin users don't have trials, so clear the trial clock
-    if (user.role === 'admin') {
-      try {
-        localStorage.removeItem(TRIAL_STORAGE_KEY);
-      } catch {
-        // private browsing / quota — non-fatal
-      }
-      return;
-    }
-    
-    const tier = canonicalTier(user.subscriptionTier);
-    try {
-      if (tier === 'free' && user.trialEndsAt) {
-        const trialEndMs = new Date(user.trialEndsAt).getTime();
-        if (!Number.isNaN(trialEndMs)) {
-          const startMs = trialEndMs - TRIAL_DAYS * MS_PER_DAY;
-          localStorage.setItem(TRIAL_STORAGE_KEY, String(startMs));
-        }
-      } else if (tier === 'free' && user.createdAt) {
-        // Fallback: use createdAt if trialEndsAt is not set
-        const createdMs = new Date(user.createdAt).getTime();
-        if (!Number.isNaN(createdMs)) {
-          localStorage.setItem(TRIAL_STORAGE_KEY, String(createdMs));
-        }
-      } else if (tier !== 'free') {
-        localStorage.removeItem(TRIAL_STORAGE_KEY);
-      }
-    } catch {
-      // private browsing / quota — non-fatal
-    }
-  }, [user?.role, user?.subscriptionTier, user?.trialEndsAt, user?.createdAt]);
 
   return useMemo(() => {
     if (!user) {

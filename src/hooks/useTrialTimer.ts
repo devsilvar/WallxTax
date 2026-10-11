@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { TRIAL_DAYS, TRIAL_STORAGE_KEY } from '@/config/subscription';
+import { TRIAL_DAYS } from '@/config/subscription';
 
-const TRIAL_DURATION_DAYS = TRIAL_DAYS;
-const TRIAL_DURATION_MS = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
-const STORAGE_KEY = TRIAL_STORAGE_KEY;
+const TRIAL_DURATION_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
 
 export interface TrialTimerState {
   hasStarted: boolean;
@@ -19,71 +17,50 @@ export interface TrialTimerState {
   expiresAt: number | null;
 }
 
-export function useTrialTimer(accountCreatedAt?: string | null): TrialTimerState {
-  // Determine start timestamp — server truth only.
-  // When accountCreatedAt is explicitly null the caller is logged-out and
-  // the countdown must stay hidden (no localStorage fallback per product spec).
-  const getInitialStartTimestamp = useCallback((): number | null => {
-    if (accountCreatedAt) {
-      const parsed = new Date(accountCreatedAt).getTime();
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        return parsed;
-      }
-    }
+/**
+ * Backend-driven trial countdown.
+ * Server is the clock: trialEndsAt comes from User.trialEndsAt (set on
+ * register for free, or on admin Save Plan Changes for reset/paid).
+ * No localStorage — survives logout, multi-device, and cannot be
+ * manipulated. When trialEndsAt is null (logged-out or non-trial),
+ * the timer stays hidden (hasStarted=false) per product spec.
+ */
+export function useTrialTimer(trialEndsAt?: string | null): TrialTimerState {
+  const getStartedAt = useCallback((): number | null => {
+    if (!trialEndsAt) return null;
+    const end = new Date(trialEndsAt).getTime();
+    if (Number.isNaN(end) || end <= 0) return null;
+    return end - TRIAL_DURATION_MS;
+  }, [trialEndsAt]);
 
-    // Intentionally no localStorage fallback — pricing countdown is
-    // derived from the authenticated user's server tier/createdAt only.
-    // Passing null means "logged out — show no timer".
-    if (accountCreatedAt === null) return null;
+  const getExpiresAt = useCallback((): number | null => {
+    if (!trialEndsAt) return null;
+    const end = new Date(trialEndsAt).getTime();
+    if (Number.isNaN(end) || end <= 0) return null;
+    return end;
+  }, [trialEndsAt]);
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = parseInt(stored, 10);
-        if (!Number.isNaN(parsed) && parsed > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-
-    return null;
-  }, [accountCreatedAt]);
-
-  const [startedAt, setStartedAt] = useState<number | null>(getInitialStartTimestamp);
+  const [startedAt, setStartedAt] = useState<number | null>(getStartedAt);
   const [, setTick] = useState(0);
 
-  // Sync when accountCreatedAt changes
   useEffect(() => {
-    const ts = getInitialStartTimestamp();
-    if (ts) {
-      setStartedAt(ts);
-    }
-  }, [getInitialStartTimestamp]);
+    setStartedAt(getStartedAt());
+  }, [getStartedAt]);
 
-  // Keep live time ticking every second for real-time countdown
   useEffect(() => {
     if (!startedAt) return;
-    const interval = setInterval(() => {
-      setTick((t) => t + 1);
-    }, 1000); // Update every second for live countdown
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(interval);
   }, [startedAt]);
 
   const startTrial = useCallback(() => {
-    const now = Date.now();
-    try {
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        localStorage.setItem(STORAGE_KEY, now.toString());
-      }
-    } catch {
-      // Ignore
-    }
-    setStartedAt(now);
+    // No-op: trial is now started by the server (register or admin Save).
+    // Kept for backwards compatibility with callers that still invoke it.
   }, []);
 
-  if (!startedAt) {
+  const expiresAt = getExpiresAt();
+
+  if (!startedAt || !expiresAt) {
     return {
       hasStarted: false,
       isExpired: false,
@@ -99,7 +76,6 @@ export function useTrialTimer(accountCreatedAt?: string | null): TrialTimerState
     };
   }
 
-  const expiresAt = startedAt + TRIAL_DURATION_MS;
   const remainingMs = Math.max(0, expiresAt - Date.now());
   const isExpired = remainingMs <= 0;
 

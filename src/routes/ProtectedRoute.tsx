@@ -108,11 +108,21 @@ function GlobalLoadingSkeleton() {
 
 export default function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const businessStoreLoading = useBusinessStore((s) => s.isLoading);
 
-  // Not authenticated - redirect to login
+  // Not authenticated - redirect to staff login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Strict portal separation: admin accounts must live in /admin/*
+  // If an admin somehow reaches a staff route (e.g. deep-link from
+  // history, or staff-portal login before the role check), bounce
+  // them to the admin portal. Wait for user to load first to avoid
+  // flashing the redirect before fetchMe resolves.
+  if (user && user.role === 'admin') {
+    return <Navigate to="/admin" replace />;
   }
 
   // Still loading auth user or businesses - show global loading skeleton

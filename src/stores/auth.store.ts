@@ -67,18 +67,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // in on the same tab sees the previous user's businesses/invoices/
   // reminders flash in the sidebar before the refetch completes.
   logout: () => {
+    // ─── Clear Axios Default Auth Header (prevent zombie token) ──
+    // api.defaults.headers holds the last refreshed token in-memory.
+    // Clearing localStorage alone leaves it there, so the next
+    // request still sends `Authorization: Bearer <old>` and can
+    // trigger a refresh that resurrects the session.
+    try {
+      delete (api.defaults.headers.common as Record<string, unknown>).Authorization;
+      delete (api.defaults.headers as Record<string, unknown>).Authorization;
+    } catch {
+      // no-op — defensive for test env where api may be mocked
+    }
+
     // ─── Clear Authentication Tokens ───────────────────────────────
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    
+
     // ─── Clear Business & User Context ────────────────────────────
     localStorage.removeItem('activeBusinessId');
     localStorage.removeItem('signupPlan');
-    
+
     // ─── Clear Trial & Subscription Data ──────────────────────────
     localStorage.removeItem('wallx_trial_started_at');
     localStorage.removeItem('hasSeenTrialWelcome');
-    
+
     // ─── Clear AI Chat History (Per-Business) ────────────────────
     // AI chats are stored with business-specific keys like:
     // - ai_chats_v2_{businessId}
@@ -97,19 +109,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
-    
+
     // ─── Clear Review Prompt State ────────────────────────────────
     localStorage.removeItem('wallx_review_prompt_dismissed');
     localStorage.removeItem('wallx_review_prompt_snoozed_until');
     localStorage.removeItem('wallx_review_submitted');
     localStorage.removeItem('wallx_test_review');
-    
+
     // ─── Clear SessionStorage Items ───────────────────────────────
     sessionStorage.removeItem('pendingVerificationEmail');
     sessionStorage.removeItem('businessCreatedAt');
     sessionStorage.removeItem('businessCreatedName');
     sessionStorage.removeItem('justCreatedFirstBiz');
-    
+
     // ─── Clear Zustand Store State ────────────────────────────────
     useReminderStore.getState().clear();
     useBusinessStore.getState().clear();
@@ -119,25 +131,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useCustomerStore.getState().clear();
     useLedgerStore.getState().clear();
     useSettlementStore.getState().clear();
-    
+
     // Note: The following stores don't need clearing:
     // - dashboard.store (event counter only - stateless)
     // - pin.store (stateless UI state only - no user data)
     // - admin.stats.store (admin only, separate context)
     // - language.store (user preference - intentionally persists)
-    
+
     // ─── Reset Auth State ──────────────────────────────────────────
     set({ user: null, isAuthenticated: false });
   },
 
   fetchMe: async () => {
+    const tokenAtStart = localStorage.getItem('accessToken');
+    if (!tokenAtStart) return;
     try {
       const { data } = await api.get('/auth/me');
+      // Guard: don't resurrect a session that was explicitly logged out
+      // while this request was in-flight (the classic "have to click
+      // logout 3 times" race). Token cleared/rotated mid-flight means
+      // the caller already invalidated the session — ignore the stale
+      // 200 and let the logout stand.
+      const currentToken = localStorage.getItem('accessToken');
+      if (currentToken !== tokenAtStart || !currentToken) return;
+      if (!get().isAuthenticated && !currentToken) return;
       set({ user: data.data, isAuthenticated: true });
     } catch {
-      // Session is gone — run the full logout path so domain caches are
-      // cleared too, not just the auth flags.
-      get().logout();
+      // Only run the full wipe if this fetchMe was still the active
+      // session. If an explicit logout already cleared the token,
+      // the 401 is expected — don't double-fire logout/redirect.
+      if (localStorage.getItem('accessToken') === tokenAtStart) {
+        get().logout();
+      }
     }
   },
 

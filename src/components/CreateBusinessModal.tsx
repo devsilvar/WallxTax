@@ -96,10 +96,13 @@ export default function CreateBusinessModal({
       onClose();
 
       // Check if user is on free trial and schedule welcome modal
+      // Backend is the clock — trialEndsAt set on admin Save / startFreeTrial
       const signupPlan = localStorage.getItem('signupPlan');
-      const trialStartedAt = localStorage.getItem('wallx_trial_started_at');
-      
-      if (trialStartedAt || signupPlan === 'free') {
+      const tier = (user?.subscriptionTier || 'free').toLowerCase();
+      const isFreeTier = tier === 'free' || tier === 'free_trial' || tier === 'trial';
+      const hasTrial = !!user?.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now();
+
+      if ((hasTrial && isFreeTier) || signupPlan === 'free') {
         // Store timestamp for when business was created
         const now = Date.now();
         sessionStorage.setItem('businessCreatedAt', now.toString());

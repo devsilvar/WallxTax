@@ -36,12 +36,21 @@ export default function Login() {
     setIsLoading(true);
     try {
       await login(email, password);
-      // Fetch user to determine redirect
+      // Fetch user to determine redirect — this portal is staff-only.
+      // Admins must use /admin/login. We enforce it here so an admin
+      // who accidentally types their admin creds into the staff form
+      // doesn't silently land in /admin and think the portals are mixed.
       const { data } = await api.get('/auth/me');
       const user = data.data;
+      if (user.role === 'admin') {
+        useAuthStore.getState().logout();
+        toast.error('Admin accounts must sign in via the Admin Portal (/admin/login).');
+        navigate('/admin/login', { replace: true });
+        return;
+      }
       useAuthStore.setState({ user });
       toast.success('Welcome back!');
-      navigate(user.role === 'admin' ? '/admin' : '/dashboard');
+      navigate('/dashboard');
     } catch (err: any) {
       const code = err.response?.data?.error?.code;
       if (code === 'EMAIL_NOT_VERIFIED') {
