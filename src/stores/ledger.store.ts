@@ -32,6 +32,7 @@ interface LedgerState {
   setDateRange: (businessId: string, from?: string, to?: string) => void;
   setSearchQuery: (businessId: string, search: string) => void;
   setPage: (businessId: string, page: number) => void;
+  clear: () => void;
 }
 
 export const useLedgerStore = create<LedgerState>((set, get) => ({
@@ -120,4 +121,30 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     set({ pagination: { ...get().pagination, page } });
     get().fetchLedger(businessId, page);
   },
+
+  clear: () =>
+    set({
+      items: [],
+      summary: {
+        openingBalance: 0,
+        totalCredits: 0,
+        totalDebits: 0,
+        closingBalance: 0,
+      },
+      scope: 'dva_bank',
+      typeFilter: 'all',
+      searchQuery: '',
+      fromDate: undefined,
+      toDate: undefined,
+      loading: false,
+      error: null,
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: 0,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    }),
 }));

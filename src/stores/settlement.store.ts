@@ -119,6 +119,7 @@ interface SettlementStore {
     bankCode: string;
     accountNumber: string;
   }) => Promise<{ accountName: string; accountNumber: string; bankCode: string } | null>;
+  clear: () => void;
 }
 
 let fetchPreviewSeq = 0;
@@ -280,4 +281,22 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       return null;
     }
   },
+
+  clear: () =>
+    set({
+      preview: null,
+      regulatory: null,
+      history: [],
+      loadingPreview: false,
+      loadingHistory: false,
+      withdrawing: false,
+      updatingAutoSplit: false,
+      updatingAutoPayout: false,
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+      },
+    }),
 }));

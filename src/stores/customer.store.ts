@@ -91,6 +91,7 @@ interface CustomerState {
     payload: AdjustCustomerCardPayload
   ) => Promise<{ card: CustomerCard; ledger: CustomerCardLedger }>;
   clearActiveCard: () => void;
+  clear: () => void;
 }
 
 export const useCustomerStore = create<CustomerState>((set) => ({
@@ -252,4 +253,20 @@ export const useCustomerStore = create<CustomerState>((set) => ({
   },
 
   clearActiveCard: () => set({ activeCustomerCard: null, cardError: null }),
+
+  clear: () =>
+    set({
+      customers: [],
+      pagination: null,
+      loading: false,
+      error: null,
+      stats: null,
+      statsLoading: false,
+      activities: [],
+      activityPagination: null,
+      activityLoading: false,
+      activeCustomerCard: null,
+      cardLoading: false,
+      cardError: null,
+    }),
 }));
