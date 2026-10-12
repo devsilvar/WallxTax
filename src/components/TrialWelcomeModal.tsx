@@ -55,9 +55,12 @@ export default function TrialWelcomeModal({
 
   if (!isOpen) return null;
 
-  const title = trigger === 'registration' 
-    ? `Welcome, ${userName || 'there'}!` 
-    : `${businessName || 'Your Business'} is Ready`;
+  const heading = trigger === 'registration'
+    ? `Welcome, ${userName || 'there'}!`
+    : `${businessName || 'Your business'} is live`;
+  const subheading = trigger === 'registration'
+    ? 'Your workspace is ready — full access for 30 days, no card needed.'
+    : 'All set. You have 30 days of everything — we’ll remind you before it ends.';
 
   return createPortal(
     <div className='fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-gradient-to-br from-purple-900/30 via-black/50 to-black/60 backdrop-blur-md overflow-hidden'>
@@ -67,7 +70,7 @@ export default function TrialWelcomeModal({
       {/* Modal Dialog */}
       <div className='relative z-10 w-full max-w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200/80 overflow-hidden animate-in fade-in zoom-in-95 duration-200'>
         {/* Brand accent bar */}
-        <div className='h-1 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700' />
+        <div className='h-1 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600' />
         
         {/* Header */}
         <div className='relative p-5 pb-4'>
@@ -80,33 +83,42 @@ export default function TrialWelcomeModal({
             <X className='h-4 w-4' />
           </button>
 
-          <div className='inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700 ring-1 ring-inset ring-primary-600/20 mb-3'>
+          <div className='inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 mb-3'>
             <span className='relative flex h-2 w-2'>
-              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75' />
-              <span className='relative inline-flex rounded-full h-2 w-2 bg-primary-500' />
+              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
+              <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500' />
             </span>
-            <span>30-Day Free Trial Active</span>
+            <span>Full access — 30 days free</span>
           </div>
 
           <h2 className='text-xl font-bold text-gray-900 tracking-tight leading-tight'>
-            {title}
+            {heading}
           </h2>
+          <p className='mt-1.5 text-[13px] leading-relaxed text-gray-500'>
+            {subheading}
+          </p>
         </div>
 
         {/* Content Body */}
         <div className='px-5 pb-5 space-y-4'>
-          {/* Digital Countdown Timer */}
-          <div className='rounded-lg border border-primary-200 bg-gradient-to-br from-primary-50/80 to-primary-50/40 p-4'>
-            <div className='flex items-center gap-2 mb-3'>
-              <div className='h-8 w-8 rounded-lg bg-primary-600 text-white flex items-center justify-center shrink-0'>
-                <Clock className='h-4 w-4' />
+          {/* Friendly trial window — not a ticking bomb */}
+          <div className='rounded-lg border border-emerald-200/70 bg-gradient-to-br from-emerald-50/70 to-white p-4'>
+            <div className='flex items-center justify-between gap-3 mb-3'>
+              <div className='flex items-center gap-2'>
+                <div className='h-8 w-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0'>
+                  <Clock className='h-4 w-4' />
+                </div>
+                <div>
+                  <h3 className='text-sm font-semibold text-gray-900 leading-none'>Your trial</h3>
+                  <p className='text-[11px] text-gray-500 leading-none mt-1'>We’ll remind you before it ends — no surprise charges.</p>
+                </div>
               </div>
-              <h3 className='text-sm font-semibold text-gray-900'>Trial Countdown</h3>
+              <span className='hidden sm:inline-flex rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200'>No card required</span>
             </div>
 
             {/* Digital Timer Display with Colons */}
             <div className='bg-gray-900 rounded-lg p-3 mb-2.5'>
-              <div className='flex items-center justify-center gap-1 text-primary-400'>
+              <div className='flex items-center justify-center gap-1 text-emerald-400'>
                 {/* Days */}
                 <div className='flex flex-col items-center'>
                   <div className='text-2xl font-bold tabular-nums font-mono tracking-tight'>
@@ -117,7 +129,7 @@ export default function TrialWelcomeModal({
                   </div>
                 </div>
                 
-                <span className='text-2xl font-bold text-primary-500/60 pb-3'>:</span>
+                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>:</span>
                 
                 {/* Hours */}
                 <div className='flex flex-col items-center'>
@@ -129,7 +141,7 @@ export default function TrialWelcomeModal({
                   </div>
                 </div>
                 
-                <span className='text-2xl font-bold text-primary-500/60 pb-3'>:</span>
+                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>:</span>
                 
                 {/* Minutes */}
                 <div className='flex flex-col items-center'>
@@ -141,7 +153,7 @@ export default function TrialWelcomeModal({
                   </div>
                 </div>
                 
-                <span className='text-2xl font-bold text-primary-500/60 pb-3'>:</span>
+                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>:</span>
                 
                 {/* Seconds */}
                 <div className='flex flex-col items-center'>
@@ -158,63 +170,66 @@ export default function TrialWelcomeModal({
             {/* Progress Bar */}
             <div className='w-full h-1.5 rounded-full bg-gray-200 overflow-hidden'>
               <div
-                className='h-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-1000'
+                className='h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-1000'
                 style={{ width: `${percentRemaining}%` }}
               />
             </div>
           </div>
 
-          {/* What's Included */}
+          {/* What's included — human, benefit-led */}
           <div>
             <h3 className='text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5'>
-              Trial Includes:
+              Everything included for 30 days
             </h3>
             <ul className='grid grid-cols-2 gap-2'>
               <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-primary-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 font-normal leading-snug tracking-[-0.01em] antialiased'>
-                  5 businesses
+                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
+                <span className='text-[13px] text-gray-700 leading-snug'>
+                  <span className='font-semibold'>5 businesses</span> <span className='text-gray-500'>— branches or stores</span>
                 </span>
               </li>
               <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-primary-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 font-normal leading-snug tracking-[-0.01em] antialiased'>
-                  10 team members
+                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
+                <span className='text-[13px] text-gray-700 leading-snug'>
+                  <span className='font-semibold'>10 teammates</span> <span className='text-gray-500'>— invite your team</span>
                 </span>
               </li>
               <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-primary-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 font-normal leading-snug tracking-[-0.01em] antialiased'>
-                  30 AI queries/mo
+                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
+                <span className='text-[13px] text-gray-700 leading-snug'>
+                  <span className='font-semibold'>30 AI answers</span> <span className='text-gray-500'>/ month</span>
                 </span>
               </li>
               <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-primary-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 font-normal leading-snug tracking-[-0.01em] antialiased'>
-                  All features
+                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
+                <span className='text-[13px] text-gray-700 leading-snug'>
+                  <span className='font-semibold'>Every feature</span> <span className='text-gray-500'>— no limits</span>
                 </span>
               </li>
             </ul>
+            <p className='mt-2.5 text-[11px] leading-relaxed text-gray-400'>
+              Invoicing, DVA auto-capture, tax filing, team &amp; more — try it like a paying customer.
+            </p>
           </div>
         </div>
 
-        {/* Actions Footer */}
+        {/* Actions — low pressure, clear next step */}
         <div className='px-5 pb-4 flex items-center justify-between gap-2.5'>
           <Link
             to='/subscription'
             onClick={onClose}
-            className='text-xs font-semibold text-primary-700 hover:text-primary-800 hover:underline inline-flex items-center gap-1'
+            className='text-xs font-semibold text-gray-600 hover:text-gray-900 hover:underline inline-flex items-center gap-1'
           >
-            <span>View Plans</span>
+            <span>Compare plans</span>
             <ArrowRight className='h-3 w-3' />
           </Link>
 
           <button
             type='button'
             onClick={onClose}
-            className='px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm shadow-sm transition-colors'
+            className='px-4 py-2 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-sm shadow-sm transition-colors'
           >
-            Start Exploring
+            Go to dashboard
           </button>
         </div>
       </div>
