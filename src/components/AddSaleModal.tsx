@@ -9,7 +9,7 @@
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { TrendingUp, Package, Banknote, HandCoins, CreditCard, ShieldCheck, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, Package, Banknote, HandCoins, CreditCard, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -219,6 +219,16 @@ export default function AddSaleModal({
         )
       : Number(amount) || 0;
 
+  // Senior UX: never let a cashier click "Use voucher" when the math can't work.
+  // Server will reject anyway, but disabling here saves a round-trip, an error
+  // toast, and the embarrassment of telling the customer "sorry" after they waited.
+  const insufficientVoucherFunds =
+    isVoucher &&
+    voucherCustomer !== null &&
+    voucherBalance !== null &&
+    currentTotal > 0 &&
+    voucherBalance < currentTotal;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -317,6 +327,13 @@ export default function AddSaleModal({
     }
 
     if (source === 'store_voucher') {
+      if (insufficientVoucherFunds) {
+        toast.error(
+          `Voucher balance ₦${(voucherBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })} is less than sale total ₦${currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })} — not enough funds`
+        );
+        setSaving(false);
+        return;
+      }
       if (!voucherCustomer || !voucherPin || !voucherLast4) {
         toast.error('Please authenticate customer store voucher before recording sale');
         setIsVoucherModalOpen(true);
@@ -405,9 +422,15 @@ export default function AddSaleModal({
             type='submit'
             form='add-sale-form'
             isLoading={saving}
-            className='rounded-none'
+            disabled={insufficientVoucherFunds}
+            title={
+              insufficientVoucherFunds
+                ? `Voucher balance ₦${(voucherBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })} is less than sale total ₦${currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })} — top up or reduce items`
+                : undefined
+            }
+            className='rounded-none disabled:opacity-50 disabled:cursor-not-allowed'
           >
-            {isEdit ? 'Update' : isCredit ? 'Record Credit Sale' : 'Create'}
+            {isEdit ? 'Update' : isCredit ? 'Record Credit Sale' : insufficientVoucherFunds ? 'Insufficient voucher balance' : 'Create'}
           </Button>
         </>
       }
@@ -556,7 +579,7 @@ export default function AddSaleModal({
                     onClick={() => setIsVoucherModalOpen(true)}
                     className='flex-1 rounded-full'
                   >
-                    Change customer
+                    Change voucher
                   </Button>
                   <Button
                     type='button'
@@ -575,9 +598,9 @@ export default function AddSaleModal({
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className='text-sm font-bold text-gray-900'>No voucher selected yet</div>
+                  <div className='text-sm font-bold text-gray-900'>No voucher verified yet</div>
                   <div className='text-xs text-gray-600 mt-1 max-w-sm mx-auto leading-relaxed'>
-                    To pay with a store voucher, pick the customer and enter their <strong>6-digit PIN</strong> + <strong>last 4 of phone</strong>. Works for every role — sales reps are verified securely on submit.
+                    To pay with a store voucher, enter the customer's <strong>6-digit PIN</strong> + <strong>last 4 of phone</strong>. PIN + last 4 are verified securely.
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -587,8 +610,8 @@ export default function AddSaleModal({
                     onClick={() => setIsVoucherModalOpen(true)}
                     className='bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5'
                   >
-                    <Users className="w-4 h-4 mr-1.5" />
-                    Choose customer & authorize
+                    <CreditCard className="w-4 h-4 mr-1.5" />
+                    Verify voucher
                   </Button>
                   <span className="text-[11px] text-gray-500 self-center">Takes ~10 seconds</span>
                 </div>
@@ -752,7 +775,6 @@ export default function AddSaleModal({
       isOpen={isVoucherModalOpen}
       businessId={businessId}
       requiredAmount={currentTotal}
-      initialCustomer={voucherCustomer}
       onClose={() => setIsVoucherModalOpen(false)}
       onAuthorized={({ customerId, customerName: cName, voucherPin: pin, voucherLast4: last4, availableBalance }) => {
         setVoucherCustomer({ id: customerId, businessId, name: cName, isActive: true, createdAt: new Date().toISOString() });
