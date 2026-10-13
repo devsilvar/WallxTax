@@ -25,7 +25,11 @@ describe('Axios Authentication & Interceptor Suite', () => {
     delete (window as any).location;
     window.location = {
       ...originalLocation,
-      href: 'http://localhost:5173/',
+      pathname: '/dashboard',
+      href: 'http://localhost:5173/dashboard',
+      replace: vi.fn((url: string) => {
+        window.location.href = url;
+      }),
     } as any;
   });
 

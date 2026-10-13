@@ -10,7 +10,6 @@ import {
   Calculator,
   Landmark,
   Settings,
-  Shield,
   ChevronDown,
   Plus,
   Check,
@@ -27,8 +26,10 @@ import CreateBusinessModal from '@/components/CreateBusinessModal.tsx';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import type { PermissionKey } from '@/types/index.ts';
+import toast from 'react-hot-toast';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { getPlanLimits } from '@/config/subscription';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -43,6 +44,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
   const subStatus = useSubscriptionStatus();
   const { blockIfNeeded } = useSubscriptionWriteGate();
+  const planLimits = getPlanLimits(subStatus.tier);
+  const isBusinessOverLimit = planLimits.maxBusinesses !== -1 && businesses.length >= planLimits.maxBusinesses;
 
   const [showBizDropdown, setShowBizDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -293,11 +296,21 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <div className='border-t border-gray-50 mt-1 pt-1 px-1.5'>
                   <button
                     onClick={() => {
+                      if (isBusinessOverLimit) {
+                        toast.error(`At plan cap of ${planLimits.maxBusinesses} businesses — upgrade or remove a business.`);
+                        return;
+                      }
                       if (blockIfNeeded()) return;
                       setShowCreateModal(true);
                       setShowBizDropdown(false);
                     }}
-                    className='flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium text-primary-600 hover:bg-primary-50 transition-colors'
+                    disabled={isBusinessOverLimit}
+                    title={isBusinessOverLimit ? 'At plan cap — upgrade or remove a business' : undefined}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium transition-colors ${
+                      isBusinessOverLimit
+                        ? 'text-gray-400 hover:bg-transparent cursor-not-allowed opacity-60'
+                        : 'text-primary-600 hover:bg-primary-50'
+                    }`}
                   >
                     <Plus className='h-3.5 w-3.5' />
                     {t('actions.new_business', { defaultValue: 'New Business / Branch' })}
@@ -409,39 +422,6 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Admin link */}
-      {user?.role === 'admin' && (
-        <div className='px-3 pb-1'>
-          <NavLink
-            to='/admin'
-            onClick={handleNavClick}
-            onMouseEnter={() => schedulePrefetch('/admin')}
-            onMouseLeave={cancelPrefetch}
-            onFocus={() => void prefetchRoute('/admin')}
-            onTouchStart={() => void prefetchRoute('/admin')}
-            className={({ isActive }) =>
-              `group relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
-                isActive
-                  ? 'bg-red-50/80 text-red-700'
-                  : 'text-gray-500 hover:bg-gray-50/80 hover:text-gray-700'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <div className='absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-red-500' />
-                )}
-                <Shield
-                  className='h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110'
-                  strokeWidth={isActive ? 2 : 1.8}
-                />
-                {t('admin_panel')}
-              </>
-            )}
-          </NavLink>
-        </div>
-      )}
     </>
   );
 

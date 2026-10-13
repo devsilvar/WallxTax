@@ -16,7 +16,8 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 // Mac users get ⌘K, everyone else gets Ctrl+K. Detected once at module load — the
 // platform doesn't change mid-session.
 const IS_MAC =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 const SHORTCUT_LABEL = IS_MAC ? '⌘K' : 'Ctrl K';
 
 export default function AppLayout({
@@ -70,9 +71,12 @@ export default function AppLayout({
       const hasSeenWelcome = localStorage.getItem('hasSeenTrialWelcome');
       // Backend is the clock — trialEndsAt is set on admin Save Plan Changes
       // (or startFreeTrial). No wallx_trial_started_at mirror.
-      const hasTrial = !!user?.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now();
+      const hasTrial =
+        !!user?.trialEndsAt &&
+        new Date(user.trialEndsAt).getTime() > Date.now();
       const tier = (user?.subscriptionTier || 'free').toLowerCase();
-      const isFreeTier = tier === 'free' || tier === 'free_trial' || tier === 'trial';
+      const isFreeTier =
+        tier === 'free' || tier === 'free_trial' || tier === 'trial';
 
       if (hasTrial && isFreeTier && !hasSeenWelcome && user) {
         timer = setTimeout(() => {
@@ -116,46 +120,48 @@ export default function AppLayout({
   const pageTitle = resolvePageTitle(location.pathname);
 
   return (
-    <div className="flex h-screen bg-gray-100/50">
+    <div className='flex h-screen bg-gray-100/50'>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className='flex flex-1 flex-col overflow-hidden'>
         {/* Top bar */}
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 py-3">
-          <div className="flex items-center gap-3">
+        <header className='flex items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 py-3'>
+          <div className='flex items-center gap-3'>
             <button
               onClick={() => setSidebarOpen(true)}
-              aria-label="Open navigation menu"
-              className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label='Open navigation menu'
+              className='flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors'
             >
-              <Menu className="h-5 w-5 text-gray-600" />
+              <Menu className='h-6 w-6 text-gray-800' />
             </button>
-            <OptimizedLogo size="sm" className="h-6" />
+            <OptimizedLogo size='md' className='w-8' />
             {pageTitle && (
-              <h2 className="text-base font-semibold text-gray-900 hidden sm:block">{pageTitle}</h2>
+              <h2 className='text-base font-semibold text-gray-900 hidden sm:block'>
+                {pageTitle}
+              </h2>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className='flex items-center gap-2'>
             <button
-              type="button"
+              type='button'
               onClick={() => setPaletteOpen(true)}
-              aria-label="Open search and quick actions"
-              className="hidden md:flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-400 transition-colors hover:border-gray-300 hover:bg-white hover:text-gray-600"
+              aria-label='Open search and quick actions'
+              className='hidden md:flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-400 transition-colors hover:border-gray-300 hover:bg-white hover:text-gray-600'
             >
-              <Search className="h-4 w-4" aria-hidden="true" />
+              <Search className='h-4 w-4' aria-hidden='true' />
               <span>Search…</span>
-              <kbd className="ml-2 inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+              <kbd className='ml-2 inline-flex items-center rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-500'>
                 {SHORTCUT_LABEL}
               </kbd>
             </button>
             {/* Mobile: just the icon — palette is keyboard-driven, but tap-to-open still works */}
             <button
-              type="button"
+              type='button'
               onClick={() => setPaletteOpen(true)}
-              aria-label="Open search"
-              className="md:hidden flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label='Open search'
+              className='md:hidden flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors'
             >
-              <Search className="h-5 w-5 text-gray-600" />
+              <Search className='h-5 w-5 text-gray-600' />
             </button>
             <NotificationBell />
             <UserMenu />
@@ -165,16 +171,19 @@ export default function AppLayout({
         <SubscriptionGraceBanner />
 
         {/* Main content */}
-        <main ref={mainContentRef} className="relative flex-1 overflow-y-auto">
+        <main ref={mainContentRef} className='relative flex-1 overflow-y-auto'>
           <Suspense fallback={<RouteTransitionLoader />}>
-            <div className="mx-auto max-w-6xl px-4 py-6">
+            <div className='mx-auto max-w-6xl px-4 py-6'>
               {children || <Outlet />}
             </div>
           </Suspense>
         </main>
       </div>
 
-      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
       <ReviewPromptModal />
       <TrialWelcomeModal
         isOpen={showTrialWelcome}
@@ -185,7 +194,7 @@ export default function AppLayout({
         }}
         businessName={welcomeBusinessName}
         userName={user?.fullName || user?.email?.split('@')[0]}
-        trigger="business_creation"
+        trigger='business_creation'
         createdAt={user?.createdAt}
       />
     </div>

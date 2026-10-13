@@ -17,7 +17,6 @@ export const pageTitles: Record<string, string> = {
   '/settings': 'Settings',
   '/transactions': 'Transactions',
   '/ai': 'AI Assistant',
-  '/admin': 'Admin Dashboard',
 };
 
 const PREFIX_ROUTES = ['/invoices', '/debtors', '/sales', '/customers'] as const;

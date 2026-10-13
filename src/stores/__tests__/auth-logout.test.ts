@@ -275,7 +275,7 @@ describe('Store Clear Methods - Individual Verification', () => {
     useBusinessStore.setState({
       businesses: [{ id: '1', name: 'Test' } as any],
       activeBusiness: { id: '1', name: 'Test' } as any,
-      loading: true,
+      isLoading: true,
     });
     
     // Execute
@@ -285,20 +285,20 @@ describe('Store Clear Methods - Individual Verification', () => {
     const state = useBusinessStore.getState();
     expect(state.businesses).toEqual([]);
     expect(state.activeBusiness).toBeNull();
-    expect(state.loading).toBe(false);
+    expect(state.isLoading).toBe(false);
   });
 
   it('should clear credit store completely', () => {
     useCreditStore.setState({
       credits: [{ id: '1' } as any],
-      loading: true,
+      listLoading: true,
     });
     
     useCreditStore.getState().clear();
     
     const state = useCreditStore.getState();
     expect(state.credits).toEqual([]);
-    expect(state.loading).toBe(false);
+    expect(state.listLoading).toBe(false);
   });
 
   it('should clear customer store completely', () => {

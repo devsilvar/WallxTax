@@ -7,8 +7,6 @@ import AuthLayout from '@/components/layout/AuthLayout.tsx';
 import AppLayout from '@/components/layout/AppLayout.tsx';
 import ProtectedRoute from '@/routes/ProtectedRoute.tsx';
 import GuestRoute from '@/routes/GuestRoute.tsx';
-import AdminRoute from '@/routes/AdminRoute.tsx';
-import AdminLayout from '@/components/layout/AdminLayout.tsx';
 import PageLoader from '@/components/ui/PageLoader.tsx';
 import ScrollToTop from '@/components/ScrollToTop.tsx';
 
@@ -54,28 +52,6 @@ const Account = lazy(() => import('@/pages/Account.tsx'));
 const Subscription = lazy(() => import('@/pages/Subscription.tsx'));
 const InvitationAccept = lazy(() => import('@/pages/InvitationAccept.tsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.tsx'));
-
-// Admin pages
-const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin.tsx'));
-const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard.tsx'));
-const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers.tsx'));
-const AdminUserDetail = lazy(() => import('@/pages/admin/AdminUserDetail.tsx'));
-const AdminBusinesses = lazy(() => import('@/pages/admin/AdminBusinesses.tsx'));
-const AdminAuditLogs = lazy(() => import('@/pages/admin/AdminAuditLogs.tsx'));
-const AdminWithdrawals = lazy(
-  () => import('@/pages/admin/AdminWithdrawals.tsx'),
-);
-const AdminTransactions = lazy(
-  () => import('@/pages/admin/AdminTransactions.tsx'),
-);
-const AdminUnverifiedInflows = lazy(
-  () => import('@/pages/admin/AdminUnverifiedInflows.tsx'),
-);
-const AdminAISettings = lazy(() => import('@/pages/admin/AdminAISettings.tsx'));
-const AdminSubscriptions = lazy(
-  () => import('@/pages/admin/AdminSubscriptions.tsx'),
-);
-const AdminReviews = lazy(() => import('@/pages/admin/AdminReviews.tsx'));
 
 function SalesUnverifiedRedirect() {
   const [searchParams] = useSearchParams();
@@ -201,51 +177,6 @@ export default function App() {
                 />
                 <Route path='/account' element={<Account />} />
                 <Route path='/settings' element={<Settings />} />
-              </Route>
-            </Route>
-
-            {/* Admin login — standalone, no guest guard (has its own dark layout) */}
-            <Route path='/admin/login' element={<AdminLogin />} />
-
-            {/* Admin protected routes */}
-            <Route element={<AdminRoute />}>
-              <Route element={<AdminLayout />}>
-                <Route path='/admin' element={<AdminDashboard />} />
-                <Route path='/admin/users' element={<AdminUsers />} />
-                <Route
-                  path='/admin/users/:userId'
-                  element={<AdminUserDetail />}
-                />
-                <Route path='/admin/businesses' element={<AdminBusinesses />} />
-                <Route
-                  path='/admin/withdrawals'
-                  element={<AdminWithdrawals />}
-                />
-                <Route
-                  path='/admin/settlement/withdrawals'
-                  element={<AdminWithdrawals />}
-                />
-                <Route
-                  path='/admin/transactions'
-                  element={<AdminTransactions />}
-                />
-                <Route
-                  path='/admin/unverified-inflows'
-                  element={<AdminUnverifiedInflows />}
-                />
-                <Route path='/admin/audit-logs' element={<AdminAuditLogs />} />
-                <Route
-                  path='/admin/ai-settings'
-                  element={<AdminAISettings />}
-                />
-                <Route
-                  path='/admin/subscriptions'
-                  element={<AdminSubscriptions />}
-                />
-                <Route
-                  path='/admin/reviews'
-                  element={<AdminReviews />}
-                />
               </Route>
             </Route>
 

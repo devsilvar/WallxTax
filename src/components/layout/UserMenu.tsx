@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useLanguageStore } from '@/stores/language.store';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import toast from 'react-hot-toast';
 
 /**
  * Top-bar user menu. Replaces the static avatar tile and the user/logout
@@ -61,6 +62,14 @@ export default function UserMenu() {
     // doesn't restore a dead session and trigger the "blip back to
     // dashboard" that the old push + ProtectedRoute double-navigate caused.
     navigate('/login', { replace: true });
+  };
+
+  const handleGoAdmin = () => {
+    setOpen(false);
+    const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.paymytax.ng';
+    logout();
+    toast('Signed out — redirecting to Admin Portal');
+    window.location.href = `${adminUrl}/admin/login`;
   };
 
   const displayName = user?.email?.split('@')[0] ?? 'Account';
@@ -140,7 +149,7 @@ export default function UserMenu() {
             {isAdmin && (
               <button
                 role="menuitem"
-                onClick={() => go('/admin')}
+                onClick={handleGoAdmin}
                 className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
                 <Shield className="h-4 w-4 text-gray-400" strokeWidth={2} />

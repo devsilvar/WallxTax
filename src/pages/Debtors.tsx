@@ -10,6 +10,7 @@ import {
   CreditCard,
   RefreshCw,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
@@ -20,6 +21,8 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CustomerCredit, CreditStatus } from '@/types/index.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { getPlanLimits } from '@/config/subscription';
 
 import CreateCreditModal from '@/components/debtors/CreateCreditModal.tsx';
 import RecordCreditPaymentModal from '@/components/debtors/RecordCreditPaymentModal.tsx';
@@ -133,6 +136,9 @@ export default function Debtors() {
   const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
+  const subStatus = useSubscriptionStatus();
+  const planLimits = getPlanLimits(subStatus.tier);
+  const isBnplAllowed = planLimits.bnplCredits;
 
   const [createModalOpen, setCreateModalOpen] = useState(initialNew);
   const [paymentModalCredit, setPaymentModalCredit] = useState<CustomerCredit | null>(null);
@@ -229,14 +235,44 @@ export default function Debtors() {
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
-          <Button onClick={() => {
-            if (blockIfNeeded()) return;
-            setCreateModalOpen(true);
-          }} className="shadow-sm">
+          <Button
+            onClick={() => {
+              if (!isBnplAllowed) {
+                toast.error('Customer Credit (BNPL) is available on Business Plan and above. Please upgrade.');
+                return;
+              }
+              if (blockIfNeeded()) return;
+              setCreateModalOpen(true);
+            }}
+            disabled={!isBnplAllowed}
+            className="shadow-sm disabled:opacity-50"
+            title={!isBnplAllowed ? 'Customer Credit (BNPL) requires Business Plan or above — upgrade to issue new credits' : undefined}
+          >
             <Plus className="h-4 w-4" /> Record Debt
           </Button>
         </div>
       </div>
+
+      {/* ── Over-limit / Feature Downgrade Banner ── */}
+      {!isBnplAllowed && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+            <div>
+              <span className="font-semibold block">Customer Credit (BNPL) is Business+</span>
+              <p className="text-amber-800 mt-0.5">
+                Your {summary?.activeDebtors || credits.length || 0} existing credit{(summary?.activeDebtors === 1 || credits.length === 1) ? '' : 's'} remain visible; new credits are blocked on your current plan. Upgrade to resume creating credits.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/subscription"
+            className="inline-flex shrink-0 items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors"
+          >
+            Upgrade Plan
+          </Link>
+        </div>
+      )}
 
       {/* ── Portfolio Strip ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-200 rounded-xl overflow-hidden ring-1 ring-gray-200">

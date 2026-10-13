@@ -44,8 +44,9 @@ export default function Login() {
       const user = data.data;
       if (user.role === 'admin') {
         useAuthStore.getState().logout();
-        toast.error('Admin accounts must sign in via the Admin Portal (/admin/login).');
-        navigate('/admin/login', { replace: true });
+        const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.paymytax.ng';
+        toast.error('Admin accounts must sign in via the Admin Portal.');
+        window.location.replace(`${adminUrl}/admin/login`);
         return;
       }
       useAuthStore.setState({ user });

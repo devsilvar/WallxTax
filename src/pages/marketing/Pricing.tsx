@@ -7,7 +7,6 @@ import FAQSection from '@/components/marketing/FAQSection.tsx';
 import FinalCta from '@/components/marketing/FinalCta.tsx';
 import PlanComparisonTable from '@/components/PlanComparisonTable.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
-import { useBusinessStore } from '@/stores/business.store.ts';
 import { useTrialTimer } from '@/hooks/useTrialTimer.ts';
 import {
   freeTrialPlan,
@@ -23,7 +22,6 @@ export default function Pricing() {
 
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const {
     hasStarted,
     isExpired,

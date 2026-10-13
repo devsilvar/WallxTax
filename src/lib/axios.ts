@@ -93,14 +93,9 @@ export function getErrorMessage(error: unknown, fallback?: string): string {
   return fallback || "An unexpected error occurred";
 }
 
-// API base URL.
-//   - Dev (no base URL set): uses '/api/v1', which Vite proxies
-//     to http://localhost:3000 (see vite.config.ts).
-//   - Prod (or when VITE_API_BASE_URL or API_BASE_URL is set): uses the specified URL.
+// API base URL — Vite only exposes VITE_ vars to the browser.
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.API_BASE_URL ||
-  '/api/v1'
+  import.meta.env.VITE_API_BASE_URL || '/api/v1'
 ).replace(/\/+$/, '');
 
 const api = axios.create({
@@ -240,7 +235,7 @@ api.interceptors.response.use(
         // instead of resurrecting a zombie session (root cause of the
         // "logout bounces back to dashboard + trial modal" loop).
         if (localStorage.getItem('refreshToken') !== refreshToken) {
-          processQueue(refreshError ?? null, null);
+          processQueue(error, null);
           return Promise.reject(error);
         }
         const newToken = data.data.accessToken;
@@ -262,12 +257,10 @@ api.interceptors.response.use(
         // Hard replace only as a safety net if the router isn't mounted
         // (e.g. refresh failed on initial boot before <BrowserRouter>).
         const path = window.location.pathname;
-        const isAdminArea = path.startsWith('/admin');
-        const alreadyOnAuthPage =
-          path === '/login' || path === '/admin/login' || path === '/';
+        const alreadyOnAuthPage = path === '/login' || path === '/';
         if (!alreadyOnAuthPage) {
           // Use replace so back-button doesn't return to a dead session.
-          window.location.replace(isAdminArea ? '/admin/login' : '/login');
+          window.location.replace('/login');
         }
         return Promise.reject(refreshError);
       } finally {

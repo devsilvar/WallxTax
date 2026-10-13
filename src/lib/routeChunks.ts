@@ -24,7 +24,6 @@ export const PATH_CHUNKS: Record<string, readonly (() => Promise<unknown>)[]> = 
   '/account': [() => import('@/pages/Account.tsx')],
   '/subscription': [() => import('@/pages/Subscription.tsx')],
   '/settings': [() => import('@/pages/Settings.tsx')],
-  '/admin': [() => import('@/pages/admin/AdminDashboard.tsx')],
 };
 
 const prefetchCache = new Map<string, Promise<void>>();

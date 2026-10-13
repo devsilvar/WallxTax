@@ -116,13 +116,13 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // Strict portal separation: admin accounts must live in /admin/*
-  // If an admin somehow reaches a staff route (e.g. deep-link from
-  // history, or staff-portal login before the role check), bounce
-  // them to the admin portal. Wait for user to load first to avoid
-  // flashing the redirect before fetchMe resolves.
+  // Strict portal separation: admin accounts must live in the dedicated Admin Portal.
+  // If an admin reaches an SME staff route, log them out and redirect to the Admin Portal.
   if (user && user.role === 'admin') {
-    return <Navigate to="/admin" replace />;
+    useAuthStore.getState().logout();
+    const adminUrl = import.meta.env.VITE_ADMIN_URL || 'https://admin.paymytax.ng';
+    window.location.replace(`${adminUrl}/admin/login`);
+    return null;
   }
 
   // Still loading auth user or businesses - show global loading skeleton

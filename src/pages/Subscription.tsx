@@ -83,7 +83,7 @@ const PLANS: PlanOption[] = [
       'Manage Up to 2 businesses/branches',
       'Unlimited invoices (custom branding) & Auto Collection',
       'Excel & CSV bulk sales import',
-      '15 AI CFO queries / month',
+      '30 AI CFO queries / month',
       'Payment/Debtors/ Mgt & Reminders',
       'Business Profit/Loss Summary',
       'Expense Management',

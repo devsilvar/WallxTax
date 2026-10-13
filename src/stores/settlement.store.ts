@@ -115,10 +115,10 @@ interface SettlementStore {
     businessId: string,
     input: { enabled: boolean; pin?: string; stepUpToken?: string }
   ) => Promise<boolean>;
-  resolveAccount: (input: {
-    bankCode: string;
-    accountNumber: string;
-  }) => Promise<{ accountName: string; accountNumber: string; bankCode: string } | null>;
+  resolveAccount: (
+    input: { bankCode: string; accountNumber: string },
+    businessId?: string
+  ) => Promise<{ accountName: string; accountNumber: string; bankCode: string } | null>;
   clear: () => void;
 }
 
@@ -272,9 +272,14 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     }
   },
 
-  resolveAccount: async (input) => {
+  resolveAccount: async (input, businessId?: string) => {
     try {
-      const res = await api.post('/businesses/any/settlement/resolve', input);
+      const bid = businessId || (JSON.parse(localStorage.getItem('activeBusinessId') || 'null') as string | null);
+      if (!bid) {
+        toast.error('Select a business first');
+        return null;
+      }
+      const res = await api.post(`/businesses/${bid}/settlement/resolve`, input);
       return res.data.data;
     } catch (err) {
       toast.error(getErrorMessage(err, 'Account name resolution failed'));

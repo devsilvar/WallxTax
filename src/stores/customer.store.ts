@@ -66,6 +66,23 @@ interface CustomerState {
     businessId: string,
     customerId: string
   ) => Promise<CustomerCardDetail>;
+  lookupVoucher: (
+    businessId: string,
+    pin: string,
+    last4: string
+  ) => Promise<{
+    customer: {
+      id: string;
+      name: string;
+      phone?: string | null;
+      email?: string | null;
+    };
+    card: {
+      id: string;
+      balance: number;
+      isActive: boolean;
+    };
+  }>;
   resendVoucherPin: (
     businessId: string,
     customerId: string
@@ -191,6 +208,26 @@ export const useCustomerStore = create<CustomerState>((set) => ({
       set({ cardError: msg, cardLoading: false });
       throw err;
     }
+  },
+
+  lookupVoucher: async (businessId, pin, last4) => {
+    const res = await api.post(
+      `/businesses/${businessId}/customers/voucher-lookup`,
+      { pin, last4 }
+    );
+    return res.data.data as {
+      customer: {
+        id: string;
+        name: string;
+        phone?: string | null;
+        email?: string | null;
+      };
+      card: {
+        id: string;
+        balance: number;
+        isActive: boolean;
+      };
+    };
   },
 
   resendVoucherPin: async (businessId, customerId) => {

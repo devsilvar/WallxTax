@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { X, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, Clock, ArrowRight } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 interface TrialWelcomeModalProps {
@@ -21,7 +21,7 @@ export default function TrialWelcomeModal({
   trigger,
 }: TrialWelcomeModalProps) {
   const subscriptionStatus = useSubscriptionStatus();
-  
+
   // Real-time countdown derived from subscription status (server-backed trialEndsAt)
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -30,19 +30,42 @@ export default function TrialWelcomeModal({
     return () => clearInterval(id);
   }, [isOpen]);
 
-  const { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining } = (() => {
-    if (!subscriptionStatus.expiresAt) {
-      return { daysLeft: 30, hoursLeft: 0, minutesLeft: 0, secondsLeft: 0, percentRemaining: 100 };
-    }
-    const remainingMs = Math.max(0, subscriptionStatus.expiresAt.getTime() - nowMs);
-    const totalMs = 30 * 24 * 60 * 60 * 1000; // 30-day trial
-    const daysLeft = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
-    const hoursLeft = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-    const minutesLeft = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
-    const secondsLeft = Math.floor((remainingMs % (60 * 1000)) / 1000);
-    const percentRemaining = Math.max(0, Math.min(100, Math.round((remainingMs / totalMs) * 100)));
-    return { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining };
-  })();
+  const { daysLeft, hoursLeft, minutesLeft, secondsLeft, percentRemaining } =
+    (() => {
+      if (!subscriptionStatus.expiresAt) {
+        return {
+          daysLeft: 30,
+          hoursLeft: 0,
+          minutesLeft: 0,
+          secondsLeft: 0,
+          percentRemaining: 100,
+        };
+      }
+      const remainingMs = Math.max(
+        0,
+        subscriptionStatus.expiresAt.getTime() - nowMs,
+      );
+      const totalMs = 30 * 24 * 60 * 60 * 1000; // 30-day trial
+      const daysLeft = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+      const hoursLeft = Math.floor(
+        (remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
+      );
+      const minutesLeft = Math.floor(
+        (remainingMs % (60 * 60 * 1000)) / (60 * 1000),
+      );
+      const secondsLeft = Math.floor((remainingMs % (60 * 1000)) / 1000);
+      const percentRemaining = Math.max(
+        0,
+        Math.min(100, Math.round((remainingMs / totalMs) * 100)),
+      );
+      return {
+        daysLeft,
+        hoursLeft,
+        minutesLeft,
+        secondsLeft,
+        percentRemaining,
+      };
+    })();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -55,12 +78,14 @@ export default function TrialWelcomeModal({
 
   if (!isOpen) return null;
 
-  const heading = trigger === 'registration'
-    ? `Welcome, ${userName || 'there'}!`
-    : `${businessName || 'Your business'} is live`;
-  const subheading = trigger === 'registration'
-    ? 'Your workspace is ready — full access for 30 days, no card needed.'
-    : 'All set. You have 30 days of everything — we’ll remind you before it ends.';
+  const heading =
+    trigger === 'registration'
+      ? `Welcome, ${userName || 'there'}!`
+      : `${businessName || 'Your business'} is live`;
+  const subheading =
+    trigger === 'registration'
+      ? 'Your workspace is ready — full access for 30 days, no card needed.'
+      : 'All set. You have 30 days of everything — we’ll remind you before it ends.';
 
   return createPortal(
     <div className='fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-gradient-to-br from-purple-900/30 via-black/50 to-black/60 backdrop-blur-md overflow-hidden'>
@@ -71,7 +96,7 @@ export default function TrialWelcomeModal({
       <div className='relative z-10 w-full max-w-[400px] rounded-xl bg-white shadow-2xl border border-gray-200/80 overflow-hidden animate-in fade-in zoom-in-95 duration-200'>
         {/* Brand accent bar */}
         <div className='h-1 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600' />
-        
+
         {/* Header */}
         <div className='relative p-5 pb-4'>
           <button
@@ -109,13 +134,15 @@ export default function TrialWelcomeModal({
                   <Clock className='h-4 w-4' />
                 </div>
                 <div>
-                  <h3 className='text-sm font-semibold text-gray-900 leading-none'>Your trial</h3>
-                  <p className='text-[11px] text-gray-500 leading-none mt-1'>We’ll remind you before it ends — no surprise charges.</p>
+                  <h3 className='text-sm font-semibold text-gray-900 leading-none'>
+                    Your trial
+                  </h3>
+                  <p className='text-[11px] text-gray-500 leading-none mt-1'>
+                    We’ll remind you before it ends — no surprise charges.
+                  </p>
                 </div>
               </div>
-              <span className='hidden sm:inline-flex rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200'>No card required</span>
             </div>
-
             {/* Digital Timer Display with Colons */}
             <div className='bg-gray-900 rounded-lg p-3 mb-2.5'>
               <div className='flex items-center justify-center gap-1 text-emerald-400'>
@@ -128,9 +155,11 @@ export default function TrialWelcomeModal({
                     Days
                   </div>
                 </div>
-                
-                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>:</span>
-                
+
+                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>
+                  :
+                </span>
+
                 {/* Hours */}
                 <div className='flex flex-col items-center'>
                   <div className='text-2xl font-bold tabular-nums font-mono tracking-tight'>
@@ -140,9 +169,11 @@ export default function TrialWelcomeModal({
                     Hours
                   </div>
                 </div>
-                
-                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>:</span>
-                
+
+                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>
+                  :
+                </span>
+
                 {/* Minutes */}
                 <div className='flex flex-col items-center'>
                   <div className='text-2xl font-bold tabular-nums font-mono tracking-tight'>
@@ -152,9 +183,11 @@ export default function TrialWelcomeModal({
                     Mins
                   </div>
                 </div>
-                
-                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>:</span>
-                
+
+                <span className='text-2xl font-bold text-emerald-500/60 pb-3'>
+                  :
+                </span>
+
                 {/* Seconds */}
                 <div className='flex flex-col items-center'>
                   <div className='text-2xl font-bold tabular-nums font-mono tracking-tight'>
@@ -177,40 +210,6 @@ export default function TrialWelcomeModal({
           </div>
 
           {/* What's included — human, benefit-led */}
-          <div>
-            <h3 className='text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5'>
-              Everything included for 30 days
-            </h3>
-            <ul className='grid grid-cols-2 gap-2'>
-              <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 leading-snug'>
-                  <span className='font-semibold'>5 businesses</span> <span className='text-gray-500'>— branches or stores</span>
-                </span>
-              </li>
-              <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 leading-snug'>
-                  <span className='font-semibold'>10 teammates</span> <span className='text-gray-500'>— invite your team</span>
-                </span>
-              </li>
-              <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 leading-snug'>
-                  <span className='font-semibold'>30 AI answers</span> <span className='text-gray-500'>/ month</span>
-                </span>
-              </li>
-              <li className='flex items-center gap-2'>
-                <CheckCircle2 className='h-4 w-4 text-emerald-600 shrink-0' strokeWidth={1.8} />
-                <span className='text-[13px] text-gray-700 leading-snug'>
-                  <span className='font-semibold'>Every feature</span> <span className='text-gray-500'>— no limits</span>
-                </span>
-              </li>
-            </ul>
-            <p className='mt-2.5 text-[11px] leading-relaxed text-gray-400'>
-              Invoicing, DVA auto-capture, tax filing, team &amp; more — try it like a paying customer.
-            </p>
-          </div>
         </div>
 
         {/* Actions — low pressure, clear next step */}

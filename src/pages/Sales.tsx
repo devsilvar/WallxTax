@@ -66,7 +66,7 @@ const DAILY_SOURCES = [
   'credit',
   'store_voucher',
 ] as const;
-const STATUSES = ['confirmed', 'pending', 'reversed', 'disputed'] as const;
+const STATUSES = ['confirmed', 'completed', 'pending', 'reversed', 'disputed'] as const;
 
 function formatNaira(n: number) {
   return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -81,6 +81,7 @@ function formatDate(d: string) {
 function statusBadge(s: string) {
   const m: Record<string, string> = {
     confirmed: 'bg-green-100 text-green-700',
+    completed: 'bg-green-100 text-green-700',
     pending: 'bg-yellow-100 text-yellow-700',
     reversed: 'bg-red-100 text-red-700',
     disputed: 'bg-orange-100 text-orange-700',

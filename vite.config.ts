@@ -31,7 +31,7 @@ function nonBlockingCssPlugin() {
 }
 
 export default defineConfig({
-  envPrefix: ['VITE_', 'API_'],
+  envPrefix: ['VITE_'],
   plugins: [
     react(),
     tailwindcss(),
