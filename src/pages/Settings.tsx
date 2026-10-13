@@ -28,17 +28,20 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PinModal from '@/components/PinModal.tsx';
 import UpdateBvnModal from '@/components/UpdateBvnModal.tsx';
 import TeamSettingsTab from '@/components/settings/TeamSettingsTab.tsx';
+import VoucherBonusCard from '@/components/voucher/VoucherBonusCard.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { usePinStore } from '@/stores/pin.store.ts';
 import { hasPerm } from '@/components/auth/PermissionGate.tsx';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { getPlanLimits } from '@/config/subscription';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 
@@ -135,6 +138,10 @@ export default function Settings() {
   const businesses = useBusinessStore((s) => s.businesses);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
   const setActiveBusiness = useBusinessStore((s) => s.setActiveBusiness);
+  const subStatus = useSubscriptionStatus();
+  const planLimits = getPlanLimits(subStatus.tier);
+  const isBusinessOverLimit = planLimits.maxBusinesses !== -1 && businesses.length > planLimits.maxBusinesses;
+  const isTeamOverLimit = planLimits.maxTeamMembers !== -1 && businesses.some((b) => (b.memberCount ?? 0) > planLimits.maxTeamMembers);
 
   // Team & Roles tab is restricted to owners and managers (or members with explicit team.manage permission)
   const canManageTeam = Boolean(
@@ -476,7 +483,44 @@ export default function Settings() {
         </div>
 
         {/* Content panel */}
-        <section className='min-w-0'>
+        <section className='min-w-0 space-y-4'>
+          {isBusinessOverLimit && (
+            <div className='flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900'>
+              <AlertCircle className='h-4 w-4 shrink-0 text-amber-600 mt-0.5' />
+              <div className='flex-1'>
+                <span className='font-semibold block'>
+                  Account Exceeds Business Plan Limits
+                </span>
+                <p className='text-amber-800 mt-0.5'>
+                  You currently manage {businesses.length} businesses, which exceeds your {planLimits.name} limit of {planLimits.maxBusinesses}. All existing businesses remain visible and accessible, but creating new businesses is blocked until you are within limits.
+                </p>
+              </div>
+              <Link
+                to='/subscription'
+                className='inline-flex shrink-0 items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors'
+              >
+                Upgrade Plan
+              </Link>
+            </div>
+          )}
+          {isTeamOverLimit && (
+            <div className='flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900'>
+              <Users className='h-4 w-4 shrink-0 text-amber-600 mt-0.5' />
+              <div className='flex-1'>
+                <span className='font-semibold block'>Team Limit Exceeded</span>
+                <p className='text-amber-800 mt-0.5'>
+                  One or more businesses has {planLimits.maxTeamMembers + 1}+ team members, exceeding your {planLimits.name} limit of {planLimits.maxTeamMembers} per business. Existing members stay active, but new invites will be blocked until you are within limits.
+                </p>
+              </div>
+              <Link
+                to='/subscription'
+                className='inline-flex shrink-0 items-center rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors'
+              >
+                Upgrade Plan
+              </Link>
+            </div>
+          )}
+
           {activeTab === 'profile' && (
             <ProfilePanel
               user={user}
@@ -516,6 +560,8 @@ export default function Settings() {
               savingBiz={savingBiz}
               onSubmit={handleBusinessUpdate}
               onReset={handleResetBusiness}
+              businessId={biz.id}
+              voucherBonusPct={biz.voucherBonusPct}
             />
           )}
 
@@ -1006,6 +1052,8 @@ interface BusinessPanelProps {
   savingBiz: boolean;
   onSubmit: (e: FormEvent) => void;
   onReset: () => void;
+  businessId: string;
+  voucherBonusPct?: number;
 }
 
 function BusinessPanel(props: BusinessPanelProps) {
@@ -1017,6 +1065,7 @@ function BusinessPanel(props: BusinessPanelProps) {
         onUpload={props.onUploadLogo}
         onRemove={props.onRemoveLogo}
       />
+      <VoucherBonusCard businessId={props.businessId} initialPct={props.voucherBonusPct ?? 0} onSaved={() => import('@/stores/business.store.ts').then(m => m.useBusinessStore.getState().fetchBusinesses(true))} />
 
       <form onSubmit={props.onSubmit} className='space-y-7'>
         {/* Basic information */}

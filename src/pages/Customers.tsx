@@ -14,6 +14,8 @@ import {
   Loader2,
   Lock,
   KeyRound,
+  Gift,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
@@ -26,6 +28,7 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { maskPhoneSuffix } from '@/lib/format';
+import CustomerBonusControl from '@/components/voucher/CustomerBonusControl.tsx';
 import type { Customer } from '@/types/index.ts';
 
 function formatNaira(n: number) {
@@ -110,6 +113,7 @@ export default function Customers() {
   // Top Up Modal state
   const [selectedCustomerForTopUp, setSelectedCustomerForTopUp] = useState<Customer | null>(null);
   const [topUpAmount, setTopUpAmount] = useState<string>('');
+  const [topUpBonusPct, setTopUpBonusPct] = useState<string>('');
   const [topUpNotes, setTopUpNotes] = useState<string>('');
   const [isSubmittingTopUp, setIsSubmittingTopUp] = useState(false);
 
@@ -207,15 +211,29 @@ export default function Customers() {
       return;
     }
 
+    const bonusOverride = topUpBonusPct.trim() === '' ? undefined : Number(topUpBonusPct);
+    if (bonusOverride !== undefined && (isNaN(bonusOverride) || bonusOverride < 0 || bonusOverride > 10)) {
+      toast.error('Bonus must be between 0 and 10%');
+      setIsSubmittingTopUp(false);
+      return;
+    }
     setIsSubmittingTopUp(true);
     try {
       await topUpCard(activeBusiness.id, selectedCustomerForTopUp.id, {
         amount: num,
+        bonusPct: bonusOverride,
         notes: topUpNotes.trim() || 'Prepaid voucher deposit',
       });
-      toast.success(`₦${num.toLocaleString()} credited to ${selectedCustomerForTopUp.name}'s voucher!`);
+      const bonus = bonusOverride !== undefined ? bonusOverride : (selectedCustomerForTopUp.voucherBonusPct ?? activeBusiness.voucherBonusPct ?? 0);
+      const credited = bonus > 0 ? Math.round(num * (1 + bonus / 100)) : num;
+      toast.success(
+        bonus > 0
+          ? `₦${num.toLocaleString()} + ${bonus}% bonus (₦${Math.round((num * bonus) / 100).toLocaleString()}) → ₦${credited.toLocaleString()} credited to ${selectedCustomerForTopUp.name}!`
+          : `₦${num.toLocaleString()} credited to ${selectedCustomerForTopUp.name}'s voucher!`
+      );
       setSelectedCustomerForTopUp(null);
       setTopUpAmount('');
+      setTopUpBonusPct('');
       setTopUpNotes('');
       searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
       fetchStats(activeBusiness.id);
@@ -353,7 +371,7 @@ export default function Customers() {
       </div>
 
       {/* Stats Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="p-3.5 bg-gradient-to-br from-emerald-50/70 to-emerald-100/30 border-emerald-200">
           <div className="flex items-center justify-between text-emerald-700 text-xs font-semibold">
             <span>Circulating Vouchers</span>
@@ -408,6 +426,18 @@ export default function Customers() {
           </p>
           <p className="text-[10px] text-amber-600 mt-0.5">Sales paid this month</p>
         </Card>
+
+        <Card className="p-3.5 bg-gradient-to-br from-violet-50/70 to-fuchsia-50/50 border-violet-200 relative overflow-hidden">
+          <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-violet-100/50" />
+          <div className="relative flex items-center justify-between text-violet-700 text-xs font-semibold">
+            <span className="flex items-center gap-1.5"><Gift className="w-3.5 h-3.5" /> Bonus Given</span>
+            <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+          </div>
+          <p className="relative mt-2 text-lg sm:text-xl font-bold text-violet-900">
+            {statsLoading ? '...' : formatNaira(stats?.monthBonusGiven || 0)}
+          </p>
+          <p className="relative text-[10px] text-violet-600 mt-0.5">Extra thank-you this month</p>
+        </Card>
       </div>
 
       {/* Tabs */}
@@ -457,7 +487,7 @@ export default function Customers() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by customer name, phone, or voucher code..."
+                placeholder="Search by customer name or phone..."
                 value={customerSearch}
                 onChange={(e) => {
                   setCustomerSearch(e.target.value);
@@ -491,9 +521,6 @@ export default function Customers() {
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
                       Phone Number
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
-                      Virtual Card Code
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-600 uppercase tracking-wider">
                       Voucher Balance
@@ -535,25 +562,31 @@ export default function Customers() {
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          {c.card ? (
-                            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200">
-                              <CreditCard className="w-3 h-3 text-gray-500" />
-                              {c.card.cardCode}
+                          <div className="flex flex-col gap-1.5">
+                            <span
+                              className={`inline-block font-bold text-xs px-2 py-0.5 rounded-full w-fit ${
+                                balance > 0
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              {formatNaira(balance)}
                             </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span
-                            className={`inline-block font-bold text-xs px-2 py-0.5 rounded-full ${
-                              balance > 0
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-gray-100 text-gray-500'
-                            }`}
-                          >
-                            {formatNaira(balance)}
-                          </span>
+                            {isManagerOrOwner && activeBusiness?.id && (
+                              <CustomerBonusControl
+                                businessId={activeBusiness.id}
+                                customerId={c.id}
+                                businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
+                                personalPct={c.voucherBonusPct}
+                                onSaved={() => {
+                                  if (activeBusiness?.id) {
+                                    searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
+                                    fetchStats(activeBusiness.id);
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-gray-500">
                           {c.createdAt ? formatDate(c.createdAt) : '—'}
@@ -567,6 +600,7 @@ export default function Customers() {
                                 if (blockIfNeeded()) return;
                                 setSelectedCustomerForTopUp(c);
                                 setTopUpAmount('');
+                                setTopUpBonusPct('');
                                 setTopUpNotes('');
                               }}
                               className="text-xs py-1 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
@@ -748,7 +782,9 @@ export default function Customers() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="font-semibold text-gray-900">{act.customerName}</div>
-                          <div className="text-[11px] text-gray-400 font-mono">{act.cardCode}</div>
+                          {act.customerPhone && (
+                            <div className="text-[11px] text-gray-400 font-mono">●●{maskPhoneSuffix(act.customerPhone)}</div>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span
@@ -920,6 +956,49 @@ export default function Customers() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+              <label className="block text-xs font-bold text-amber-900 mb-1.5">Bonus extra — your retention thank-you (optional)</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    placeholder={(() => {
+                      const eff = selectedCustomerForTopUp.voucherBonusPct ?? activeBusiness?.voucherBonusPct ?? 0;
+                      return eff > 0 ? `Store ${eff}% (leave blank to use)` : '0 — leave blank for store default';
+                    })()}
+                    value={topUpBonusPct}
+                    onChange={(e) => setTopUpBonusPct(e.target.value)}
+                    className="w-full px-3 py-2 pr-8 text-sm font-bold border border-amber-300 rounded-lg bg-white focus:ring-2 focus:ring-amber-500 outline-none tabular-nums"
+                  />
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-500">%</span>
+                </div>
+                {topUpBonusPct !== '' && (
+                  <button type="button" onClick={() => setTopUpBonusPct('')} className="px-2.5 py-2 text-xs font-medium text-zinc-600 hover:text-zinc-900 underline">
+                    Use default
+                  </button>
+                )}
+              </div>
+              {(() => {
+                const num = Number(topUpAmount) || 0;
+                if (!num) return <p className="mt-2 text-[11px] text-zinc-500">Enter an amount to see preview. Customer personal: {selectedCustomerForTopUp.voucherBonusPct !== null && selectedCustomerForTopUp.voucherBonusPct !== undefined ? `${selectedCustomerForTopUp.voucherBonusPct}%` : `inherits store ${activeBusiness?.voucherBonusPct ?? 0}%`}.</p>;
+                const eff = topUpBonusPct.trim() !== '' ? Number(topUpBonusPct) : (selectedCustomerForTopUp.voucherBonusPct ?? activeBusiness?.voucherBonusPct ?? 0);
+                const bonus = eff > 0 ? Math.round((num * eff) / 100) : 0;
+                const credited = num + bonus;
+                return (
+                  <div className={`mt-2 rounded-lg px-3 py-2 text-xs ${eff > 0 ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-white border border-zinc-200 text-zinc-600'}`}>
+                    {eff > 0 ? (
+                      <>Customer pays <span className="font-bold">₦{num.toLocaleString()}</span> → voucher gets <span className="font-extrabold">₦{credited.toLocaleString()}</span> <span className="font-bold text-emerald-700">(+₦{bonus.toLocaleString()} · {eff}% bonus)</span></>
+                    ) : (
+                      <>No bonus — voucher gets exactly <span className="font-bold">₦{num.toLocaleString()}</span></>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
@@ -1141,7 +1220,7 @@ export default function Customers() {
             setSelectedCustomerForHistory(null);
           }}
           title={`Voucher Statement — ${selectedCustomerForHistory.name}`}
-          subtitle={`Virtual Card: ${selectedCustomerForHistory.card?.cardCode || 'VC-000000'} • Phone: ${selectedCustomerForHistory.phone || '—'}`}
+          subtitle={`Phone: ${selectedCustomerForHistory.phone || '—'}`}
         >
           <div className="space-y-4 py-1">
             <div className="p-3 bg-gray-50 border border-gray-200 rounded flex items-center justify-between">
@@ -1151,9 +1230,11 @@ export default function Customers() {
                   {formatNaira(activeCustomerCard?.card.balance ?? (selectedCustomerForHistory.card ? Number(selectedCustomerForHistory.card.balance) : 0))}
                 </div>
               </div>
-              <div className="text-right font-mono text-xs text-gray-500">
-                Card Code: <span className="font-bold text-gray-800">{selectedCustomerForHistory.card?.cardCode}</span>
-              </div>
+              {selectedCustomerForHistory.phone && (
+                <div className="text-right font-mono text-xs text-gray-500">
+                  Suffix: <span className="font-bold text-gray-800">●●{maskPhoneSuffix(selectedCustomerForHistory.phone)}</span>
+                </div>
+              )}
             </div>
 
             <div>

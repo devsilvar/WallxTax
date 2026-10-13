@@ -138,6 +138,7 @@ export interface Business {
   settlementAccountName?: string;
   platformCommissionPct?: number;
   settlementConnectedAt?: string;
+  voucherBonusPct?: number;
   logoUrl?: string | null;
   logoPublicId?: string | null;
   createdAt: string;
@@ -391,6 +392,8 @@ export interface CustomerCardLedger {
   cardId: string;
   type: 'top_up' | 'change_credit' | 'sale_debit' | 'adjustment';
   amount: number;
+  bonusAmount?: number | null;
+  bonusPct?: number | null;
   balanceBefore: number;
   balanceAfter: number;
   receiptNumber?: string | null;
@@ -421,6 +424,7 @@ export interface Customer {
   address?: string | null;
   notes?: string | null;
   isActive: boolean;
+  voucherBonusPct?: number | null;
   card?: CustomerCard | null;
   createdAt?: string;
   updatedAt?: string;
@@ -436,6 +440,7 @@ export interface QuickCreateCustomerPayload {
 
 export interface TopUpCustomerCardPayload {
   amount: number;
+  bonusPct?: number;
   notes?: string;
   receiptDate?: string;
 }
@@ -460,6 +465,7 @@ export interface CustomerStats {
   circulatingBalance: number;
   monthChangeCredited: number;
   monthRedeemed: number;
+  monthBonusGiven?: number;
 }
 
 export interface CustomerCardActivity {
@@ -1026,8 +1032,6 @@ export interface PlatformFeeConfig {
   withdrawalFeePct: number;
   withdrawalFeeCap: number;
   minWithdrawalAmount: number;
-  autoSweepEnabled?: boolean;
-  autoSweepThreshold?: number;
   updatedAt?: string;
   updatedBy?: string | null;
 }
