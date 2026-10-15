@@ -12,6 +12,7 @@ import ScrollToTop from '@/components/ScrollToTop.tsx';
 
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { getSSEClient } from '@/lib/sse-client';
 
 // Marketing editorial pages
 const MarketingLayout = lazy(
@@ -50,6 +51,7 @@ const Transactions = lazy(() => import('@/pages/Transactions.tsx'));
 const Settings = lazy(() => import('@/pages/Settings.tsx'));
 const Account = lazy(() => import('@/pages/Account.tsx'));
 const Subscription = lazy(() => import('@/pages/Subscription.tsx'));
+const Messages = lazy(() => import('@/pages/Messages.tsx'));
 const InvitationAccept = lazy(() => import('@/pages/InvitationAccept.tsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.tsx'));
 
@@ -80,6 +82,7 @@ function SubscriptionGuard() {
 
 export default function App() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
 
@@ -89,6 +92,12 @@ export default function App() {
       fetchBusinesses();
     }
   }, [isAuthenticated, fetchMe, fetchBusinesses]);
+
+  const sseEnabled = isAuthenticated && !!user;
+  useEffect(() => {
+    if (!sseEnabled) return;
+    getSSEClient().connect();
+  }, [sseEnabled]);
 
   return (
     <BrowserRouter>
@@ -175,6 +184,7 @@ export default function App() {
                   path='/reminders'
                   element={<Navigate to='/dashboard' replace />}
                 />
+                <Route path='/messages' element={<Messages />} />
                 <Route path='/account' element={<Account />} />
                 <Route path='/settings' element={<Settings />} />
               </Route>

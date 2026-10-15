@@ -29,6 +29,7 @@ const LazyUnverified = lazy(() => import('./UnverifiedTransactions.tsx'));
 
 import Button from '@/components/ui/Button.tsx';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { useSSE } from '@/hooks/useSSE';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import ErrorState from '@/components/ui/ErrorState.tsx';
 import EmptyState from '@/components/ui/EmptyState.tsx';
@@ -315,6 +316,31 @@ export default function Sales() {
   useEffect(() => {
     fetchDaily();
   }, [biz, dailyDate]);
+
+  const activeBusinessId = biz?.id;
+
+  useSSE(
+    'bulk_import_completed',
+    (e: any) => {
+      if (e.businessId !== activeBusinessId) return;
+      toast.success(`✅ Imported ${e.importedCount} of ${e.totalRows} sales`);
+      fetchSales();
+      fetchDaily();
+      fetchSummary();
+    },
+    [activeBusinessId]
+  );
+
+  useSSE(
+    'dva_transfer_received',
+    (e: any) => {
+      if (e.businessId !== activeBusinessId) return;
+      fetchSales();
+      fetchDaily();
+      fetchSummary();
+    },
+    [activeBusinessId]
+  );
 
   // Keep "today's" boxes live while the daily tab is open (60s cadence).
   useEffect(() => {

@@ -1261,3 +1261,15 @@ export interface PlatformTaxConfig {
   updatedBy?: string | null;
 }
 
+export interface UserMessage {
+  id: string;
+  userId: string;
+  broadcastId?: string | null;
+  title: string;
+  body: string;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+}
+
+

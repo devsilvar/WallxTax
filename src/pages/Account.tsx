@@ -10,6 +10,7 @@ import { hasPerm } from '@/components/auth/PermissionGate.tsx';
 import toast from 'react-hot-toast';
 import type { TransactionDetailData } from '@/components/TransactionDetailPanel';
 import { useAccountData } from '@/hooks/useAccountData.ts';
+import { useSSE } from '@/hooks/useSSE';
 import {
   WalletBalanceCard,
   SettlementBankCard,
@@ -83,6 +84,33 @@ export default function Account() {
     biz?.virtualAccountBank || user?.virtualAccountBank || undefined,
     fetchBusinesses, fetchMe, fetchSettlementPreview,
     fetchPayoutHistory, payoutStatusFilter, payoutSearch
+  );
+
+  const activeBusinessId = biz?.id;
+
+  useSSE(
+    'dva_transfer_received',
+    (e: any) => {
+      if (!activeBusinessId || e.businessId !== activeBusinessId) return;
+      toast.success(`💰 ₦${Number(e.amount).toLocaleString()} from ${e.customerName}`);
+      refreshAccountData?.(false);
+    },
+    [activeBusinessId, refreshAccountData]
+  );
+
+  useSSE(
+    'payout_completed',
+    (e: any) => {
+      if (!activeBusinessId || e.businessId !== activeBusinessId) return;
+      if (e.status === 'completed') {
+        toast.success(`✅ Payout ₦${Number(e.amount).toLocaleString()} completed`);
+      } else {
+        toast.error(e.failureReason || 'Payout failed');
+      }
+      fetchPayoutHistory?.(activeBusinessId, 1);
+      fetchSettlementPreview?.(activeBusinessId);
+    },
+    [activeBusinessId, fetchPayoutHistory, fetchSettlementPreview]
   );
 
   const isBalanceLoading = (!settlementPreview && loadingPreview) || (!settlementPreview && isRefreshing);

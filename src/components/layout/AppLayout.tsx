@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import Sidebar from './Sidebar.tsx';
 import NotificationBell from './NotificationBell.tsx';
+import MessageBell from './MessageBell.tsx';
 import UserMenu from './UserMenu.tsx';
 import RouteTransitionLoader from './RouteTransitionLoader.tsx';
 import CommandPalette from '@/components/CommandPalette.tsx';
@@ -163,6 +164,7 @@ export default function AppLayout({
             >
               <Search className='h-5 w-5 text-gray-600' />
             </button>
+            <MessageBell />
             <NotificationBell />
             <UserMenu />
           </div>

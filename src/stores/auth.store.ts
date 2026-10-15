@@ -8,6 +8,7 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useLedgerStore } from '@/stores/ledger.store.ts';
 import { useSettlementStore } from '@/stores/settlement.store.ts';
+import { useMessageStore } from '@/stores/message.store.ts';
 import type { User } from '@/types/index.ts';
 
 interface AuthState {
@@ -23,7 +24,7 @@ interface AuthState {
     requestedPlan?: string
   ) => Promise<{ email: string; verificationLink?: string }>;
   setAuthSession: (user: User, accessToken: string, refreshToken: string) => void;
-  logout: () => void;
+  logout: () => void | Promise<void>;
   fetchMe: () => Promise<void>;
   setLoading: (loading: boolean) => void;
 }
@@ -66,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // resets it to its initial state. Without this, the next user logging
   // in on the same tab sees the previous user's businesses/invoices/
   // reminders flash in the sidebar before the refetch completes.
-  logout: () => {
+  logout: async () => {
     // ─── Clear Axios Default Auth Header (prevent zombie token) ──
     // api.defaults.headers holds the last refreshed token in-memory.
     // Clearing localStorage alone leaves it there, so the next
@@ -124,6 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // ─── Clear Zustand Store State ────────────────────────────────
     useReminderStore.getState().clear();
+    useMessageStore.getState().clear();
     useBusinessStore.getState().clear();
     useInvoiceStore.getState().clear();
     useTeamStore.getState().clear();
@@ -137,6 +139,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // - pin.store (stateless UI state only - no user data)
     // - admin.stats.store (admin only, separate context)
     // - language.store (user preference - intentionally persists)
+
+    // Close SSE to prevent zombie events with old JWT after logout
+    try {
+      const { getSSEClient } = await import('@/lib/sse-client');
+      getSSEClient().disconnect();
+    } catch {}
 
     // ─── Reset Auth State ──────────────────────────────────────────
     set({ user: null, isAuthenticated: false });
