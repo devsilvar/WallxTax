@@ -7,6 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageCircle,
+  Mail,
+  Loader2,
   CreditCard,
   RefreshCw,
   X,
@@ -125,6 +127,7 @@ export default function Debtors() {
   const fetchCredits = useCreditStore((s) => s.fetchCredits);
   const fetchSummary = useCreditStore((s) => s.fetchSummary);
   const sendWhatsApp = useCreditStore((s) => s.sendWhatsApp);
+  const sendDebtorEmail = useCreditStore((s) => s.sendDebtorEmail);
 
   const [searchParams] = useSearchParams();
   const initialStatus = (searchParams.get('status') as CreditStatus) || '';
@@ -135,6 +138,7 @@ export default function Debtors() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
   const subStatus = useSubscriptionStatus();
   const planLimits = getPlanLimits(subStatus.tier);
@@ -185,6 +189,28 @@ export default function Debtors() {
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleSendDebtorEmail = async (credit: CustomerCredit) => {
+    if (blockIfNeeded()) return;
+    if (!credit.customerEmail) {
+      toast.error('Add an email address to send debt information');
+      return;
+    }
+    if (!biz) return;
+    setSendingEmailId(credit.id);
+    try {
+      const r = await sendDebtorEmail(biz.id, credit.id);
+      toast.success(
+        r.delivered
+          ? `Debt information sent to ${r.to} — includes your wallet account for direct transfer`
+          : `Debt email queued (dev mode) for ${r.to}`
+      );
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setSendingEmailId(null);
     }
   };
 
@@ -459,6 +485,25 @@ export default function Debtors() {
                     )}
                     {open && (
                       <button
+                        onClick={() => handleSendDebtorEmail(c)}
+                        disabled={!c.customerEmail || writesBlocked || sendingEmailId === c.id}
+                        title={
+                          c.customerEmail
+                            ? `Email debt info to ${c.customerEmail}`
+                            : 'Add an email address to send debt information'
+                        }
+                        aria-label={`Email debt info to ${c.customerName}`}
+                        className="relative z-20 flex h-8 w-8 items-center justify-center rounded-lg text-gray-300 hover:text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {sendingEmailId === c.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary-600" />
+                        ) : (
+                          <Mail className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                    {open && (
+                      <button
                         onClick={() => {
                           if (blockIfNeeded()) return;
                           setPaymentModalCredit(c);
@@ -515,6 +560,25 @@ export default function Debtors() {
                                 className="relative z-20 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <MessageCircle className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {open && (
+                              <button
+                                onClick={() => handleSendDebtorEmail(c)}
+                                disabled={!c.customerEmail || writesBlocked || sendingEmailId === c.id}
+                                title={
+                                  c.customerEmail
+                                    ? `Email debt info to ${c.customerEmail}`
+                                    : 'Add an email address to send debt information'
+                                }
+                                aria-label={`Email debt info to ${c.customerName}`}
+                                className="relative z-20 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {sendingEmailId === c.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary-600" />
+                                ) : (
+                                  <Mail className="h-3.5 w-3.5" />
+                                )}
                               </button>
                             )}
                             {open && (

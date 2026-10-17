@@ -170,6 +170,7 @@ export interface SalesTransaction {
   customerName?: string;
   customerHint?: string;
   customerId?: string | null;
+  metadata?: Record<string, unknown> | null;
   finalClassification?: string;
   needsVerification?: boolean;
   verifiedAt?: string;
@@ -294,6 +295,7 @@ export interface InvoiceLine {
 export interface Invoice {
   id: string;
   businessId: string;
+  customerId?: string | null;
   invoiceNumber: string;
   status: InvoiceStatus;
   issueDate: string;
@@ -330,6 +332,7 @@ export interface Invoice {
 
 export interface CreateInvoicePayload {
   customerName: string;
+  customerId?: string;
   customerEmail?: string;
   customerPhone?: string;
   customerAddress?: string;
@@ -422,12 +425,68 @@ export interface Customer {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  taxId?: string | null;
   notes?: string | null;
   isActive: boolean;
   voucherBonusPct?: number | null;
   card?: CustomerCard | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CustomerKpis {
+  totalSpent: number;
+  orderCount: number;
+  avgOrder: number;
+  lastPurchaseAt: string | null;
+  firstSeenAt: string | null;
+  outstandingCredit: number;
+  voucherBalance: number;
+  totalInvoices: number;
+  totalCredits: number;
+  totalCreditPayments: number;
+}
+
+export interface CustomerDetail {
+  customer: Customer;
+  card: CustomerCard | null;
+  kpis: CustomerKpis;
+}
+
+export interface TimelineItem {
+  id: string;
+  kind: 'sale' | 'invoice' | 'credit' | 'credit_payment' | 'voucher';
+  date: string;
+  amount: number;
+  status: string;
+  title: string;
+  subtitle?: string;
+  refId?: string;
+  notes?: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface UpdateCustomerPayload {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  taxId?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+  voucherBonusPct?: number | null;
+}
+
+export interface CustomerHistoryQuery {
+  page?: number;
+  limit?: number;
+  type?: 'sale' | 'invoice' | 'credit' | 'credit_payment' | 'voucher';
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface QuickCreateCustomerPayload {
@@ -1198,7 +1257,7 @@ export interface CreditSummary {
 
 export interface CreateCreditPayload {
   customerName: string;
-  customerEmail?: string;
+  customerEmail: string;
   customerPhone?: string;
   description?: string;
   totalAmount?: number;
@@ -1251,6 +1310,11 @@ export interface SendCreditWhatsAppResult {
   balance: number;
   dueDate: string;
   message: string;
+}
+
+export interface SendDebtorEmailResult {
+  delivered: boolean;
+  to: string;
 }
 
 export interface PlatformTaxConfig {

@@ -110,6 +110,7 @@ export default function DebtorDetail() {
   const fetchCredit = useCreditStore((s) => s.fetchCredit);
   const clearActive = useCreditStore((s) => s.clearActive);
   const sendWhatsApp = useCreditStore((s) => s.sendWhatsApp);
+  const sendDebtorEmail = useCreditStore((s) => s.sendDebtorEmail);
   const { blockIfNeeded, writesBlocked } = useSubscriptionWriteGate();
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -117,6 +118,7 @@ export default function DebtorDetail() {
   const [writeOffModalOpen, setWriteOffModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
     if (biz && id) fetchCredit(biz.id, id);
@@ -146,6 +148,27 @@ export default function DebtorDetail() {
       toast.error(getErrorMessage(err));
     } finally {
       setIsSendingWhatsApp(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!biz || !activeCredit) return;
+    if (!activeCredit.customerEmail) {
+      toast.error(`No email address recorded for ${activeCredit.customerName}`);
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      const r = await sendDebtorEmail(biz.id, activeCredit.id);
+      toast.success(
+        r.delivered
+          ? `Debt information sent to ${r.to} — includes your wallet account for direct transfer`
+          : `Debt email queued (dev mode) for ${r.to}`
+      );
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -290,6 +313,26 @@ export default function DebtorDetail() {
                 WhatsApp
               </button>
             )}
+            <button
+              onClick={() => {
+                if (blockIfNeeded()) return;
+                handleSendEmail();
+              }}
+              disabled={!c.customerEmail || isSendingEmail || writesBlocked}
+              title={
+                c.customerEmail
+                  ? `Email debt info to ${c.customerEmail}`
+                  : 'Add an email address to send debt information'
+              }
+              className='text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+            >
+              {isSendingEmail ? (
+                <Loader2 className='h-3.5 w-3.5 inline animate-spin -mt-px mr-1' />
+              ) : (
+                <Mail className='h-3.5 w-3.5 inline -mt-px mr-1' />
+              )}
+              Email
+            </button>
             <button
               onClick={() => {
                 if (blockIfNeeded()) return;
@@ -659,14 +702,26 @@ export default function DebtorDetail() {
                   Email
                 </span>
                 {c.customerEmail ? (
-                  <p className='mt-0.5'>
+                  <div className='flex items-center justify-between mt-1.5 p-2.5 bg-gray-50 rounded-lg'>
                     <a
                       href={`mailto:${c.customerEmail}`}
-                      className='font-medium text-gray-800 hover:text-primary-600 transition-colors'
+                      className='font-medium text-gray-800 hover:text-primary-600 transition-colors truncate mr-2 text-xs'
                     >
                       {c.customerEmail}
                     </a>
-                  </p>
+                    {canAct && (
+                      <button
+                        onClick={() => {
+                          if (blockIfNeeded()) return;
+                          handleSendEmail();
+                        }}
+                        disabled={isSendingEmail || writesBlocked}
+                        className='text-[10px] font-semibold text-primary-700 hover:text-primary-800 px-2 py-1 rounded-md bg-white border border-primary-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0'
+                      >
+                        {isSendingEmail ? 'Sending...' : 'Send Info'}
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <p className='text-gray-400 italic mt-0.5'>Not recorded</p>
                 )}
@@ -728,6 +783,51 @@ export default function DebtorDetail() {
                 <p className='text-xs text-gray-400'>No guarantor on file</p>
               </div>
             )}
+          </div>
+
+          {/* How Debtor Pays Mini-Card */}
+          <div className='bg-white rounded-xl border border-gray-200/80 overflow-hidden'>
+            <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
+              <h3 className='text-xs font-bold text-gray-800 uppercase tracking-wide flex items-center gap-1.5'>
+                <Landmark className='h-3.5 w-3.5 text-gray-400' />
+                How Debtor Pays
+              </h3>
+            </div>
+            <div className='px-5 py-4 text-xs space-y-2'>
+              {biz?.virtualAccountNumber ? (
+                <div>
+                  <p className='text-gray-500 text-[11px] mb-1.5'>Direct Wallet Transfer (DVA):</p>
+                  <div className='p-2.5 bg-gray-50 border border-gray-200 rounded-lg space-y-1.5'>
+                    <div className='flex justify-between items-center'>
+                      <span className='text-gray-500'>Bank</span>
+                      <span className='font-semibold text-gray-900'>{biz.virtualAccountBank || 'Dedicated Virtual Account'}</span>
+                    </div>
+                    <div className='flex justify-between items-center'>
+                      <span className='text-gray-500'>Account Number</span>
+                      <span className='font-mono font-bold text-primary-700 text-sm'>{biz.virtualAccountNumber}</span>
+                    </div>
+                    <div className='flex justify-between items-center'>
+                      <span className='text-gray-500'>Account Name</span>
+                      <span className='font-medium text-gray-800'>{biz.businessName}</span>
+                    </div>
+                  </div>
+                  <p className='text-[10px] text-gray-400 mt-2'>
+                    These details are automatically included in debtor email reminders for direct settlement.
+                  </p>
+                </div>
+              ) : (
+                <div className='p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 space-y-1.5'>
+                  <p className='font-medium text-[11px]'>No wallet account on file</p>
+                  <p className='text-[10px] text-amber-700 leading-relaxed'>
+                    Set up your dedicated virtual account in{' '}
+                    <Link to='/account?tab=wallet' className='font-semibold underline hover:text-amber-900'>
+                      Account &rarr; Wallet
+                    </Link>{' '}
+                    to enable direct bank transfer instructions in debtor emails.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Accounting Info Banner */}

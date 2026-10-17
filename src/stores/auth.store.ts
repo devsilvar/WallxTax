@@ -1,5 +1,12 @@
 import { create } from 'zustand';
 import api from '@/lib/axios.ts';
+import {
+  startSession,
+  touchActivity,
+  clearSessionMeta,
+  isSessionExpired,
+  ensureSessionMetaSeeded,
+} from '@/lib/session.ts';
 import { useReminderStore } from '@/stores/reminder.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
@@ -11,10 +18,22 @@ import { useSettlementStore } from '@/stores/settlement.store.ts';
 import { useMessageStore } from '@/stores/message.store.ts';
 import type { User } from '@/types/index.ts';
 
+function hasTokenAtBoot(): boolean {
+  try {
+    return !!localStorage.getItem('accessToken');
+  } catch {
+    return false;
+  }
+}
+
+const _hasTokenAtBoot = hasTokenAtBoot();
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isBootstrapping: boolean;
+  hasCheckedAuth: boolean;
 
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -26,19 +45,25 @@ interface AuthState {
   setAuthSession: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void | Promise<void>;
   fetchMe: () => Promise<void>;
+  bootstrap: () => Promise<void>;
   setLoading: (loading: boolean) => void;
 }
 
+let fetchMeInflight: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  isAuthenticated: !!localStorage.getItem('accessToken'),
+  isAuthenticated: _hasTokenAtBoot,
   isLoading: false,
+  isBootstrapping: _hasTokenAtBoot,
+  hasCheckedAuth: !_hasTokenAtBoot,
 
   login: async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('accessToken', data.data.accessToken);
     localStorage.setItem('refreshToken', data.data.refreshToken);
-    set({ isAuthenticated: true });
+    startSession();
+    set({ isAuthenticated: true, isBootstrapping: false, hasCheckedAuth: true });
   },
 
   register: async (email, phone, password, requestedPlan) => {
@@ -57,7 +82,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setAuthSession: (user, accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
-    set({ user, isAuthenticated: true });
+    startSession();
+    set({ user, isAuthenticated: true, isBootstrapping: false, hasCheckedAuth: true });
   },
 
 
@@ -68,6 +94,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // in on the same tab sees the previous user's businesses/invoices/
   // reminders flash in the sidebar before the refetch completes.
   logout: async () => {
+    fetchMeInflight = null;
+
     // ─── Clear Axios Default Auth Header (prevent zombie token) ──
     // api.defaults.headers holds the last refreshed token in-memory.
     // Clearing localStorage alone leaves it there, so the next
@@ -83,6 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // ─── Clear Authentication Tokens ───────────────────────────────
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    clearSessionMeta();
 
     // ─── Clear Business & User Context ────────────────────────────
     localStorage.removeItem('activeBusinessId');
@@ -140,38 +169,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // - admin.stats.store (admin only, separate context)
     // - language.store (user preference - intentionally persists)
 
-    // Close SSE to prevent zombie events with old JWT after logout
-    try {
-      const { getSSEClient } = await import('@/lib/sse-client');
-      getSSEClient().disconnect();
-    } catch {}
-
     // ─── Reset Auth State ──────────────────────────────────────────
-    set({ user: null, isAuthenticated: false });
+    // Must happen BEFORE any await so callers that do not await logout()
+    // (e.g. legacy tests, fire-and-forget guards) still see the reset
+    // synchronously. Anything after the first await runs in a microtask.
+    // hasCheckedAuth=true so guards can render the login redirect
+    // instead of hanging on the bootstrap skeleton.
+    set({ user: null, isAuthenticated: false, isBootstrapping: false, hasCheckedAuth: true });
+
+    // Close SSE to prevent zombie events with old JWT after logout.
+    // Fire-and-forget — must not delay the synchronous reset above.
+    import('@/lib/sse-client').then(m => m.getSSEClient().disconnect()).catch(() => {});
   },
 
   fetchMe: async () => {
     const tokenAtStart = localStorage.getItem('accessToken');
-    if (!tokenAtStart) return;
-    try {
-      const { data } = await api.get('/auth/me');
-      // Guard: don't resurrect a session that was explicitly logged out
-      // while this request was in-flight (the classic "have to click
-      // logout 3 times" race). Token cleared/rotated mid-flight means
-      // the caller already invalidated the session — ignore the stale
-      // 200 and let the logout stand.
-      const currentToken = localStorage.getItem('accessToken');
-      if (currentToken !== tokenAtStart || !currentToken) return;
-      if (!get().isAuthenticated && !currentToken) return;
-      set({ user: data.data, isAuthenticated: true });
-    } catch {
-      // Only run the full wipe if this fetchMe was still the active
-      // session. If an explicit logout already cleared the token,
-      // the 401 is expected — don't double-fire logout/redirect.
-      if (localStorage.getItem('accessToken') === tokenAtStart) {
-        get().logout();
-      }
+    if (!tokenAtStart) {
+      set({ isBootstrapping: false, hasCheckedAuth: true });
+      return;
     }
+    if (fetchMeInflight) return fetchMeInflight;
+    fetchMeInflight = (async () => {
+      try {
+        const { data } = await api.get('/auth/me');
+        const currentToken = localStorage.getItem('accessToken');
+        if (currentToken !== tokenAtStart || !currentToken) return;
+        if (!get().isAuthenticated && !currentToken) return;
+        touchActivity();
+        set({ user: data.data, isAuthenticated: true });
+      } catch {
+        if (localStorage.getItem('accessToken') === tokenAtStart) {
+          await get().logout();
+        }
+      } finally {
+        set({ isBootstrapping: false, hasCheckedAuth: true });
+        fetchMeInflight = null;
+      }
+    })();
+    return fetchMeInflight;
+  },
+
+  bootstrap: async () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      set({ isBootstrapping: false, hasCheckedAuth: true });
+      return;
+    }
+    if (get().hasCheckedAuth && !get().isBootstrapping) return;
+    ensureSessionMetaSeeded();
+    if (isSessionExpired()) {
+      await get().logout();
+      return;
+    }
+    await get().fetchMe();
   },
 
   setLoading: (isLoading) => set({ isLoading }),

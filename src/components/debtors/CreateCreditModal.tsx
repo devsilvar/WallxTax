@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X,
   User,
+  Mail,
   Phone,
   FileText,
   Calendar,
@@ -103,6 +104,15 @@ export default function CreateCreditModal({
       toast.error('Description of goods/items is required');
       return;
     }
+    const email = customerEmail.trim();
+    if (!email) {
+      toast.error('Customer email is required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Enter a valid email address');
+      return;
+    }
     const numAmount = Number(totalAmount);
     if (!numAmount || numAmount < 100) {
       toast.error('Amount must be at least ₦100');
@@ -117,8 +127,8 @@ export default function CreateCreditModal({
     try {
       await createCredit(businessId, {
         customerName: customerName.trim(),
+        customerEmail: email,
         customerPhone: customerPhone.trim() || undefined,
-        customerEmail: customerEmail.trim() || undefined,
         description: description.trim(),
         totalAmount: numAmount,
         issueDate,
@@ -184,23 +194,45 @@ export default function CreateCreditModal({
           onSubmit={handleSubmit}
           className='flex-1 overflow-y-auto px-5 py-4 space-y-3.5'
         >
-          {/* Row 1: Debtor Name & Phone */}
+          {/* Row 1: Debtor Name */}
+          <div>
+            <label className='block text-xs font-semibold text-gray-700 mb-1'>
+              Customer Name <span className='text-rose-500'>*</span>
+            </label>
+            <div className='relative'>
+              <User className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
+              <input
+                type='text'
+                required
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder='e.g. Alhaji Musa'
+                className='w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Customer Email & Phone */}
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             <div>
               <label className='block text-xs font-semibold text-gray-700 mb-1'>
-                Customer Name <span className='text-rose-500'>*</span>
+                Customer Email <span className='text-rose-500'>*</span>
               </label>
               <div className='relative'>
-                <User className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
+                <Mail className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400' />
                 <input
-                  type='text'
+                  type='email'
                   required
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder='e.g. Alhaji Musa'
+                  autoComplete='email'
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder='customer@example.com'
                   className='w-full rounded-none border border-gray-300 pl-9 pr-3 py-2 text-xs focus:border-gray-900 focus:ring-0 outline-none transition-all'
                 />
               </div>
+              <p className='text-[10px] text-gray-500 mt-1'>
+                Debtor will be emailed on creation and when payment is due. Payment instructions include your wallet account for direct transfer.
+              </p>
             </div>
 
             <div>
@@ -387,22 +419,6 @@ export default function CreateCreditModal({
                       className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white'
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className='block text-[11px] font-medium text-gray-600 mb-0.5'>
-                    Customer Email
-                  </label>
-                  <input
-                    type='email'
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder='customer@example.com'
-                    className='w-full rounded-none border border-gray-300 px-2.5 py-1.5 text-xs focus:border-gray-900 outline-none bg-white'
-                  />
-                  <p className='text-[10px] text-gray-500 mt-1'>
-                    Debtor will be emailed on creation and when payment is due.
-                  </p>
                 </div>
 
                 <div>

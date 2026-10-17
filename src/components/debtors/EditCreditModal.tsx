@@ -157,12 +157,18 @@ export default function EditCreditModal({
       }
     }
 
+    const trimmedEmail = customerEmail.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error('Enter a valid email address');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload: Record<string, any> = {
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim() || '',
-        customerEmail: customerEmail.trim() || '',
+        customerEmail: trimmedEmail || '',
         description: description.trim() || undefined,
         dueDate: dueDate || undefined,
         reminderDate: reminderDate || undefined,
@@ -253,16 +259,23 @@ export default function EditCreditModal({
                 />
                 <div className="sm:col-span-2">
                   <Input
-                    label="Email Address"
+                    label="Customer Email"
                     type="email"
                     placeholder="e.g. customer@email.com"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     className="rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs"
                   />
-                  <p className="text-[10px] text-gray-500 mt-1">
-                    Debtor will receive payment reminders when due.
-                  </p>
+                  {!customerEmail.trim() ? (
+                    <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      No email on file — add one to enable automatic due reminders.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Debtor will receive payment reminders when due.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -11,6 +11,11 @@ import type {
   AdjustCustomerCardPayload,
   CustomerStats,
   CustomerCardActivity,
+  CustomerDetail,
+  CustomerKpis,
+  TimelineItem,
+  UpdateCustomerPayload,
+  CustomerHistoryQuery,
 } from '@/types/index.ts';
 
 interface CustomerCardDetail {
@@ -40,7 +45,26 @@ interface CustomerState {
   cardLoading: boolean;
   cardError: string | null;
 
+  // Customer 360 Detail & History
+  activeCustomer: Customer | null;
+  activeCard: CustomerCard | null;
+  activeKpis: CustomerKpis | null;
+  detailLoading: boolean;
+  detailError: string | null;
+
+  history: TimelineItem[];
+  historyPagination: Pagination | null;
+  historyLoading: boolean;
+  historyError: string | null;
+
   // Actions
+  fetchCustomer: (businessId: string, customerId: string) => Promise<CustomerDetail>;
+  fetchHistory: (businessId: string, customerId: string, query?: CustomerHistoryQuery) => Promise<void>;
+  updateCustomer: (businessId: string, customerId: string, payload: UpdateCustomerPayload) => Promise<Customer>;
+  deleteCustomer: (businessId: string, customerId: string) => Promise<void>;
+  archiveCustomer: (businessId: string, customerId: string) => Promise<void>;
+  unarchiveCustomer: (businessId: string, customerId: string) => Promise<void>;
+  clearActiveCustomer: () => void;
   searchCustomers: (
     businessId: string,
     search?: string,
@@ -111,7 +135,7 @@ interface CustomerState {
   clear: () => void;
 }
 
-export const useCustomerStore = create<CustomerState>((set) => ({
+export const useCustomerStore = create<CustomerState>((set, get) => ({
   customers: [],
   pagination: null,
   loading: false,
@@ -127,6 +151,17 @@ export const useCustomerStore = create<CustomerState>((set) => ({
   activeCustomerCard: null,
   cardLoading: false,
   cardError: null,
+
+  activeCustomer: null,
+  activeCard: null,
+  activeKpis: null,
+  detailLoading: false,
+  detailError: null,
+
+  history: [],
+  historyPagination: null,
+  historyLoading: false,
+  historyError: null,
 
   searchCustomers: async (businessId, search, page = 1, limit = 20) => {
     set({ loading: true, error: null });
@@ -231,65 +266,168 @@ export const useCustomerStore = create<CustomerState>((set) => ({
   },
 
   resendVoucherPin: async (businessId, customerId) => {
-    try {
-      const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/pin/resend`
-      );
-      return res.data;
-    } catch (err: unknown) {
-      throw err;
-    }
+    const res = await api.post(
+      `/businesses/${businessId}/customers/${customerId}/card/pin/resend`
+    );
+    return res.data;
   },
 
   changeVoucherPin: async (businessId, customerId, payload) => {
-    try {
-      const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/pin/change`,
-        payload
-      );
-      return res.data;
-    } catch (err: unknown) {
-      throw err;
-    }
+    const res = await api.post(
+      `/businesses/${businessId}/customers/${customerId}/card/pin/change`,
+      payload
+    );
+    return res.data;
   },
 
   topUpCard: async (businessId, customerId, payload) => {
-    try {
-      const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/top-up`,
-        payload
-      );
-      return res.data.data;
-    } catch (err: unknown) {
-      throw err;
-    }
+    const res = await api.post(
+      `/businesses/${businessId}/customers/${customerId}/card/top-up`,
+      payload
+    );
+    return res.data.data;
   },
 
   creditChange: async (businessId, customerId, payload) => {
-    try {
-      const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/change`,
-        payload
-      );
-      return res.data.data;
-    } catch (err: unknown) {
-      throw err;
-    }
+    const res = await api.post(
+      `/businesses/${businessId}/customers/${customerId}/card/change`,
+      payload
+    );
+    return res.data.data;
   },
 
   adjustCard: async (businessId, customerId, payload) => {
+    const res = await api.post(
+      `/businesses/${businessId}/customers/${customerId}/card/adjustment`,
+      payload
+    );
+    return res.data.data;
+  },
+
+  clearActiveCard: () => set({ activeCustomerCard: null, cardError: null }),
+
+  fetchCustomer: async (businessId: string, customerId: string) => {
+    set({ detailLoading: true, detailError: null });
     try {
-      const res = await api.post(
-        `/businesses/${businessId}/customers/${customerId}/card/adjustment`,
-        payload
-      );
-      return res.data.data;
+      const res = await api.get(`/businesses/${businessId}/customers/${customerId}`);
+      const data = res.data.data as CustomerDetail;
+      set({
+        activeCustomer: data.customer,
+        activeCard: data.card,
+        activeKpis: data.kpis,
+        detailLoading: false,
+      });
+      return data;
     } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Failed to load customer details');
+      set({ detailLoading: false, detailError: msg });
       throw err;
     }
   },
 
-  clearActiveCard: () => set({ activeCustomerCard: null, cardError: null }),
+  fetchHistory: async (businessId: string, customerId: string, query?: CustomerHistoryQuery) => {
+    set({ historyLoading: true, historyError: null });
+    try {
+      const res = await api.get(`/businesses/${businessId}/customers/${customerId}/history`, {
+        params: query,
+      });
+      set({
+        history: res.data.data as TimelineItem[],
+        historyPagination: res.data.pagination as Pagination,
+        historyLoading: false,
+      });
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Failed to load customer history');
+      set({ historyLoading: false, historyError: msg });
+      throw err;
+    }
+  },
+
+  updateCustomer: async (businessId: string, customerId: string, payload: UpdateCustomerPayload) => {
+    const res = await api.patch(`/businesses/${businessId}/customers/${customerId}`, payload);
+    const updated = res.data.data as Customer;
+    set((state) => ({
+      activeCustomer:
+        state.activeCustomer?.id === customerId
+          ? { ...state.activeCustomer, ...updated }
+          : state.activeCustomer,
+      customers: state.customers.map((c) => (c.id === customerId ? { ...c, ...updated } : c)),
+    }));
+    return updated;
+  },
+
+  archiveCustomer: async (businessId: string, customerId: string) => {
+    const previousCustomer = get().activeCustomer;
+    const previousCustomers = get().customers;
+
+    // Optimistic update
+    set((state) => ({
+      activeCustomer:
+        state.activeCustomer?.id === customerId
+          ? { ...state.activeCustomer, isActive: false }
+          : state.activeCustomer,
+      customers: state.customers.map((c) => (c.id === customerId ? { ...c, isActive: false } : c)),
+    }));
+
+    try {
+      await api.patch(`/businesses/${businessId}/customers/${customerId}`, { isActive: false });
+    } catch (err: unknown) {
+      // Revert on error
+      set({
+        activeCustomer: previousCustomer,
+        customers: previousCustomers,
+      });
+      throw err;
+    }
+  },
+
+  unarchiveCustomer: async (businessId: string, customerId: string) => {
+    const previousCustomer = get().activeCustomer;
+    const previousCustomers = get().customers;
+
+    // Optimistic update
+    set((state) => ({
+      activeCustomer:
+        state.activeCustomer?.id === customerId
+          ? { ...state.activeCustomer, isActive: true }
+          : state.activeCustomer,
+      customers: state.customers.map((c) => (c.id === customerId ? { ...c, isActive: true } : c)),
+    }));
+
+    try {
+      await api.patch(`/businesses/${businessId}/customers/${customerId}`, { isActive: true });
+    } catch (err: unknown) {
+      // Revert on error
+      set({
+        activeCustomer: previousCustomer,
+        customers: previousCustomers,
+      });
+      throw err;
+    }
+  },
+
+  deleteCustomer: async (businessId: string, customerId: string) => {
+    await api.delete(`/businesses/${businessId}/customers/${customerId}`);
+    set((state) => ({
+      customers: state.customers.filter((c) => c.id !== customerId),
+      activeCustomer: state.activeCustomer?.id === customerId ? null : state.activeCustomer,
+      activeCard: state.activeCustomer?.id === customerId ? null : state.activeCard,
+      activeKpis: state.activeCustomer?.id === customerId ? null : state.activeKpis,
+    }));
+  },
+
+  clearActiveCustomer: () =>
+    set({
+      activeCustomer: null,
+      activeCard: null,
+      activeKpis: null,
+      detailLoading: false,
+      detailError: null,
+      history: [],
+      historyPagination: null,
+      historyLoading: false,
+      historyError: null,
+    }),
 
   clear: () =>
     set({
@@ -305,5 +443,14 @@ export const useCustomerStore = create<CustomerState>((set) => ({
       activeCustomerCard: null,
       cardLoading: false,
       cardError: null,
+      activeCustomer: null,
+      activeCard: null,
+      activeKpis: null,
+      detailLoading: false,
+      detailError: null,
+      history: [],
+      historyPagination: null,
+      historyLoading: false,
+      historyError: null,
     }),
 }));

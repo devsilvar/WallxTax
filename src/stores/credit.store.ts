@@ -12,6 +12,7 @@ import type {
   RecordCreditPaymentPayload,
   WriteOffCreditPayload,
   SendCreditWhatsAppResult,
+  SendDebtorEmailResult,
 } from '@/types/index.ts';
 
 let fetchCreditsSeq = 0;
@@ -47,14 +48,15 @@ interface CreditState {
     businessId: string,
     id: string,
     payload: RecordCreditPaymentPayload
-  ) => Promise<{ payment: CreditPayment; credit: CustomerCredit; sale: any }>;
+  ) => Promise<{ payment: CreditPayment; credit: CustomerCredit; sale: unknown }>;
   reconcileDva: (
     businessId: string,
     creditId: string,
     saleId: string
-  ) => Promise<{ payment: CreditPayment; credit: CustomerCredit; sale: any }>;
+  ) => Promise<{ payment: CreditPayment; credit: CustomerCredit; sale: unknown }>;
   writeOffCredit: (businessId: string, id: string, payload: WriteOffCreditPayload) => Promise<CustomerCredit>;
   sendWhatsApp: (businessId: string, id: string) => Promise<SendCreditWhatsAppResult>;
+  sendDebtorEmail: (businessId: string, id: string) => Promise<SendDebtorEmailResult>;
   clearActive: () => void;
   clear: () => void;
 }
@@ -88,7 +90,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
     const seq = ++fetchCreditsSeq;
     set({ listLoading: true, listError: null });
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, unknown> = {
         page: query.page ?? 1,
         limit: query.limit ?? 15,
       };
@@ -112,7 +114,7 @@ export const useCreditStore = create<CreditState>((set, get) => ({
         pagination,
         listLoading: false,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (seq !== fetchCreditsSeq) return;
       set({
         listLoading: false,
@@ -155,10 +157,10 @@ export const useCreditStore = create<CreditState>((set, get) => ({
       const credit = res.data?.data;
       set({ activeCredit: credit, detailLoading: false });
       return credit;
-    } catch (err: any) {
+    } catch (err: unknown) {
       set({
         detailLoading: false,
-        detailError: err.response?.data?.message || err.message || 'Failed to fetch credit details',
+        detailError: getErrorMessage(err, 'Failed to fetch credit details'),
       });
       return null;
     }
@@ -167,11 +169,13 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   createCredit: async (businessId, payload) => {
     const res = await api.post(basePath(businessId), payload);
     const created = res.data?.data;
+    const meta = res.data?.meta;
+    const result = meta && created ? Object.assign({}, created, { meta }) : created;
     set((state) => ({
       credits: [created, ...state.credits],
     }));
     get().fetchSummary(businessId);
-    return created;
+    return result;
   },
 
   updateCredit: async (businessId, id, payload) => {
@@ -233,6 +237,11 @@ export const useCreditStore = create<CreditState>((set, get) => ({
   sendWhatsApp: async (businessId, id) => {
     const res = await api.post(`${basePath(businessId)}/${id}/send-whatsapp`);
     return res.data?.data || res.data?.meta;
+  },
+
+  sendDebtorEmail: async (businessId, id) => {
+    const res = await api.post(`${basePath(businessId)}/${id}/send-email`);
+    return res.data?.data ?? res.data?.meta;
   },
 
   clearActive: () => set({ activeCredit: null, detailError: null }),

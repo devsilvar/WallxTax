@@ -1,5 +1,6 @@
 import axios from 'axios';
 import axiosRetry, { isNetworkError, exponentialDelay } from 'axios-retry';
+import { touchActivity } from '@/lib/session.ts';
 
 export interface ApiError {
   response?: {
@@ -240,6 +241,7 @@ api.interceptors.response.use(
         }
         const newToken = data.data.accessToken;
         localStorage.setItem('accessToken', newToken);
+        try { touchActivity(); } catch {}
         api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
         setAuthorizationHeader(originalRequest, newToken);
         processQueue(null, newToken);

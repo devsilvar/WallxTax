@@ -18,7 +18,9 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
-import type { SalesTransaction, SaleLineItem, Customer } from '@/types/index.ts';
+import type { SalesTransaction, SaleLineItem, Customer, CustomerCredit, CreateCreditPayload } from '@/types/index.ts';
+import PhoneInput from '@/components/ui/PhoneInput.tsx';
+import { useCustomerStore } from '@/stores/customer.store.ts';
 import SaleItemsEditor from './SaleItemsEditor.tsx';
 import CustomerAutocomplete from '@/components/customers/CustomerAutocomplete.tsx';
 import VoucherAuthModal from '@/components/customers/VoucherAuthModal.tsx';
@@ -80,11 +82,14 @@ export default function AddSaleModal({
   ]);
 
   // Form state (moved from Sales.tsx)
+  const customers = useCustomerStore((s) => s.customers);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [source, setSource] = useState<string>('cash');
   const [description, setDescription] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [guarantorName, setGuarantorName] = useState('');
   const [guarantorPhone, setGuarantorPhone] = useState('');
@@ -142,7 +147,10 @@ export default function AddSaleModal({
       setSource(editSale.source);
       setDescription(editSale.description || '');
       setCustomerName(editSale.customerName || '');
-      setCustomerPhone('');
+      setSelectedCustomerId(editSale.customerId ?? null);
+      const meta = editSale.metadata as Record<string, unknown> | null | undefined;
+      setCustomerPhone(typeof meta?.customerPhone === 'string' ? meta.customerPhone : '');
+      setCustomerEmail(typeof meta?.customerEmail === 'string' ? meta.customerEmail : '');
       setDueDate('');
       setGuarantorName('');
       setGuarantorPhone('');
@@ -174,8 +182,10 @@ export default function AddSaleModal({
       setAmount('');
       setSource('cash');
       setDescription('');
+      setSelectedCustomerId(null);
       setCustomerName('');
       setCustomerPhone('');
+      setCustomerEmail('');
       const d = new Date();
       d.setDate(d.getDate() + 14);
       setDueDate(d.toISOString().slice(0, 10));
@@ -239,14 +249,26 @@ export default function AddSaleModal({
         setSaving(false);
         return;
       }
+      const email = customerEmail.trim();
+      if (!email) {
+        toast.error('Customer email is required for credit sales');
+        setSaving(false);
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast.error('Enter a valid customer email address');
+        setSaving(false);
+        return;
+      }
       if (!dueDate) {
         toast.error('Payment due date is required for credit sales');
         setSaving(false);
         return;
       }
 
-      const creditPayload: any = {
+      const creditPayload: CreateCreditPayload = {
         customerName: customerName.trim(),
+        customerEmail: email,
         customerPhone: customerPhone.trim() || undefined,
         issueDate: transactionDate,
         dueDate,
@@ -279,8 +301,14 @@ export default function AddSaleModal({
       }
 
       try {
-        await useCreditStore.getState().createCredit(businessId, creditPayload);
-        toast.success('Credit sale recorded — revenue counted, debt tracked in Debtors Book');
+        const res = (await useCreditStore.getState().createCredit(businessId, creditPayload)) as CustomerCredit & {
+          meta?: { revenueDeferred?: boolean };
+        };
+        if (res?.meta?.revenueDeferred) {
+          toast.success('Debtor registered — revenue deferred (locked month)');
+        } else {
+          toast.success('Credit sale recorded — revenue counted, debt tracked in Debtors Book');
+        }
         invalidateDashboard('sale_created');
         onSaved('created');
         onClose();
@@ -294,7 +322,7 @@ export default function AddSaleModal({
 
     const basePath = `/businesses/${businessId}/sales`;
 
-    const body: Record<string, any> = {
+    const body: Record<string, unknown> = {
       source,
       description: description || undefined,
       customerName: customerName || undefined,
@@ -364,10 +392,29 @@ export default function AddSaleModal({
         changeCreditAmount: changeDue,
       };
       body.customerId = changeCustomer.id;
+    } else {
+      if (selectedCustomerId) {
+        body.customerId = selectedCustomerId;
+        body.metadata = {
+          ...(body.metadata || {}),
+          customerId: selectedCustomerId,
+          ...(customerPhone.trim() ? { customerPhone: customerPhone.trim() } : {}),
+          ...(customerEmail.trim() ? { customerEmail: customerEmail.trim() } : {}),
+        };
+      } else if (customerName.trim() && (customerPhone.trim() || customerEmail.trim())) {
+        body.metadata = {
+          ...(body.metadata || {}),
+          ...(customerPhone.trim() ? { customerPhone: customerPhone.trim() } : {}),
+          ...(customerEmail.trim() ? { customerEmail: customerEmail.trim() } : {}),
+        };
+      }
     }
 
     try {
       if (editSale) {
+        if (selectedCustomerId) {
+          body.customerId = selectedCustomerId;
+        }
         await api.put(`${basePath}/${editSale.id}`, body);
 
         // Only verify if classification changed
@@ -381,11 +428,18 @@ export default function AddSaleModal({
         invalidateDashboard('sale_updated');
         onSaved('updated');
       } else {
-        await api.post(basePath, body);
-        toast.success('Sale created');
+        const res = await api.post(basePath, body);
+        if (res.data?.meta?.customerAutoCreated) {
+          toast.success(`Customer '${customerName.trim() || 'New Customer'}' created and linked`);
+        } else if (res.data?.meta?.customerId) {
+          toast.success(`Linked to existing '${customerName.trim() || 'Customer'}'`);
+        } else {
+          toast.success('Sale created');
+        }
         invalidateDashboard('sale_created');
         onSaved('created');
       }
+      setSelectedCustomerId(null);
       onClose();
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Failed'));
@@ -683,6 +737,15 @@ export default function AddSaleModal({
             </div>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1'>
               <Input
+                label='Customer Email *'
+                type='email'
+                placeholder='customer@example.com'
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
+                required
+              />
+              <Input
                 label='Debtor Phone (for WhatsApp Reminders)'
                 placeholder='e.g. 08012345678'
                 value={customerPhone}
@@ -715,6 +778,41 @@ export default function AddSaleModal({
           </div>
         )}
 
+        {!isCredit && !isVoucher && (
+          <div className="sm:col-span-2">
+            <CustomerAutocomplete
+              businessId={businessId}
+              selectedCustomer={
+                selectedCustomerId
+                  ? (customers.find((c) => c.id === selectedCustomerId) ??
+                     (editSale?.customerId === selectedCustomerId && editSale.customerName
+                       ? ({
+                           id: selectedCustomerId,
+                           name: editSale.customerName,
+                           phone: customerPhone || null,
+                           email: customerEmail || null,
+                         } as Customer)
+                       : null))
+                  : null
+              }
+              onSelectCustomer={(c) => {
+                setSelectedCustomerId(c?.id ?? null);
+                if (c) {
+                  setCustomerName(c.name);
+                  if (c.phone) setCustomerPhone(c.phone);
+                  if (c.email) setCustomerEmail(c.email);
+                } else {
+                  setCustomerName('');
+                  setCustomerPhone('');
+                  setCustomerEmail('');
+                }
+              }}
+              label="Customer (CRM & Virtual Card)"
+              placeholder="Search by customer name or phone… or tap to pick"
+            />
+          </div>
+        )}
+
         <Input
           label={
             mode === 'items' ? 'Order Note (Optional)' : 'Service Description'
@@ -736,6 +834,29 @@ export default function AddSaleModal({
           className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
           required={isCredit}
         />
+
+        {!isCredit && !isVoucher && !selectedCustomerId && (
+          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-gray-50 border border-gray-200">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Customer Phone (Auto-Capture)
+              </label>
+              <PhoneInput
+                value={customerPhone}
+                onChange={(full) => setCustomerPhone(full)}
+                placeholder="0803 123 4567"
+              />
+            </div>
+            <Input
+              label="Customer Email (Optional)"
+              type="email"
+              placeholder="customer@example.com"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+              className="rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs"
+            />
+          </div>
+        )}
         <Input
           label='Transaction Date'
           type='date'

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users,
   CreditCard,
@@ -27,6 +28,7 @@ import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { getErrorMessage } from '@/lib/axios.ts';
 import { maskPhoneSuffix } from '@/lib/format';
 import CustomerBonusControl from '@/components/voucher/CustomerBonusControl.tsx';
 import type { Customer } from '@/types/index.ts';
@@ -94,8 +96,12 @@ export default function Customers() {
 
   const [activeTab, setActiveTab] = useState<'customers' | 'logs'>('customers');
 
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Filter & Search states
-  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState(() => searchParams.get('search') || '');
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState(() => searchParams.get('search') || '');
   const [customerPage, setCustomerPage] = useState(1);
 
   const [logSearch, setLogSearch] = useState('');
@@ -134,6 +140,26 @@ export default function Customers() {
   const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<Customer | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  // 300ms debounce sync for customer search with URL search param
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCustomerSearch(customerSearch);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (customerSearch.trim()) {
+            next.set('search', customerSearch.trim());
+          } else {
+            next.delete('search');
+          }
+          return next;
+        },
+        { replace: true }
+      );
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customerSearch, setSearchParams]);
+
   // Initial fetch
   useEffect(() => {
     if (!activeBusiness?.id) return;
@@ -142,8 +168,8 @@ export default function Customers() {
 
   useEffect(() => {
     if (!activeBusiness?.id) return;
-    searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
-  }, [activeBusiness?.id, customerSearch, customerPage, searchCustomers]);
+    searchCustomers(activeBusiness.id, debouncedCustomerSearch || undefined, customerPage, 15);
+  }, [activeBusiness?.id, debouncedCustomerSearch, customerPage, searchCustomers]);
 
   useEffect(() => {
     if (!activeBusiness?.id || activeTab !== 'logs') return;
@@ -159,7 +185,7 @@ export default function Customers() {
     if (!activeBusiness?.id) return;
     fetchStats(activeBusiness.id);
     if (activeTab === 'customers') {
-      searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
+      searchCustomers(activeBusiness.id, debouncedCustomerSearch || undefined, customerPage, 15);
     } else {
       fetchActivity(activeBusiness.id, {
         search: logSearch || undefined,
@@ -194,8 +220,8 @@ export default function Customers() {
       setNewEmail('');
       setNewNotes('');
       fetchStats(activeBusiness.id);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to create customer');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to create customer'));
     } finally {
       setIsSavingCustomer(false);
     }
@@ -237,8 +263,8 @@ export default function Customers() {
       setTopUpNotes('');
       searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
       fetchStats(activeBusiness.id);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to top up card');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to top up card'));
     } finally {
       setIsSubmittingTopUp(false);
     }
@@ -270,8 +296,8 @@ export default function Customers() {
       setAdjustReason('');
       searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
       fetchStats(activeBusiness.id);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to adjust balance');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to adjust balance'));
     } finally {
       setIsSubmittingAdjust(false);
     }
@@ -283,8 +309,8 @@ export default function Customers() {
     try {
       const res = await resendVoucherPin(activeBusiness.id, customer.id);
       toast.success(res.message || 'New PIN sent to customer email');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to resend PIN');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to resend PIN'));
     }
   };
 
@@ -318,8 +344,8 @@ export default function Customers() {
       setPinOldPin('');
       setPinNewPin('');
       setPinLast4('');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to change PIN');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to change PIN'));
     } finally {
       setIsSubmittingPinChange(false);
     }
@@ -537,7 +563,11 @@ export default function Customers() {
                   {customers.map((c) => {
                     const balance = c.card ? Number(c.card.balance) : 0;
                     return (
-                      <tr key={c.id} className="hover:bg-gray-50/70 transition-colors">
+                      <tr
+                        key={c.id}
+                        onClick={() => navigate(`/customers/${c.id}`)}
+                        className="hover:bg-gray-50/70 transition-colors cursor-pointer"
+                      >
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-2.5">
                             <div className="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-[11px] shrink-0">
@@ -573,18 +603,20 @@ export default function Customers() {
                               {formatNaira(balance)}
                             </span>
                             {isManagerOrOwner && activeBusiness?.id && (
-                              <CustomerBonusControl
-                                businessId={activeBusiness.id}
-                                customerId={c.id}
-                                businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
-                                personalPct={c.voucherBonusPct}
-                                onSaved={() => {
-                                  if (activeBusiness?.id) {
-                                    searchCustomers(activeBusiness.id, customerSearch, customerPage, 15);
-                                    fetchStats(activeBusiness.id);
-                                  }
-                                }}
-                              />
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <CustomerBonusControl
+                                  businessId={activeBusiness.id}
+                                  customerId={c.id}
+                                  businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
+                                  personalPct={c.voucherBonusPct}
+                                  onSaved={() => {
+                                    if (activeBusiness?.id) {
+                                      searchCustomers(activeBusiness.id, debouncedCustomerSearch || undefined, customerPage, 15);
+                                      fetchStats(activeBusiness.id);
+                                    }
+                                  }}
+                                />
+                              </div>
                             )}
                           </div>
                         </td>
@@ -596,7 +628,8 @@ export default function Customers() {
                             <Button
                               variant="secondary"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (blockIfNeeded()) return;
                                 setSelectedCustomerForTopUp(c);
                                 setTopUpAmount('');
@@ -612,7 +645,10 @@ export default function Customers() {
                                 <Button
                                   variant="secondary"
                                   size="sm"
-                                  onClick={() => handleResendPin(c)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleResendPin(c);
+                                  }}
                                   className="text-xs py-1 px-2 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
                                   title="Resend voucher PIN to customer email"
                                 >
@@ -621,7 +657,8 @@ export default function Customers() {
                                 <Button
                                   variant="secondary"
                                   size="sm"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (blockIfNeeded()) return;
                                     setSelectedCustomerForPinChange(c);
                                     setPinOldPin('');
@@ -636,7 +673,8 @@ export default function Customers() {
                                 <Button
                                   variant="secondary"
                                   size="sm"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (blockIfNeeded()) return;
                                     setSelectedCustomerForAdjust(c);
                                     setAdjustAmount('');
@@ -653,7 +691,10 @@ export default function Customers() {
                               variant="secondary"
                               size="sm"
                               subscriptionExempt={true}
-                              onClick={() => openHistoryModal(c)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openHistoryModal(c);
+                              }}
                               className="text-xs py-1 px-2 text-gray-600 hover:text-gray-800"
                               title="View voucher statement"
                             >
@@ -666,6 +707,34 @@ export default function Customers() {
                   })}
                 </tbody>
               </table>
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
+                  <div className="text-xs text-gray-500">
+                    Page <span className="font-semibold text-gray-900">{customerPage}</span> of{' '}
+                    <span className="font-semibold text-gray-900">{pagination.totalPages}</span> ({pagination.total} customers)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={customerPage <= 1 || customersLoading}
+                      onClick={() => setCustomerPage((p) => Math.max(1, p - 1))}
+                      className="text-xs py-1 px-2.5"
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={customerPage >= pagination.totalPages || customersLoading}
+                      onClick={() => setCustomerPage((p) => p + 1)}
+                      className="text-xs py-1 px-2.5"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
