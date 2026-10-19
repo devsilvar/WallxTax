@@ -200,7 +200,7 @@ describe('Axios Authentication & Interceptor Suite', () => {
       expect(replayResult.data.success).toBe(true);
     });
 
-    it('rejects queue when refresh token endpoint fails and redirects to login', async () => {
+    it('rejects queue when refresh token endpoint fails and isLoggedOut synchronously, with delayed hard-replace safety net', async () => {
       const responseErrorHandler = getAuthResponseErrorHandler();
       expect(responseErrorHandler).toBeDefined();
 
@@ -220,8 +220,76 @@ describe('Axios Authentication & Interceptor Suite', () => {
         response: { status: 401 },
       };
 
+      // Pathname in beforeEach is '/dashboard' — a protected path. The
+      // handler will schedule a 1.5s window.location.replace('/login')
+      // safety net, but synchronously call logout() first.
       await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
-      expect(window.location.href).toBe('/login');
+
+      // Synchronously the user is logged out (auth store isAuthenticated=false).
+      // React Router will soft-redirect via <Navigate>.
+      const { useAuthStore } = await import('@/stores/auth.store');
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+
+      // window.location.href has NOT changed yet — the safety net is
+      // scheduled, not immediate. This is the bug-fix assertion: an
+      // immediate hard replace used to strip ?token=... during invite flow.
+      expect(window.location.href).toBe('http://localhost:5173/dashboard');
+
+      // Fast-forward the 1.5s safety-net timer. With pathname equality
+      // intact (still /dashboard — React didn't run because we never
+      // mounted a router here), the hard replace fires.
+      vi.useFakeTimers();
+      try {
+        await vi.advanceTimersByTimeAsync(1500);
+        expect(window.location.href).toBe('/login');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does NOT fire hard-replace safety net when user is already on an auth page', async () => {
+      const responseErrorHandler = getAuthResponseErrorHandler();
+      expect(responseErrorHandler).toBeDefined();
+
+      localStorage.setItem('accessToken', 'expired-token');
+      localStorage.setItem('refreshToken', 'revoked-refresh-token');
+
+      const refreshFailure = new Error('Refresh token invalid');
+      vi.spyOn(axios, 'post').mockRejectedValueOnce(refreshFailure);
+
+      const originalRequest: any = {
+        url: '/businesses/123/sales',
+        headers: { Authorization: 'Bearer expired-token' },
+      };
+
+      // Pretend we're already on /login — simulate a refresh failure on
+      // an unauthenticated path. beforeEach already set pathname to
+      // '/dashboard', so override it for this test.
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...window.location, pathname: '/login', href: 'http://localhost:5173/login' },
+      });
+
+      const error = {
+        config: originalRequest,
+        response: { status: 401 },
+      };
+
+      await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
+
+      vi.useFakeTimers();
+      try {
+        await vi.advanceTimersByTimeAsync(2000);
+        // Still on /login — no hard replace was scheduled.
+        expect(window.location.href).toBe('http://localhost:5173/login');
+      } finally {
+        vi.useRealTimers();
+        // Restore so subsequent tests see the original /dashboard path.
+        Object.defineProperty(window, 'location', {
+          configurable: true,
+          value: { ...originalLocation, pathname: '/dashboard', href: 'http://localhost:5173/dashboard' },
+        });
+      }
     });
   });
 

@@ -28,7 +28,18 @@ interface BusinessState {
   clear: () => void;
 }
 
-let inflight: Promise<void> | null = null;
+// Per-call AbortController. The prior version cached the in-flight Promise
+// at module scope (`inflight`). If that Promise was aborted (tab-throttled
+// browser, hot reload, React effect cleanup, logout) the cache held a
+// never-resolving Promise and isLoading stayed `true` — which strands
+// ProtectedRoute's <GlobalLoadingSkeleton/> until manual refresh. The
+// post-invite `/dashboard` landing hits this path: InvitationAccept.tsx
+// calls fetchBusinesses(true) and then setTimeout(navigate('/dashboard'))
+// — if the request aborts between, the dashboard renders the skeleton
+// forever. AbortController per call plus equality-guarded settle (only
+// the active controller clears isLoading) closes the gap. Same pattern
+// as Dashboard.tsx::bundleAbortRef, promoted to store layer.
+let inflightCtrl: AbortController | null = null;
 
 export const useBusinessStore = create<BusinessState>((set, get) => ({
   businesses: [],
@@ -46,39 +57,45 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
       return;
     }
 
-    // Coalesce concurrent callers (e.g. AppLayout + Sidebar both trigger on mount).
-    if (inflight) return inflight;
+    // Abort any prior in-flight call to guarantee a single settler.
+    inflightCtrl?.abort();
+    const ctrl = new AbortController();
+    inflightCtrl = ctrl;
 
     set({ isLoading: state.businesses.length === 0 });
 
-    inflight = (async () => {
-      try {
-        const { data } = await api.get('/businesses');
-        const businesses: Business[] = data.data;
+    try {
+      const { data } = await api.get('/businesses', { signal: ctrl.signal });
+      if (ctrl.signal.aborted) return;
+      const businesses: Business[] = data.data;
 
-        const stored = localStorage.getItem('activeBusinessId');
-        const active =
-          businesses.find((b) => b.id === stored) || businesses[0] || null;
-        if (active) localStorage.setItem('activeBusinessId', active.id);
+      const stored = localStorage.getItem('activeBusinessId');
+      const active =
+        businesses.find((b) => b.id === stored) || businesses[0] || null;
+      if (active) localStorage.setItem('activeBusinessId', active.id);
 
-        const currentActive = get().activeBusiness;
-        const activeChanged =
-          !currentActive ||
-          currentActive.id !== active?.id ||
-          JSON.stringify(currentActive) !== JSON.stringify(active);
+      const currentActive = get().activeBusiness;
+      const activeChanged =
+        !currentActive ||
+        currentActive.id !== active?.id ||
+        JSON.stringify(currentActive) !== JSON.stringify(active);
 
-        set({
-          businesses,
-          ...(activeChanged ? { activeBusiness: active } : {}),
-          lastFetchedAt: Date.now(),
-        });
-      } finally {
+      set({
+        businesses,
+        ...(activeChanged ? { activeBusiness: active } : {}),
+        lastFetchedAt: Date.now(),
+      });
+    } catch (err: any) {
+      if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+      throw err;
+    } finally {
+      // Only settle isLoading if WE are still the active call. Aborted
+      // callers must not clobber a newer in-flight controller's state.
+      if (inflightCtrl === ctrl) {
         set({ isLoading: false });
-        inflight = null;
+        inflightCtrl = null;
       }
-    })();
-
-    return inflight;
+    }
   },
 
   setActiveBusiness: (business) => {
@@ -128,10 +145,12 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
   },
 
   clear: () => {
-    // `inflight` is module-scoped (not in the store) — reset it here so a
-    // request still in flight at logout time can't unblock new requests
-    // for the next user.
-    inflight = null;
+    // `inflightCtrl` is module-scoped (not in the store) — abort + reset it
+    // here so a request still in flight at logout time can't unblock new
+    // requests for the next user. Called from auth.store.logout()
+    // (auth.store.ts clears every domain store before nulling user).
+    inflightCtrl?.abort();
+    inflightCtrl = null;
     set({
       businesses: [],
       activeBusiness: null,

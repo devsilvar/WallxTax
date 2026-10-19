@@ -49,7 +49,16 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
 }
 
-let fetchMeInflight: Promise<void> | null = null;
+// Per-call AbortController. Prior versions cached the in-flight Promise at
+// module scope (`fetchMeInflight`); if that Promise was ever aborted — by a
+// tab-throttled browser, hot reload, or React effect cleanup — the cache
+// held a never-resolving Promise and `isBootstrapping` stayed `true`
+// forever. That hung ProtectedRoute's <GlobalLoadingSkeleton/> until manual
+// refresh. AbortController per call plus "only settle the flags if we are
+// still the active controller" is the same pattern Dashboard.tsx uses
+// (bundleAbortRef) — promoted to store layer because fetchMe is called from
+// non-component contexts (axios interceptor, login flow).
+let fetchMeCtrl: AbortController | null = null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -100,7 +109,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // in on the same tab sees the previous user's businesses/invoices/
   // reminders flash in the sidebar before the refetch completes.
   logout: async () => {
-    fetchMeInflight = null;
+    fetchMeCtrl?.abort();
+    fetchMeCtrl = null;
 
     // ─── Clear Axios Default Auth Header (prevent zombie token) ──
     // api.defaults.headers holds the last refreshed token in-memory.
@@ -194,25 +204,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isBootstrapping: false, hasCheckedAuth: true });
       return;
     }
-    if (fetchMeInflight) return fetchMeInflight;
-    fetchMeInflight = (async () => {
-      try {
-        const { data } = await api.get('/auth/me');
-        const currentToken = localStorage.getItem('accessToken');
-        if (currentToken !== tokenAtStart || !currentToken) return;
-        if (!get().isAuthenticated && !currentToken) return;
-        touchActivity();
-        set({ user: data.data, isAuthenticated: true });
-      } catch {
-        if (localStorage.getItem('accessToken') === tokenAtStart) {
-          await get().logout();
-        }
-      } finally {
-        set({ isBootstrapping: false, hasCheckedAuth: true });
-        fetchMeInflight = null;
+    // Abort any prior in-flight fetchMe so its termination cannot strand
+    // us. The new call's `finally` below is the single settler of the
+    // bootstrap flags — only the *currently-active* controller flips them.
+    fetchMeCtrl?.abort();
+    const ctrl = new AbortController();
+    fetchMeCtrl = ctrl;
+    try {
+      const { data } = await api.get('/auth/me', { signal: ctrl.signal });
+      if (ctrl.signal.aborted) return;
+      const currentToken = localStorage.getItem('accessToken');
+      if (currentToken !== tokenAtStart || !currentToken) return;
+      if (!get().isAuthenticated && !currentToken) return;
+      touchActivity();
+      set({ user: data.data, isAuthenticated: true });
+    } catch (err: any) {
+      if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') return;
+      if (localStorage.getItem('accessToken') === tokenAtStart) {
+        await get().logout();
       }
-    })();
-    return fetchMeInflight;
+    } finally {
+      // Only settle bootstrap flags if WE are still the active call.
+      // A newer fetchMe will settle its own flags when it finishes; if we
+      // were aborted, do not flip isBootstrapping — the new call owns it.
+      if (fetchMeCtrl === ctrl) {
+        set({ isBootstrapping: false, hasCheckedAuth: true });
+        fetchMeCtrl = null;
+      }
+    }
   },
 
   bootstrap: async () => {

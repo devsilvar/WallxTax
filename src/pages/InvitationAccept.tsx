@@ -167,15 +167,22 @@ export default function InvitationAccept() {
           if (res.fullName) {
             setFullName(res.fullName);
           }
-          // Session Isolation: ONLY if the invite is for an unregistered brand-new user,
-          // AND there is currently a different user logged in on this browser,
-          // cleanly log out the old session ONCE during initial validation so new user can register.
-          if (res.valid && !res.accountExists) {
-            const currentAuth = useAuthStore.getState();
-            if (currentAuth.isAuthenticated) {
-              await currentAuth.logout();
-            }
-          }
+          // Intentionally do NOT auto-logout a previously-signed-in user
+          // here. The previous version called useAuthStore.getState().logout()
+          // when (res.valid && !res.accountExists && isAuthenticated) — i.e.
+          // a different user was signed in on this browser. That logout
+          // chain commonly hit the axios 401-refresh-failure path
+          // (window.location.replace('/login')) and stripped the ?token=
+          // query string mid-render, trapping the invitee on /login.
+          //
+          // Session isolation is now handled downstream: when
+          // res.valid && isAuthenticated && a different email is signed in,
+          // the rendering branch at line 750+ already shows an
+          // "Account Mismatch" card with a "Sign Out & Switch Account"
+          // button. Server-side acceptOnboardingInvite also validates
+          // the token-embedded email against the new user, so a token
+          // cannot be consumed by the wrong identity even if frontend
+          // state machine misbehaves.
         }
       } catch (err: any) {
         if (isMounted) {

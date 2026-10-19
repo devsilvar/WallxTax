@@ -255,15 +255,35 @@ api.interceptors.response.use(
         // is fine because by now both modules are fully evaluated.
         const { useAuthStore } = await import('@/stores/auth.store.ts');
         useAuthStore.getState().logout();
-        // Don't fight React Router with a hard reload. The logout flips
-        // isAuthenticated -> ProtectedRoute/GuestRoute will soft-redirect.
-        // Hard replace only as a safety net if the router isn't mounted
-        // (e.g. refresh failed on initial boot before <BrowserRouter>).
-        const path = window.location.pathname;
-        const alreadyOnAuthPage = path === '/login' || path === '/';
-        if (!alreadyOnAuthPage) {
-          // Use replace so back-button doesn't return to a dead session.
-          window.location.replace('/login');
+        // logout() sets isAuthenticated=false synchronously
+        // (auth.store.ts logout). ProtectedRoute/GuestRoute will soft-render
+        // <Navigate to="/login"/> on the next React tick.
+        //
+        // An IMMEDIATE window.location.replace here strips the query string
+        // (?token=... for team invites) and feels like a flash. Keep it as
+        // a 1.5 s safety net: fire ONLY if React hasn't redirected off a
+        // protected path by then. The pathname equality check at fire time
+        // guards against races — if React already navigated, the path will
+        // have changed and we skip the hard replace.
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname;
+          const isAuthPage =
+            path === '/login' ||
+            path === '/register' ||
+            path === '/' ||
+            path === '/invite' ||
+            path === '/verify-email' ||
+            path === '/verify-email-pending' ||
+            path === '/forgot-password' ||
+            path === '/reset-password';
+          if (!isAuthPage) {
+            setTimeout(() => {
+              if (window.location.pathname === path) {
+                // Use replace so back-button doesn't return to a dead session.
+                window.location.replace('/login');
+              }
+            }, 1500);
+          }
         }
         return Promise.reject(refreshError);
       } finally {
