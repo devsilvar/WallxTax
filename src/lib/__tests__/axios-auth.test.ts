@@ -220,26 +220,30 @@ describe('Axios Authentication & Interceptor Suite', () => {
         response: { status: 401 },
       };
 
-      // Pathname in beforeEach is '/dashboard' — a protected path. The
-      // handler will schedule a 1.5s window.location.replace('/login')
-      // safety net, but synchronously call logout() first.
-      await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
-
-      // Synchronously the user is logged out (auth store isAuthenticated=false).
-      // React Router will soft-redirect via <Navigate>.
-      const { useAuthStore } = await import('@/stores/auth.store');
-      expect(useAuthStore.getState().isAuthenticated).toBe(false);
-
-      // window.location.href has NOT changed yet — the safety net is
-      // scheduled, not immediate. This is the bug-fix assertion: an
-      // immediate hard replace used to strip ?token=... during invite flow.
-      expect(window.location.href).toBe('http://localhost:5173/dashboard');
-
-      // Fast-forward the 1.5s safety-net timer. With pathname equality
-      // intact (still /dashboard — React didn't run because we never
-      // mounted a router here), the hard replace fires.
+      // Install fake timers BEFORE the axios call so the 1.5s safety-net
+      // setTimeout is captured by the fake clock. Without this, the real
+      // setTimeout would be scheduled and advanceTimersByTimeAsync would
+      // have nothing to advance.
       vi.useFakeTimers();
       try {
+        // Pathname in beforeEach is '/dashboard' — a protected path. The
+        // handler will schedule a 1.5s window.location.replace('/login')
+        // safety net, but synchronously call logout() first.
+        await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
+
+        // Synchronously the user is logged out (auth store isAuthenticated=false).
+        // React Router will soft-redirect via <Navigate>.
+        const { useAuthStore } = await import('@/stores/auth.store');
+        expect(useAuthStore.getState().isAuthenticated).toBe(false);
+
+        // window.location.href has NOT changed yet — the safety net is
+        // scheduled, not immediate. This is the bug-fix assertion: an
+        // immediate hard replace used to strip ?token=... during invite flow.
+        expect(window.location.href).toBe('http://localhost:5173/dashboard');
+
+        // Fast-forward the 1.5s safety-net timer. With pathname equality
+        // intact (still /dashboard — React didn't run because we never
+        // mounted a router here), the hard replace fires.
         await vi.advanceTimersByTimeAsync(1500);
         expect(window.location.href).toBe('/login');
       } finally {
@@ -275,12 +279,13 @@ describe('Axios Authentication & Interceptor Suite', () => {
         response: { status: 401 },
       };
 
-      await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
-
       vi.useFakeTimers();
       try {
+        await expect(responseErrorHandler(error)).rejects.toThrow('Refresh token invalid');
+
         await vi.advanceTimersByTimeAsync(2000);
-        // Still on /login — no hard replace was scheduled.
+        // Still on /login — no hard replace was scheduled because the
+        // pathname was already in the auth-page allowlist.
         expect(window.location.href).toBe('http://localhost:5173/login');
       } finally {
         vi.useRealTimers();
