@@ -139,6 +139,7 @@ export interface Business {
   platformCommissionPct?: number;
   settlementConnectedAt?: string;
   voucherBonusPct?: number;
+  voucherAdjustmentThreshold?: number;
   logoUrl?: string | null;
   logoPublicId?: string | null;
   createdAt: string;
@@ -489,12 +490,85 @@ export interface CustomerHistoryQuery {
   endDate?: string;
 }
 
+export type VoucherRequestStatus =
+  | 'pending'
+  | 'awaiting_customer'
+  | 'verified'
+  | 'rejected'
+  | 'expired'
+  | 'applied';
+
+export type VoucherRequestKind = 'top_up' | 'adjustment';
+
+export interface VoucherLedgerRequest {
+  id: string;
+  businessId: string;
+  customerId: string;
+  cardId?: string | null;
+  kind: VoucherRequestKind;
+  amount: number;
+  bonusPct?: number | null;
+  bonusAmount?: number | null;
+  status: VoucherRequestStatus;
+  source: string;
+  createdBy: string;
+  authorizedBy?: string | null;
+  authorizedAt?: string | null;
+  rejectedBy?: string | null;
+  rejectedAt?: string | null;
+  rejectReason?: string | null;
+  verificationExpiresAt?: string | null;
+  verifiedAt?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  customerName: string;
+  notes?: string | null;
+  ledgerId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  customer?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+  };
+  card?: {
+    id: string;
+    cardCode: string;
+    balance: number;
+  } | null;
+  ledger?: {
+    id: string;
+    type: string;
+    amount: number;
+    balanceBefore: number;
+    balanceAfter: number;
+    createdAt: string;
+  } | null;
+}
+
 export interface QuickCreateCustomerPayload {
   name: string;
   phone: string;
   email?: string;
   address?: string;
   notes?: string;
+}
+
+export interface QuickCreateWithVoucherPayload {
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  initialTopUpAmount?: number;
+  bonusPct?: number;
+}
+
+export interface QuickCreateWithVoucherResponse {
+  customer: Customer;
+  card: CustomerCard;
+  voucherRequest: VoucherLedgerRequest | null;
 }
 
 export interface TopUpCustomerCardPayload {

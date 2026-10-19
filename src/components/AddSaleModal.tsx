@@ -9,7 +9,7 @@
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { TrendingUp, Package, Banknote, HandCoins, CreditCard, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, Package, Banknote, HandCoins, CreditCard, ShieldCheck, AlertCircle, CheckCircle2, UserPlus } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
@@ -18,12 +18,14 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
-import type { SalesTransaction, SaleLineItem, Customer, CustomerCredit, CreateCreditPayload } from '@/types/index.ts';
+import type { SalesTransaction, SaleLineItem, Customer, CustomerCredit, CreateCreditPayload, VoucherLedgerRequest } from '@/types/index.ts';
 import PhoneInput from '@/components/ui/PhoneInput.tsx';
 import { useCustomerStore } from '@/stores/customer.store.ts';
+import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate.ts';
 import SaleItemsEditor from './SaleItemsEditor.tsx';
 import CustomerAutocomplete from '@/components/customers/CustomerAutocomplete.tsx';
 import VoucherAuthModal from '@/components/customers/VoucherAuthModal.tsx';
+import CustomerVoucherCreateModal from '@/components/customers/CustomerVoucherCreateModal.tsx';
 
 const SOURCES = [
   'bank_transfer',
@@ -112,6 +114,13 @@ export default function AddSaleModal({
   const [creditChangeToVoucher, setCreditChangeToVoucher] = useState(false);
   const [changeCustomer, setChangeCustomer] = useState<Customer | null>(null);
 
+  // Subscription write guard
+  const { writesBlocked, blockIfNeeded } = useSubscriptionWriteGate();
+
+  // Sales-inline Customer & Voucher creation modal state
+  const [showVoucherCreate, setShowVoucherCreate] = useState(false);
+  const [pendingVoucherNotice, setPendingVoucherNotice] = useState(false);
+
   const [classifications, setClassifications] = useState<
     TransactionClassification[]
   >([]);
@@ -120,6 +129,29 @@ export default function AddSaleModal({
   const isEdit = editSale !== null;
   const isCredit = source === 'credit';
   const isVoucher = source === 'store_voucher';
+
+  // Handler when customer & voucher are created inline from sales modal
+  const handleCustomerVoucherCreated = (
+    newCustomer: Customer,
+    voucherRequest: VoucherLedgerRequest | null
+  ) => {
+    setSelectedCustomerId(newCustomer.id);
+    setCustomerName(newCustomer.name);
+    if (newCustomer.phone) setCustomerPhone(newCustomer.phone);
+    if (newCustomer.email) setCustomerEmail(newCustomer.email);
+    if (voucherRequest) {
+      setPendingVoucherNotice(true);
+      toast.success(
+        'Voucher created — Funding pending — awaiting manager authorization & customer verification'
+      );
+    } else {
+      toast.success(
+        newCustomer.email
+          ? 'Voucher created — PIN sent to email'
+          : 'Customer & virtual voucher card created successfully'
+      );
+    }
+  };
 
   // Editing a legacy 'manual' (or any retired) row: keep that value selectable
   // so a save doesn't silently rewrite history — the backend still accepts it.
@@ -141,6 +173,7 @@ export default function AddSaleModal({
     setAmountReceived('');
     setCreditChangeToVoucher(false);
     setChangeCustomer(null);
+    setPendingVoucherNotice(false);
 
     if (editSale) {
       setAmount(String(Number(editSale.amount)));
@@ -810,6 +843,43 @@ export default function AddSaleModal({
               label="Customer (CRM & Virtual Card)"
               placeholder="Search by customer name or phone… or tap to pick"
             />
+            {!selectedCustomerId && (
+              <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-emerald-50/70 border border-emerald-200/90 rounded-md">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-950">
+                      Need to register this customer or issue a voucher?
+                    </p>
+                    <p className="text-[11px] text-emerald-700">
+                      Works with any payment type — even Bank Transfer
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={writesBlocked}
+                  onClick={() => {
+                    if (blockIfNeeded()) return;
+                    setShowVoucherCreate(true);
+                  }}
+                  className="text-xs bg-white text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-300 font-medium whitespace-nowrap"
+                >
+                  <UserPlus className="w-3.5 h-3.5 mr-1" />
+                  ＋ New Customer & Voucher
+                </Button>
+              </div>
+            )}
+            {selectedCustomerId && pendingVoucherNotice && (
+              <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-md flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>
+                  <strong className="font-semibold">Funding pending:</strong> Awaiting manager authorization & customer verification. Your sale will record with this customer using your selected payment method.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -904,6 +974,16 @@ export default function AddSaleModal({
         setVoucherLast4(last4);
         setVoucherBalance(availableBalance);
       }}
+    />
+
+    <CustomerVoucherCreateModal
+      isOpen={showVoucherCreate}
+      businessId={businessId}
+      initialName={customerName}
+      initialPhone={customerPhone}
+      initialEmail={customerEmail}
+      onClose={() => setShowVoucherCreate(false)}
+      onCreated={handleCustomerVoucherCreated}
     />
   </>
   );

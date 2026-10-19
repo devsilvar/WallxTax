@@ -6,6 +6,8 @@ import type {
   CustomerCardLedger,
   Pagination,
   QuickCreateCustomerPayload,
+  QuickCreateWithVoucherPayload,
+  QuickCreateWithVoucherResponse,
   TopUpCustomerCardPayload,
   CreditCustomerChangePayload,
   AdjustCustomerCardPayload,
@@ -16,6 +18,7 @@ import type {
   TimelineItem,
   UpdateCustomerPayload,
   CustomerHistoryQuery,
+  VoucherLedgerRequest,
 } from '@/types/index.ts';
 
 interface CustomerCardDetail {
@@ -86,6 +89,10 @@ interface CustomerState {
     businessId: string,
     payload: QuickCreateCustomerPayload
   ) => Promise<Customer>;
+  quickCreateWithVoucher: (
+    businessId: string,
+    payload: QuickCreateWithVoucherPayload
+  ) => Promise<QuickCreateWithVoucherResponse>;
   fetchCustomerCard: (
     businessId: string,
     customerId: string
@@ -133,6 +140,41 @@ interface CustomerState {
   ) => Promise<{ card: CustomerCard; ledger: CustomerCardLedger }>;
   clearActiveCard: () => void;
   clear: () => void;
+
+  // Voucher Queue (Phase 4)
+  voucherRequests: VoucherLedgerRequest[];
+  voucherRequestsPagination: Pagination | null;
+  voucherRequestsLoading: boolean;
+  listVoucherRequests: (
+    businessId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      kind?: string;
+      search?: string;
+      customerId?: string;
+    }
+  ) => Promise<void>;
+  createVoucherRequest: (
+    businessId: string,
+    payload:
+      | { kind: 'top_up'; customerId: string; amount: number; bonusPct?: number; notes?: string; receiptDate?: string }
+      | { kind: 'adjustment'; customerId: string; amount: number; reason: string; receiptDate?: string }
+  ) => Promise<VoucherLedgerRequest>;
+  authorizeVoucherRequest: (
+    businessId: string,
+    requestId: string
+  ) => Promise<{ success: boolean; status: string; message: string; verifyUrl?: string }>;
+  rejectVoucherRequest: (
+    businessId: string,
+    requestId: string,
+    reason: string
+  ) => Promise<void>;
+  resendVerification: (
+    businessId: string,
+    requestId: string
+  ) => Promise<{ success: boolean; message: string; verifyUrl?: string }>;
 }
 
 export const useCustomerStore = create<CustomerState>((set, get) => ({
@@ -162,6 +204,10 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   historyPagination: null,
   historyLoading: false,
   historyError: null,
+
+  voucherRequests: [],
+  voucherRequestsPagination: null,
+  voucherRequestsLoading: false,
 
   searchCustomers: async (businessId, search, page = 1, limit = 20) => {
     set({ loading: true, error: null });
@@ -224,6 +270,30 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       return created;
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'Failed to create customer');
+      set({ error: msg, loading: false });
+      throw err;
+    }
+  },
+
+  quickCreateWithVoucher: async (businessId, payload) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await api.post(
+        `/businesses/${businessId}/customers/quick-create-with-voucher`,
+        payload
+      );
+      const { customer, card, voucherRequest } = res.data.data;
+      const fullCustomer: Customer = {
+        ...customer,
+        card,
+      };
+      set((state) => ({
+        customers: [fullCustomer, ...state.customers.filter((c) => c.id !== fullCustomer.id)],
+        loading: false,
+      }));
+      return { customer: fullCustomer, card, voucherRequest };
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Failed to create customer with voucher');
       set({ error: msg, loading: false });
       throw err;
     }
@@ -452,5 +522,61 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       historyPagination: null,
       historyLoading: false,
       historyError: null,
+      voucherRequests: [],
+      voucherRequestsPagination: null,
+      voucherRequestsLoading: false,
     }),
+
+  listVoucherRequests: async (businessId, params = {}) => {
+    set({ voucherRequestsLoading: true });
+    try {
+      const { data } = await api.get(`/businesses/${businessId}/voucher-requests`, { params });
+      set({
+        voucherRequests: data.data,
+        voucherRequestsPagination: data.pagination,
+        voucherRequestsLoading: false,
+      });
+    } catch (err) {
+      set({ voucherRequestsLoading: false });
+      throw err;
+    }
+  },
+
+  createVoucherRequest: async (businessId, payload) => {
+    const { data } = await api.post(`/businesses/${businessId}/voucher-requests`, payload);
+    const req = data.data;
+    set((state) => ({
+      voucherRequests: [req, ...state.voucherRequests],
+    }));
+    return req;
+  },
+
+  authorizeVoucherRequest: async (businessId, requestId) => {
+    const { data } = await api.post(`/businesses/${businessId}/voucher-requests/${requestId}/authorize`);
+    set((state) => ({
+      voucherRequests: state.voucherRequests.map((r) =>
+        r.id === requestId ? { ...r, ...data.data, status: data.status } : r
+      ),
+    }));
+    return data;
+  },
+
+  rejectVoucherRequest: async (businessId, requestId, reason) => {
+    const { data } = await api.post(`/businesses/${businessId}/voucher-requests/${requestId}/reject`, { reason });
+    set((state) => ({
+      voucherRequests: state.voucherRequests.map((r) =>
+        r.id === requestId ? { ...r, ...data.data, status: 'rejected', rejectReason: reason } : r
+      ),
+    }));
+  },
+
+  resendVerification: async (businessId, requestId) => {
+    const { data } = await api.post(`/businesses/${businessId}/voucher-requests/${requestId}/resend`);
+    set((state) => ({
+      voucherRequests: state.voucherRequests.map((r) =>
+        r.id === requestId ? { ...r, ...data.data } : r
+      ),
+    }));
+    return data;
+  },
 }));

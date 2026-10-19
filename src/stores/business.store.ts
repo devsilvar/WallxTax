@@ -20,6 +20,7 @@ interface BusinessState {
   fetchBusinesses: (force?: boolean) => Promise<void>;
   setActiveBusiness: (business: Business) => void;
   createBusiness: (data: Partial<Business>) => Promise<Business>;
+  updateVoucherAdjustmentThreshold: (businessId: string, threshold: number) => Promise<void>;
   /**
    * Reset to initial state. Called from auth.store.logout() to prevent the
    * previous user's businesses from bleeding into the next session.
@@ -94,6 +95,36 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
       lastFetchedAt: Date.now(), // we just got fresh data
     }));
     return business;
+  },
+
+  updateVoucherAdjustmentThreshold: async (businessId, threshold) => {
+    const prev = get().businesses.find((b) => b.id === businessId)?.voucherAdjustmentThreshold;
+    // Optimistic update
+    set((state) => ({
+      businesses: state.businesses.map((b) =>
+        b.id === businessId ? { ...b, voucherAdjustmentThreshold: threshold } : b
+      ),
+      activeBusiness:
+        state.activeBusiness?.id === businessId
+          ? { ...state.activeBusiness, voucherAdjustmentThreshold: threshold }
+          : state.activeBusiness,
+    }));
+
+    try {
+      await api.put(`/businesses/${businessId}/settings/voucher-adjustment-threshold`, { threshold });
+    } catch (err) {
+      // Revert on error
+      set((state) => ({
+        businesses: state.businesses.map((b) =>
+          b.id === businessId ? { ...b, voucherAdjustmentThreshold: prev } : b
+        ),
+        activeBusiness:
+          state.activeBusiness?.id === businessId
+            ? { ...state.activeBusiness, voucherAdjustmentThreshold: prev }
+            : state.activeBusiness,
+      }));
+      throw err;
+    }
   },
 
   clear: () => {

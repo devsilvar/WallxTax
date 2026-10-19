@@ -51,6 +51,7 @@ const Account = lazy(() => import('@/pages/Account.tsx'));
 const Subscription = lazy(() => import('@/pages/Subscription.tsx'));
 const Messages = lazy(() => import('@/pages/Messages.tsx'));
 const InvitationAccept = lazy(() => import('@/pages/InvitationAccept.tsx'));
+const VerifyVoucher = lazy(() => import('@/pages/public/VerifyVoucher.tsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.tsx'));
 
 function SalesUnverifiedRedirect() {
@@ -135,6 +136,7 @@ function AppRoutes() {
             </Route>
 
             <Route path="/invite" element={<InvitationAccept />} />
+            <Route path="/verify-voucher/:requestId" element={<VerifyVoucher />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>

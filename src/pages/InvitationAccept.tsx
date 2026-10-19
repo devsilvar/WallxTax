@@ -167,6 +167,15 @@ export default function InvitationAccept() {
           if (res.fullName) {
             setFullName(res.fullName);
           }
+          // Session Isolation: ONLY if the invite is for an unregistered brand-new user,
+          // AND there is currently a different user logged in on this browser,
+          // cleanly log out the old session ONCE during initial validation so new user can register.
+          if (res.valid && !res.accountExists) {
+            const currentAuth = useAuthStore.getState();
+            if (currentAuth.isAuthenticated) {
+              await currentAuth.logout();
+            }
+          }
         }
       } catch (err: any) {
         if (isMounted) {
@@ -188,17 +197,15 @@ export default function InvitationAccept() {
     };
   }, [tokenFromUrl, validateInviteToken, isAuthenticated, fetchMyInvitations]);
 
-  // 3. Session Isolation: ONLY if the invite is for an unregistered user, log out existing session
+  // Fallback automatic redirect once processedSuccess is activated
   useEffect(() => {
-    if (
-      tokenFromUrl &&
-      inviteDetails?.valid &&
-      !inviteDetails.accountExists &&
-      isAuthenticated
-    ) {
-      logout();
+    if (processedSuccess) {
+      const timer = setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 1500);
+      return () => clearTimeout(timer);
     }
-  }, [tokenFromUrl, inviteDetails, isAuthenticated, logout]);
+  }, [processedSuccess, navigate]);
 
   // 4. Handle Onboarding Submission (New User Registration)
   const handleOnboardingSubmit = async (e: FormEvent) => {
@@ -227,19 +234,32 @@ export default function InvitationAccept() {
       setAuthSession(res.user, res.accessToken, res.refreshToken);
       localStorage.setItem('activeBusinessId', res.business.id);
 
+      // Pre-seed business store so dashboard and ProtectedRoute have it immediately
+      useBusinessStore.setState((state) => ({
+        businesses: state.businesses.some((b) => b.id === res.business.id)
+          ? state.businesses
+          : [{ ...res.business, myRole: res.business.role } as any, ...state.businesses],
+        activeBusiness: { ...res.business, myRole: res.business.role } as any,
+        isLoading: false,
+      }));
+
       toast.success(`Welcome to ${res.business.businessName}!`);
       setProcessedSuccess(res.business.businessName);
 
-      await fetchBusinesses(true);
+      // Fetch fresh businesses in background (isolated so it never blocks navigation)
+      try {
+        await fetchBusinesses(true);
+      } catch (fetchErr) {
+        console.warn('Background business fetch error during onboarding:', fetchErr);
+      }
 
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 1200);
+        navigate('/dashboard', { replace: true });
+      }, 1000);
     } catch (err: any) {
       toast.error(
         err.response?.data?.error?.message || 'Failed to complete registration',
       );
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -254,9 +274,63 @@ export default function InvitationAccept() {
     try {
       await login(inviteDetails.email, loginPassword);
       await fetchMe();
-      await fetchBusinesses(true);
       setLoginPassword('');
       toast.success('Signed in successfully');
+
+      // Seamlessly auto-accept invitation now that user is verified
+      if (tokenFromUrl) {
+        setIsSubmitting(true);
+        try {
+          const res = await acceptInvitation(tokenFromUrl);
+          const bizId = res?.business?.id || inviteDetails?.business?.id;
+          if (bizId) {
+            localStorage.setItem('activeBusinessId', bizId);
+          }
+          const bizName =
+            res?.business?.businessName ||
+            inviteDetails?.business?.businessName ||
+            'the business';
+          toast.success(`Joined ${bizName}!`);
+          setProcessedSuccess(bizName);
+
+          if (bizId) {
+            useBusinessStore.setState({
+              activeBusiness: {
+                id: bizId,
+                businessName: bizName,
+                myRole: (res as any)?.membership?.role || inviteDetails?.role || 'viewer',
+              } as any,
+              isLoading: false,
+            });
+          }
+
+          try {
+            await fetchBusinesses(true);
+          } catch (bErr) {
+            console.warn('Background business fetch error:', bErr);
+          }
+
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 1000);
+          return;
+        } catch (acceptErr: any) {
+          const code = acceptErr.response?.data?.error?.code;
+          const status = acceptErr.response?.status;
+          if (code === 'ALREADY_MEMBER' || status === 409) {
+            toast.success('You are already a member of this business!');
+            await fetchBusinesses(true);
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+          // If auto-accept failed with another error, reload businesses so manual card can display
+          await fetchBusinesses(true);
+        } finally {
+          setIsSubmitting(false);
+        }
+      } else {
+        await fetchBusinesses(true);
+      }
     } catch (err: any) {
       const code = err.response?.data?.error?.code;
       const message = err.response?.data?.error?.message || 'Failed to sign in';
@@ -288,11 +362,28 @@ export default function InvitationAccept() {
         'the business';
       toast.success(`Joined ${bizName}!`);
       setProcessedSuccess(bizName);
-      await fetchBusinesses(true);
-      await fetchMe();
+
+      if (bizId) {
+        useBusinessStore.setState({
+          activeBusiness: {
+            id: bizId,
+            businessName: bizName,
+            myRole: (res as any)?.membership?.role || inviteDetails?.role || 'viewer',
+          } as any,
+          isLoading: false,
+        });
+      }
+
+      try {
+        await fetchBusinesses(true);
+        await fetchMe();
+      } catch (err) {
+        console.warn('Background business refresh error:', err);
+      }
+
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 1200);
+        navigate('/dashboard', { replace: true });
+      }, 1000);
     } catch (err: any) {
       const status = err.response?.status;
       const code = err.response?.data?.error?.code;
@@ -300,7 +391,7 @@ export default function InvitationAccept() {
         toast.success('You are already a member of this business!');
         await fetchBusinesses(true);
         await fetchMe();
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
         return;
       }
       toast.error(
@@ -319,7 +410,7 @@ export default function InvitationAccept() {
       await declineInvitation(tokenFromUrl);
       toast.success('Invitation declined');
       await fetchMe();
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       toast.error(
         err.response?.data?.error?.message || 'Failed to decline invitation',
@@ -345,11 +436,28 @@ export default function InvitationAccept() {
         'the business';
       toast.success(`Joined ${bizName}!`);
       setProcessedSuccess(bizName);
-      await fetchBusinesses(true);
-      await fetchMe();
+
+      if (bizId) {
+        useBusinessStore.setState({
+          activeBusiness: {
+            id: bizId,
+            businessName: bizName,
+            myRole: (res as any)?.membership?.role || inv.role || 'viewer',
+          } as any,
+          isLoading: false,
+        });
+      }
+
+      try {
+        await fetchBusinesses(true);
+        await fetchMe();
+      } catch (err) {
+        console.warn('Background business refresh error:', err);
+      }
+
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 1200);
+        navigate('/dashboard', { replace: true });
+      }, 1000);
     } catch (err: any) {
       const status = err.response?.status;
       const code = err.response?.data?.error?.code;
@@ -357,7 +465,7 @@ export default function InvitationAccept() {
         toast.success('You are already a member of this business!');
         await fetchBusinesses(true);
         await fetchMe();
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
         return;
       }
       toast.error(
@@ -403,6 +511,19 @@ export default function InvitationAccept() {
               Your workspace access is configured. Directing you to your team
               workspace...
             </p>
+            <div className='h-2 w-48 bg-emerald-100 rounded-full mx-auto overflow-hidden mt-2'>
+              <div className='h-full bg-emerald-600 rounded-full animate-progress' />
+            </div>
+            <div className='pt-2'>
+              <button
+                type='button'
+                onClick={() => navigate('/dashboard', { replace: true })}
+                className='inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 active:scale-[0.98] transition-all shadow-sm cursor-pointer'
+              >
+                <span>Enter Dashboard Now</span>
+                <ArrowRight className='h-3.5 w-3.5' />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -438,7 +559,15 @@ export default function InvitationAccept() {
       let description =
         'This invitation link is not valid or has already been used.';
 
-      if (inviteDetails?.reason === 'account_not_eligible') {
+      const targetBiz =
+        inviteDetails?.business?.businessName || (inviteDetails as any)?.businessName;
+
+      if (inviteDetails?.reason === 'already_member') {
+        title = 'Already a Team Member';
+        description = targetBiz
+          ? `You are already an active team member of ${targetBiz}. You already have full access to this workspace.`
+          : 'You are already an active member of this business workspace.';
+      } else if (inviteDetails?.reason === 'account_not_eligible') {
         title = 'Account Not Eligible';
         description =
           "This account cannot join this business. Team members can belong to only one business owner's organization. Please contact the person who invited you.";
@@ -451,9 +580,17 @@ export default function InvitationAccept() {
         description =
           'This invitation was revoked by the business administrator. If you believe this is an error, please reach out to the business owner.';
       } else if (inviteDetails?.reason === 'already_used') {
-        title = 'Invitation Already Used';
-        description =
-          'This invitation has already been accepted. You can sign in using your email and password.';
+        if (isAuthenticated) {
+          title = 'Invitation Already Accepted';
+          description = targetBiz
+            ? `You have already accepted this invitation to join ${targetBiz}. Go to your dashboard to access your workspace.`
+            : 'This invitation has already been accepted. You can return to your dashboard to access your workspace.';
+        } else {
+          title = 'Invitation Already Used';
+          description = targetBiz
+            ? `This invitation to join ${targetBiz} has already been accepted. Sign in to your account using your email and password.`
+            : 'This invitation has already been accepted. You can sign in using your email and password.';
+        }
       }
 
       return (

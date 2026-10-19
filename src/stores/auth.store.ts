@@ -62,6 +62,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('accessToken', data.data.accessToken);
     localStorage.setItem('refreshToken', data.data.refreshToken);
+    try {
+      api.defaults.headers.common.Authorization = `Bearer ${data.data.accessToken}`;
+    } catch {}
     startSession();
     set({ isAuthenticated: true, isBootstrapping: false, hasCheckedAuth: true });
   },
@@ -82,6 +85,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setAuthSession: (user, accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
+    try {
+      api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+    } catch {}
     startSession();
     set({ user, isAuthenticated: true, isBootstrapping: false, hasCheckedAuth: true });
   },

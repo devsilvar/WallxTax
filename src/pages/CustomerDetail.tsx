@@ -18,7 +18,11 @@ import {
   Check,
   Coins,
   ChevronRight,
+  ChevronDown,
   Trash2,
+  Lock,
+  SlidersHorizontal,
+  History,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -26,7 +30,7 @@ import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Modal from '@/components/ui/Modal.tsx';
 import Input from '@/components/ui/Input.tsx';
-import PhoneInput from '@/components/ui/PhoneInput.tsx';
+import PhoneInput, { extractLocalNigerianDigits } from '@/components/ui/PhoneInput.tsx';
 import EmptyState from '@/components/ui/EmptyState.tsx';
 import ErrorState from '@/components/ui/ErrorState.tsx';
 import { TableSkeleton } from '@/components/ui/Skeleton.tsx';
@@ -37,6 +41,13 @@ import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { getErrorMessage } from '@/lib/axios.ts';
 import api from '@/lib/axios.ts';
+import CustomerBonusControl from '@/components/voucher/CustomerBonusControl.tsx';
+import {
+  TopUpVoucherModal,
+  AdjustBalanceModal,
+  ChangePinModal,
+  VoucherHistoryModal,
+} from '@/components/customers/VoucherActionModals.tsx';
 import type { TimelineItem, UpdateCustomerPayload, SalesTransaction, Invoice, CustomerHistoryQuery } from '@/types/index.ts';
 
 /* ─── Helpers ──────────────────────────────────────────────── */
@@ -165,6 +176,16 @@ export default function CustomerDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Voucher action modals state
+  const [isChangePinOpen, setIsChangePinOpen] = useState(false);
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+
+  // Edit form collapsed sections state (default closed)
+  const [showLocationSection, setShowLocationSection] = useState(false);
+  const [showAdvancedSection, setShowAdvancedSection] = useState(false);
+
   // Copy state
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -284,29 +305,93 @@ export default function CustomerDetail() {
     if (!activeBusiness?.id || !activeCustomer || !isManagerOrOwner) return;
     if (blockIfNeeded()) return;
 
-    if (!editForm.name?.trim()) {
+    const trimmedName = editForm.name?.trim();
+    if (!trimmedName) {
       toast.error('Customer name is required');
       return;
     }
 
+    const trimmedPhone = editForm.phone?.trim();
+    if (trimmedPhone) {
+      const localDigits = extractLocalNigerianDigits(trimmedPhone);
+      if (localDigits.length < 10) {
+        toast.error('Phone number must contain at least 10 digits');
+        return;
+      }
+    }
+
+    const trimmedEmail = editForm.email?.trim();
+    if (trimmedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        toast.error('Please enter a valid email address');
+        return;
+      }
+    }
+
+    let parsedBonus: number | null | undefined = undefined;
+    if (
+      editForm.voucherBonusPct !== null &&
+      editForm.voucherBonusPct !== undefined &&
+      editForm.voucherBonusPct !== ('' as unknown)
+    ) {
+      const numBonus = Number(editForm.voucherBonusPct);
+      if (isNaN(numBonus) || numBonus < 0 || numBonus > 10) {
+        toast.error('Voucher bonus must be between 0% and 10%');
+        return;
+      }
+      parsedBonus = numBonus;
+    } else {
+      parsedBonus = null;
+    }
+
+    // Helper to compute dirty string field (omits if unchanged, null if explicitly cleared from prior non-empty value)
+    const computeDirtyString = (currentVal: string | null | undefined, formVal: string | null | undefined) => {
+      const curNorm = currentVal?.trim() || null;
+      const formNorm = formVal?.trim() || null;
+      if (formNorm === curNorm) return undefined;
+      return formNorm === null ? null : formNorm;
+    };
+
+    const dirtyPayload: UpdateCustomerPayload = {
+      name: trimmedName,
+    };
+
+    const dirtyEmail = computeDirtyString(activeCustomer.email, editForm.email);
+    if (dirtyEmail !== undefined) dirtyPayload.email = dirtyEmail;
+
+    const dirtyPhone = computeDirtyString(activeCustomer.phone, editForm.phone);
+    if (dirtyPhone !== undefined) dirtyPayload.phone = dirtyPhone;
+
+    const dirtyAddress = computeDirtyString(activeCustomer.address, editForm.address);
+    if (dirtyAddress !== undefined) dirtyPayload.address = dirtyAddress;
+
+    const dirtyCity = computeDirtyString(activeCustomer.city, editForm.city);
+    if (dirtyCity !== undefined) dirtyPayload.city = dirtyCity;
+
+    const dirtyState = computeDirtyString(activeCustomer.state, editForm.state);
+    if (dirtyState !== undefined) dirtyPayload.state = dirtyState;
+
+    const dirtyTaxId = computeDirtyString(activeCustomer.taxId, editForm.taxId);
+    if (dirtyTaxId !== undefined) dirtyPayload.taxId = dirtyTaxId;
+
+    const dirtyNotes = computeDirtyString(activeCustomer.notes, editForm.notes);
+    if (dirtyNotes !== undefined) dirtyPayload.notes = dirtyNotes;
+
+    const curBonus =
+      activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined
+        ? Number(activeCustomer.voucherBonusPct)
+        : null;
+    if (parsedBonus !== curBonus) {
+      dirtyPayload.voucherBonusPct = parsedBonus;
+    }
+
     setIsSaving(true);
     try {
-      await updateCustomer(activeBusiness.id, activeCustomer.id, {
-        name: editForm.name.trim(),
-        email: editForm.email?.trim() || null,
-        phone: editForm.phone?.trim() || null,
-        address: editForm.address?.trim() || null,
-        city: editForm.city?.trim() || null,
-        state: editForm.state?.trim() || null,
-        taxId: editForm.taxId?.trim() || null,
-        notes: editForm.notes?.trim() || null,
-        voucherBonusPct:
-          editForm.voucherBonusPct !== null && editForm.voucherBonusPct !== undefined
-            ? Number(editForm.voucherBonusPct)
-            : null,
-      });
+      await updateCustomer(activeBusiness.id, activeCustomer.id, dirtyPayload);
       toast.success('Customer details updated');
       setIsEditModalOpen(false);
+      await fetchCustomer(activeBusiness.id, activeCustomer.id);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to update customer'));
     } finally {
@@ -377,12 +462,47 @@ export default function CustomerDetail() {
         </Link>
 
         {isManagerOrOwner && (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {activeCard && (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (blockIfNeeded()) return;
+                    setIsChangePinOpen(true);
+                  }}
+                  className="inline-flex items-center text-xs"
+                >
+                  <Lock className="h-3.5 w-3.5 mr-1.5 text-blue-600" /> Change PIN
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (blockIfNeeded()) return;
+                    setIsAdjustOpen(true);
+                  }}
+                  className="inline-flex items-center text-xs"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5 text-purple-600" /> Adjust Balance
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  subscriptionExempt={true}
+                  onClick={() => setIsHistoryOpen(true)}
+                  className="inline-flex items-center text-xs"
+                >
+                  <History className="h-3.5 w-3.5 mr-1.5 text-gray-500" /> View Voucher History
+                </Button>
+              </>
+            )}
             <Button
               size="sm"
               variant="secondary"
               onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex items-center"
+              className="inline-flex items-center text-xs"
             >
               <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Profile
             </Button>
@@ -390,7 +510,7 @@ export default function CustomerDetail() {
               size="sm"
               variant="secondary"
               onClick={handleToggleArchive}
-              className={`inline-flex items-center ${
+              className={`inline-flex items-center text-xs ${
                 activeCustomer.isActive ? 'text-gray-600 hover:text-amber-700' : 'text-emerald-700 hover:text-emerald-800'
               }`}
             >
@@ -409,7 +529,7 @@ export default function CustomerDetail() {
                 size="sm"
                 variant="danger"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="inline-flex items-center"
+                className="inline-flex items-center text-xs"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -442,11 +562,27 @@ export default function CustomerDetail() {
                   />
                   {activeCustomer.isActive ? 'Active Client' : 'Archived'}
                 </span>
-                {activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                    <Coins className="h-3 w-3 mr-1" />
-                    {activeCustomer.voucherBonusPct}% Bonus Rate
-                  </span>
+                {isManagerOrOwner && activeBusiness?.id ? (
+                  <div className="inline-flex items-center">
+                    <CustomerBonusControl
+                      businessId={activeBusiness.id}
+                      customerId={activeCustomer.id}
+                      businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
+                      personalPct={activeCustomer.voucherBonusPct}
+                      onSaved={() => {
+                        if (activeBusiness?.id && activeCustomer?.id) {
+                          fetchCustomer(activeBusiness.id, activeCustomer.id);
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                      <Coins className="h-3 w-3 mr-1" />
+                      {activeCustomer.voucherBonusPct}% Bonus Rate
+                    </span>
+                  )
                 )}
               </div>
               <p className="text-xs text-gray-400">
@@ -907,6 +1043,44 @@ export default function CustomerDetail() {
       {/* ─── Tab Content: Store Card (Vouchers) ───────────────── */}
       {currentTab === 'vouchers' && (
         <div className="space-y-6">
+          {activeCard && isManagerOrOwner && (
+            <div className="flex items-center justify-end gap-2 flex-wrap pb-2 border-b border-gray-100">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (blockIfNeeded()) return;
+                  setIsTopUpOpen(true);
+                }}
+                className="text-xs py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+              >
+                + Top Up Voucher
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (blockIfNeeded()) return;
+                  setIsAdjustOpen(true);
+                }}
+                className="text-xs py-1.5 px-3 text-purple-700 hover:text-purple-800 hover:bg-purple-50"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5 text-purple-600" />
+                Adjust Balance
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                subscriptionExempt={true}
+                onClick={() => setIsHistoryOpen(true)}
+                className="text-xs py-1.5 px-3 text-gray-700 hover:text-gray-900"
+              >
+                <History className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                View Full Voucher Statement
+              </Button>
+            </div>
+          )}
+
           {activeCard ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Virtual Card Preview */}
@@ -945,13 +1119,27 @@ export default function CustomerDetail() {
                       {activeCard.isActive ? 'Active' : 'Frozen'}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-gray-100">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-gray-500">Personal Bonus Rate</span>
-                    <span className="font-semibold text-gray-900">
-                      {activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined
-                        ? `${activeCustomer.voucherBonusPct}%`
-                        : `Default (${activeBusiness.voucherBonusPct ?? 0}%)`}
-                    </span>
+                    {isManagerOrOwner ? (
+                      <CustomerBonusControl
+                        businessId={activeBusiness.id}
+                        customerId={activeCustomer.id}
+                        businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
+                        personalPct={activeCustomer.voucherBonusPct}
+                        onSaved={() => {
+                          if (activeBusiness?.id && activeCustomer?.id) {
+                            fetchCustomer(activeBusiness.id, activeCustomer.id);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="font-semibold text-gray-900">
+                        {activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined
+                          ? `${activeCustomer.voucherBonusPct}%`
+                          : `Default (${activeBusiness.voucherBonusPct ?? 0}%)`}
+                      </span>
+                    )}
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-gray-100">
                     <span className="text-gray-500">Card Issued</span>
@@ -978,11 +1166,12 @@ export default function CustomerDetail() {
       )}
 
       {/* ─── Edit Customer Modal ──────────────────────────────── */}
+      {/* ─── Edit Customer Modal (3 Progressive Disclosure Sections) ─── */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Edit Customer Profile"
-        subtitle="Update contact coordinates, location, and voucher preferences."
+        subtitle="Name, phone and email are enough. Add address, TIN or a personal bonus only if you need them."
         icon={<Pencil className="h-5 w-5 text-primary-600" />}
         size="md"
         footer={
@@ -997,84 +1186,143 @@ export default function CustomerDetail() {
         }
       >
         <form id="edit-customer-form" onSubmit={handleSaveEdit} className="space-y-4">
-          <Input
-            label="Full Name *"
-            value={editForm.name || ''}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-            required
-            placeholder="e.g. Adebayo Ogunlesi"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <PhoneInput
-              label="Phone Number"
-              value={editForm.phone || ''}
-              onChange={(val) => setEditForm((prev) => ({ ...prev, phone: val }))}
-              placeholder="0803 123 4567"
-            />
+          {/* Section 1: Identity (Always Visible) */}
+          <div className="space-y-3.5">
             <Input
-              label="Email Address"
-              type="email"
-              value={editForm.email || ''}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
-              placeholder="client@example.com"
+              label="Full Name *"
+              value={editForm.name || ''}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+              required
+              autoFocus
+              placeholder="e.g. Adebayo Ogunlesi"
             />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <PhoneInput
+                  label="Phone Number"
+                  value={editForm.phone || ''}
+                  onChange={(val) => setEditForm((prev) => ({ ...prev, phone: val }))}
+                  placeholder="0803 123 4567"
+                  helperText="Needed for voucher PIN / last-4. Saved as +234…"
+                />
+              </div>
+              <div>
+                <Input
+                  label="Email Address"
+                  type="email"
+                  value={editForm.email || ''}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="client@example.com"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">For PIN and receipts. Optional but recommended.</p>
+              </div>
+            </div>
           </div>
 
-          <Input
-            label="Street Address"
-            value={editForm.address || ''}
-            onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
-            placeholder="12 Commercial Avenue"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="City"
-              value={editForm.city || ''}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))}
-              placeholder="Ikeja"
-            />
-            <Input
-              label="State"
-              value={editForm.state || ''}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, state: e.target.value }))}
-              placeholder="Lagos"
-            />
+          {/* Section 2: Location (Collapsed Disclosure, Default Closed) */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowLocationSection((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100/80 text-left transition-colors text-xs font-semibold text-gray-700"
+            >
+              <span>Location & Address (Optional)</span>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-500 transition-transform ${showLocationSection ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {showLocationSection && (
+              <div className="p-3.5 space-y-3 bg-white border-t border-gray-100">
+                <Input
+                  label="Street Address"
+                  value={editForm.address || ''}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
+                  placeholder="12 Commercial Avenue"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="City"
+                    value={editForm.city || ''}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, city: e.target.value }))}
+                    placeholder="Ikeja"
+                  />
+                  <Input
+                    label="State"
+                    value={editForm.state || ''}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, state: e.target.value }))}
+                    placeholder="Lagos"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Tax Identification Number (TIN)"
-              value={editForm.taxId || ''}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, taxId: e.target.value }))}
-              placeholder="TIN-12345678"
-            />
-            <Input
-              label="Voucher Bonus % (Optional)"
-              type="number"
-              min="0"
-              max="100"
-              value={editForm.voucherBonusPct !== null && editForm.voucherBonusPct !== undefined ? editForm.voucherBonusPct : ''}
-              onChange={(e) =>
-                setEditForm((prev) => ({
-                  ...prev,
-                  voucherBonusPct: e.target.value === '' ? null : Number(e.target.value),
-                }))
-              }
-              placeholder="e.g. 5"
-            />
-          </div>
+          {/* Section 3: Advanced (Collapsed Disclosure, Default Closed) */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedSection((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100/80 text-left transition-colors text-xs font-semibold text-gray-700"
+            >
+              <span>Advanced Settings — TIN & Personal Bonus (Optional)</span>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-500 transition-transform ${showAdvancedSection ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {showAdvancedSection && (
+              <div className="p-3.5 space-y-3.5 bg-white border-t border-gray-100">
+                <div>
+                  <Input
+                    label="Tax Identification Number — TIN (optional, B2B only)"
+                    value={editForm.taxId || ''}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, taxId: e.target.value }))}
+                    placeholder="Leave blank"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Only needed when this customer requires a TIN on invoices for VAT reclaim. Leave blank for walk-in / retail customers.
+                  </p>
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
-            <textarea
-              rows={2}
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
-              value={editForm.notes || ''}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
-              placeholder="Special customer preferences, delivery notes, etc."
-            />
+                <div>
+                  <Input
+                    label="Voucher Bonus % (Optional)"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={
+                      editForm.voucherBonusPct !== null && editForm.voucherBonusPct !== undefined
+                        ? editForm.voucherBonusPct
+                        : ''
+                    }
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        voucherBonusPct: e.target.value === '' ? null : Number(e.target.value),
+                      }))
+                    }
+                    placeholder={
+                      activeBusiness?.voucherBonusPct ? `Store ${activeBusiness.voucherBonusPct}% (leave blank)` : 'e.g. 5'
+                    }
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Leave blank to use store default ({activeBusiness?.voucherBonusPct ?? 0}%). Maximum 10%.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Internal Notes</label>
+                  <textarea
+                    rows={2}
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
+                    value={editForm.notes || ''}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Special customer preferences, delivery notes, etc."
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </Modal>
@@ -1105,6 +1353,44 @@ export default function CustomerDetail() {
           This operation is only allowed for customers with zero sales, invoice, or credit history.
         </p>
       </Modal>
+
+      {/* ─── Voucher Action Modals ────────────────────────────── */}
+      <TopUpVoucherModal
+        isOpen={isTopUpOpen}
+        businessId={activeBusiness.id}
+        customer={activeCustomer}
+        onClose={() => setIsTopUpOpen(false)}
+        onSuccess={() => {
+          fetchCustomer(activeBusiness.id, activeCustomer.id);
+        }}
+      />
+
+      <AdjustBalanceModal
+        isOpen={isAdjustOpen}
+        businessId={activeBusiness.id}
+        customer={activeCustomer}
+        onClose={() => setIsAdjustOpen(false)}
+        onSuccess={() => {
+          fetchCustomer(activeBusiness.id, activeCustomer.id);
+        }}
+      />
+
+      <ChangePinModal
+        isOpen={isChangePinOpen}
+        businessId={activeBusiness.id}
+        customer={activeCustomer}
+        onClose={() => setIsChangePinOpen(false)}
+        onSuccess={() => {
+          fetchCustomer(activeBusiness.id, activeCustomer.id);
+        }}
+      />
+
+      <VoucherHistoryModal
+        isOpen={isHistoryOpen}
+        businessId={activeBusiness.id}
+        customer={activeCustomer}
+        onClose={() => setIsHistoryOpen(false)}
+      />
     </div>
   );
 }

@@ -36,6 +36,7 @@ import PinModal from '@/components/PinModal.tsx';
 import UpdateBvnModal from '@/components/UpdateBvnModal.tsx';
 import TeamSettingsTab from '@/components/settings/TeamSettingsTab.tsx';
 import VoucherBonusCard from '@/components/voucher/VoucherBonusCard.tsx';
+import VoucherThresholdCard from '@/components/voucher/VoucherThresholdCard.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { usePinStore } from '@/stores/pin.store.ts';
@@ -157,6 +158,7 @@ export default function Settings() {
       ? biz.myRole === 'owner' || biz.userId === user?.id
       : user?.isOwnerAccount !== false,
   );
+  const isManagerOrOwner = Boolean(isOwner || biz?.myRole === 'manager');
 
   const visibleTabs = TABS.filter((t) => t.id !== 'team' || canManageTeam);
 
@@ -562,6 +564,8 @@ export default function Settings() {
               onReset={handleResetBusiness}
               businessId={biz.id}
               voucherBonusPct={biz.voucherBonusPct}
+              voucherAdjustmentThreshold={biz.voucherAdjustmentThreshold ?? 50000}
+              isManagerOrOwner={isManagerOrOwner}
             />
           )}
 
@@ -1054,6 +1058,8 @@ interface BusinessPanelProps {
   onReset: () => void;
   businessId: string;
   voucherBonusPct?: number;
+  voucherAdjustmentThreshold?: number;
+  isManagerOrOwner: boolean;
 }
 
 function BusinessPanel(props: BusinessPanelProps) {
@@ -1066,6 +1072,7 @@ function BusinessPanel(props: BusinessPanelProps) {
         onRemove={props.onRemoveLogo}
       />
       <VoucherBonusCard businessId={props.businessId} initialPct={props.voucherBonusPct ?? 0} onSaved={() => import('@/stores/business.store.ts').then(m => m.useBusinessStore.getState().fetchBusinesses(true))} />
+      <VoucherThresholdCard businessId={props.businessId} initialThreshold={props.voucherAdjustmentThreshold ?? 50000} isManagerOrOwner={props.isManagerOrOwner} onSaved={() => import('@/stores/business.store.ts').then(m => m.useBusinessStore.getState().fetchBusinesses(true))} />
 
       <form onSubmit={props.onSubmit} className='space-y-7'>
         {/* Basic information */}

@@ -185,7 +185,8 @@ api.interceptors.response.use(
     if (
       url.includes('/auth/refresh') ||
       url.includes('/auth/login') ||
-      url.includes('/auth/register')
+      url.includes('/auth/register') ||
+      url.includes('/public/')
     ) {
       return Promise.reject(error);
     }
