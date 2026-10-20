@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { NIGERIAN_STATES } from '@/config/states.ts';
 import toast from 'react-hot-toast';
 
 interface CreateBusinessModalProps {
@@ -67,6 +68,10 @@ export default function CreateBusinessModal({
       toast.error('Business name and owner name are required');
       return;
     }
+    if (!form.state.trim()) {
+      toast.error('Please select the State where your business operates');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -74,11 +79,11 @@ export default function CreateBusinessModal({
         businessName: form.businessName.trim(),
         ownerName: form.ownerName.trim(),
         businessType: form.businessType,
+        state: form.state.trim(),
       };
       if (form.taxId.trim()) payload.taxId = form.taxId.trim();
       if (form.address.trim()) payload.address = form.address.trim();
       if (form.city.trim()) payload.city = form.city.trim();
-      if (form.state.trim()) payload.state = form.state.trim();
 
       const business = await createBusiness(payload);
       setActiveBusiness(business);
@@ -220,26 +225,39 @@ export default function CreateBusinessModal({
             />
           )}
 
-          <Input
-            label='Address'
-            value={form.address}
-            onChange={(e) => update('address', e.target.value)}
-            placeholder='Optional business address'
-            className='rounded-none'
-          />
+          {/* Location Details */}
+          <div className='pt-2 border-t border-gray-200/80 space-y-3'>
+            <div className='space-y-1'>
+              <label className='block text-xs font-semibold text-gray-700 uppercase tracking-wider'>
+                State *
+              </label>
+              <select
+                value={form.state}
+                onChange={(e) => update('state', e.target.value)}
+                className='block w-full rounded-none border border-gray-300 px-3 py-2 text-xs shadow-sm transition-colors focus:outline-none focus:border-gray-900 focus:ring-0 bg-white'
+                required
+              >
+                <option value=''>Select State of Operation *</option>
+                {NIGERIAN_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className='grid grid-cols-2 gap-3'>
+            <Input
+              label='Address'
+              value={form.address}
+              onChange={(e) => update('address', e.target.value)}
+              placeholder='Optional business address'
+              className='rounded-none'
+            />
+
             <Input
               label='City'
               value={form.city}
               onChange={(e) => update('city', e.target.value)}
-              placeholder='Optional'
-              className='rounded-none'
-            />
-            <Input
-              label='State'
-              value={form.state}
-              onChange={(e) => update('state', e.target.value)}
               placeholder='Optional'
               className='rounded-none'
             />

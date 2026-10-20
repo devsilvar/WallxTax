@@ -35,7 +35,7 @@ interface VoucherPreviewData {
   expiresAt?: string | null;
 }
 
-type PageState = 'loading' | 'preview' | 'confirming' | 'success' | 'already_verified' | 'error';
+type PageState = 'loading' | 'preview' | 'awaitingPin' | 'confirming' | 'success' | 'already_verified' | 'error';
 
 export default function VerifyVoucher() {
   const { requestId } = useParams<{ requestId: string }>();
@@ -47,6 +47,12 @@ export default function VerifyVoucher() {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorCode, setErrorCode] = useState<number | null>(null);
   const [confirmedBalance, setConfirmedBalance] = useState<number | null>(null);
+
+  // Voucher PIN second-factor state
+  const [pin, setPin] = useState<string>('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [lockDuration, setLockDuration] = useState<number | null>(null);
 
   const apiBase =
     (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '/api/v1').replace(/\/+$/, '');
@@ -112,13 +118,21 @@ export default function VerifyVoucher() {
     };
   }, [requestId, rawToken, apiBase]);
 
-  const handleConfirm = async () => {
+  const handleSubmitPin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!requestId || !rawToken) return;
 
+    if (!pin || pin.trim().length !== 6) {
+      setPinError('Enter 6 digits');
+      return;
+    }
+
+    setPinError(null);
     try {
       setState('confirming');
       const res = await axios.post(`${apiBase}/public/voucher-verify/${requestId}`, {
         token: rawToken,
+        pin: pin.trim(),
       });
 
       if (res.data?.already_verified) {
@@ -130,26 +144,49 @@ export default function VerifyVoucher() {
       }
     } catch (err: any) {
       const status = err.response?.status;
-      setErrorCode(status || 500);
+      const errData = err.response?.data?.error || err.response?.data;
+      const code = errData?.code;
+      const msg = errData?.message;
+      const details = errData?.details;
 
-      if (status === 409) {
+      if (status === 400 && code === 'INVALID_PIN_FORMAT') {
+        setState('awaitingPin');
+        setPinError('Enter 6 digits');
+      } else if (status === 400 && code === 'PIN_REQUIRED') {
+        setState('awaitingPin');
+        setPinError('Voucher PIN is required');
+      } else if (status === 401 && code === 'INVALID_PIN') {
+        setState('awaitingPin');
+        const remaining = details?.attemptsRemaining;
+        setPinError(
+          remaining !== undefined
+            ? `Wrong PIN. ${remaining} attempt(s) remaining.`
+            : msg || 'Wrong PIN.'
+        );
+      } else if (status === 423 || code === 'VOUCHER_PIN_LOCKED') {
+        setState('awaitingPin');
+        setIsLocked(true);
+        const mins = details?.retryAfterMinutes || details?.lockedForMinutes || 15;
+        setLockDuration(mins);
+        setPinError(`Voucher PIN locked. Try again in ${mins} minute(s).`);
+      } else if (status === 409 || code === 'ALREADY_VERIFIED') {
         setState('already_verified');
-      } else if (status === 410) {
+      } else if (status === 410 || code === 'LINK_EXPIRED') {
         setState('error');
+        setErrorCode(410);
         setErrorMessage('This verification link has expired. Please ask the store staff to send a new link.');
-      } else if (status === 401) {
+      } else if (status === 401 && code === 'INVALID_TOKEN') {
         setState('error');
+        setErrorCode(401);
         setErrorMessage('Verification token is invalid or has already been used.');
       } else if (status === 429) {
         setState('error');
+        setErrorCode(429);
         setErrorMessage('Too many confirmation attempts. Please wait a moment and refresh the page.');
       } else {
         setState('error');
-        setErrorMessage(
-          err.response?.data?.error?.message ||
-            err.response?.data?.message ||
-            'Confirmation failed. Please try again.'
-        );
+        setErrorCode(status || 500);
+        setErrorMessage(msg || 'Confirmation failed. Please try again.');
       }
     }
   };
@@ -298,10 +335,13 @@ export default function VerifyVoucher() {
 
             {/* Action Button */}
             <button
-              onClick={handleConfirm}
+              onClick={() => {
+                setPinError(null);
+                setState('awaitingPin');
+              }}
               className="w-full py-4 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-xl shadow-purple-600/30 transition-all duration-200 flex items-center justify-center space-x-2 active:scale-[0.99] cursor-pointer"
             >
-              <span>Verify & Claim Credit</span>
+              <span>Confirm with Voucher PIN</span>
               <ArrowRight className="w-5 h-5" />
             </button>
 
@@ -309,6 +349,104 @@ export default function VerifyVoucher() {
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>Link secured by WallX ERP — One-time authorization</span>
             </p>
+          </div>
+        )}
+
+        {state === 'awaitingPin' && preview && (
+          <div className="space-y-6">
+            {/* Card Summary Mini Header */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-purple-300 font-semibold uppercase tracking-wider block">
+                    {preview.businessName}
+                  </span>
+                  <h2 className="text-xl font-bold text-white mt-0.5">
+                    Enter Voucher PIN
+                  </h2>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-slate-400 block">Total Credit</span>
+                  <span className="text-lg font-extrabold text-emerald-400">
+                    {formatNaira(preview.totalCredit)}
+                  </span>
+                </div>
+              </div>
+
+              {preview.cardCode && (
+                <div className="px-3 py-2 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Voucher Card Code:</span>
+                  <span className="font-mono text-purple-200 font-semibold">{preview.cardCode}</span>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Please enter the 6-digit PIN printed on the back of your voucher card to authenticate and apply this credit to your card.
+              </p>
+
+              {isLocked && lockDuration && (
+                <div className="p-3 bg-red-950/50 border border-red-500/40 rounded-xl text-xs text-red-200 flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-semibold text-red-300">Voucher Temporarily Locked</strong>
+                    Too many incorrect PIN attempts. Please wait {lockDuration} minute(s) before trying again.
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitPin} className="space-y-4 pt-2">
+                <div>
+                  <label htmlFor="voucher-pin" className="block text-xs font-semibold text-slate-300 mb-1.5 text-center">
+                    6-Digit Voucher PIN
+                  </label>
+                  <input
+                    id="voucher-pin"
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    autoFocus
+                    disabled={isLocked}
+                    value={pin}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setPin(val);
+                      if (pinError) setPinError(null);
+                    }}
+                    placeholder="••••••"
+                    className="w-full max-w-xs mx-auto block py-3.5 px-4 text-center text-3xl font-mono tracking-[0.5em] bg-slate-950 border border-purple-500/40 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  {pinError && (
+                    <p className="mt-2 text-xs text-red-400 text-center font-medium">
+                      {pinError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    disabled={pin.length !== 6 || isLocked}
+                    className="w-full py-4 px-6 rounded-xl font-bold text-base bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-xl shadow-purple-600/30 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <span>Confirm & Activate Credit</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinError(null);
+                      setState('preview');
+                    }}
+                    className="w-full py-2.5 text-xs text-slate-400 hover:text-white font-medium transition-colors text-center cursor-pointer"
+                  >
+                    Back to Card Details
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 

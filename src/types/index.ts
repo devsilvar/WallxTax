@@ -28,6 +28,13 @@ export interface User {
   subscriptionTier?: string | null;
   subscriptionExpiresAt?: string | null;
   trialEndsAt?: string | null;
+  subscriptionCreatedAt?: string | null;
+  isSubscriptionInherited?: boolean;
+  subscriptionOwner?: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
   pendingPlan?: string | null;
   hasPendingSubmission?: boolean;
 }
@@ -576,6 +583,7 @@ export interface TopUpCustomerCardPayload {
   bonusPct?: number;
   notes?: string;
   receiptDate?: string;
+  source: 'cash' | 'bank_transfer';
 }
 
 export interface CreditCustomerChangePayload {

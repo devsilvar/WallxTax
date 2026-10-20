@@ -99,4 +99,32 @@ describe('SubscriptionGraceBanner (Soft Read-Only Grace & Expiry)', () => {
 
     expect(screen.queryByText(/Read-Only Grace Period:/i)).toBeNull();
   });
+
+  it('renders team member tailored copy and View Status button when subscription is inherited', () => {
+    const createdAt = new Date(Date.now() - 31 * ONE_DAY_MS).toISOString();
+    const mockUser = {
+      id: 'u-staff',
+      email: 'staff@test.com',
+      createdAt,
+      subscriptionTier: 'free',
+      isSubscriptionInherited: true,
+      subscriptionOwner: {
+        id: 'u-owner',
+        name: 'Chief Owner',
+        email: 'owner@test.com',
+      },
+    } as unknown as User;
+
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true });
+
+    render(
+      <MemoryRouter>
+        <SubscriptionGraceBanner />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Please contact Chief Owner to renew/i)).toBeInTheDocument();
+    expect(screen.getByText(/View Status/i)).toBeInTheDocument();
+  });
 });
+

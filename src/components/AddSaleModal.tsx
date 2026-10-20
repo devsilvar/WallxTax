@@ -8,7 +8,7 @@
  * Footer contract: the submit button lives in the Modal footer (outside the
  * <form> element) and targets the form via `form="add-sale-form"`.
  */
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, useCallback, type FormEvent } from 'react';
 import { TrendingUp, Package, Banknote, HandCoins, CreditCard, ShieldCheck, AlertCircle, CheckCircle2, UserPlus } from 'lucide-react';
 import Modal from '@/components/ui/Modal.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -26,6 +26,7 @@ import SaleItemsEditor from './SaleItemsEditor.tsx';
 import CustomerAutocomplete from '@/components/customers/CustomerAutocomplete.tsx';
 import VoucherAuthModal from '@/components/customers/VoucherAuthModal.tsx';
 import CustomerVoucherCreateModal from '@/components/customers/CustomerVoucherCreateModal.tsx';
+import { useSSE } from '@/hooks/useSSE';
 
 const SOURCES = [
   'bank_transfer',
@@ -120,6 +121,11 @@ export default function AddSaleModal({
   // Sales-inline Customer & Voucher creation modal state
   const [showVoucherCreate, setShowVoucherCreate] = useState(false);
   const [pendingVoucherNotice, setPendingVoucherNotice] = useState(false);
+
+  // DVA pending transfer picker state
+  const [dvaPending, setDvaPending] = useState<SalesTransaction[]>([]);
+  const [loadingDva, setLoadingDva] = useState(false);
+  const [linkedDvaSaleId, setLinkedDvaSaleId] = useState<string | null>(null);
 
   const [classifications, setClassifications] = useState<
     TransactionClassification[]
@@ -253,6 +259,43 @@ export default function AddSaleModal({
     };
   }, [isOpen]);
 
+  // DVA pending transfers fetch
+  const fetchDvaPending = useCallback(async () => {
+    if (!isOpen || editSale || source !== 'bank_transfer' || !businessId) return;
+    setLoadingDva(true);
+    try {
+      const res = await api.get(`/businesses/${businessId}/sales/unverified`, {
+        params: { dvaOnly: true, limit: 20 },
+      });
+      setDvaPending(res.data.data as SalesTransaction[]);
+    } catch (err) {
+      // Silent fail - picker just stays empty
+    } finally {
+      setLoadingDva(false);
+    }
+  }, [isOpen, editSale, source, businessId]);
+
+  useEffect(() => {
+    fetchDvaPending();
+  }, [fetchDvaPending]);
+
+  useSSE(
+    'dva_transfer_received',
+    (e: any) => {
+      if (e.businessId !== businessId) return;
+      fetchDvaPending();
+    },
+    [businessId, fetchDvaPending]
+  );
+
+  // Clear DVA state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setLinkedDvaSaleId(null);
+      setDvaPending([]);
+    }
+  }, [isOpen]);
+
   const currentTotal =
     mode === 'items'
       ? items.reduce(
@@ -275,6 +318,46 @@ export default function AddSaleModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+
+    // DVA claim path: verify pending transfer instead of creating new sale
+    if (source === 'bank_transfer' && linkedDvaSaleId) {
+      const body: Record<string, unknown> = {
+        classification: classification || 'Product Sale',
+        description: description || undefined,
+      };
+      if (selectedCustomerId) {
+        body.customerId = selectedCustomerId;
+      } else if (customerName.trim()) {
+        body.customerName = customerName.trim();
+      }
+      if (mode === 'items') {
+        const validItems = items.filter((i) => i.name.trim());
+        if (validItems.length) {
+          body.items = validItems.map((i) => ({
+            name: i.name.trim(),
+            quantity: Number(i.quantity || 1),
+            unitPrice: Number(i.unitPrice || 0),
+          }));
+        }
+      }
+      // Single-mode sends no amount/items — server keeps DVA amount
+      try {
+        await api.post(`/businesses/${businessId}/sales/${linkedDvaSaleId}/verify`, body);
+        toast.success(
+          selectedCustomerId
+            ? 'Bank transfer matched, customer linked & sale confirmed'
+            : 'Bank transfer matched and sale confirmed'
+        );
+        invalidateDashboard('sale_created');
+        onSaved('created');
+        onClose();
+      } catch (err: unknown) {
+        toast.error(getApiErrorMessage(err, 'Failed to verify transfer'));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
 
     if (isCredit) {
       if (!customerName.trim()) {
@@ -575,6 +658,7 @@ export default function AddSaleModal({
             placeholder='0.00'
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            disabled={source === 'bank_transfer' && !!linkedDvaSaleId}
             className='rounded-none border-gray-300 focus:border-gray-900 focus:ring-0 text-xs'
             required
           />
@@ -613,6 +697,111 @@ export default function AddSaleModal({
             ))}
           </select>
         </div>
+
+        {/* DVA Pending Transfer Picker - only for new bank_transfer sales */}
+        {source === 'bank_transfer' && !editSale && (
+          <div className='sm:col-span-2'>
+            <div className='space-y-2'>
+              <div className='flex items-center gap-2'>
+                <label className='block text-xs font-semibold text-gray-700'>
+                  🔗 Link to pending bank transfer
+                </label>
+                {loadingDva && (
+                  <span className='text-[10px] text-gray-500'>Loading...</span>
+                )}
+              </div>
+              {dvaPending.length === 0 && !loadingDva ? (
+                <div className='p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600'>
+                  <p className='font-medium'>○ No pending transfer — sale will be recorded as manual</p>
+                  <p className='text-[11px] text-gray-500 mt-1'>
+                    Waiting for the bank alert? The pending transfer will appear here automatically when it arrives.
+                  </p>
+                </div>
+              ) : (
+                <div className='space-y-2 max-h-60 overflow-y-auto'>
+                  <label className='flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors'>
+                    <input
+                      type='radio'
+                      name='dva-picker'
+                      checked={!linkedDvaSaleId}
+                      onChange={() => {
+                        setLinkedDvaSaleId(null);
+                        setCustomerName('');
+                        if (mode === 'single') setAmount('');
+                      }}
+                      className='mt-0.5'
+                    />
+                    <div className='flex-1'>
+                      <div className='text-xs font-medium text-gray-700'>
+                        No pending transfer — record as manual
+                      </div>
+                      <div className='text-[11px] text-gray-500 mt-0.5'>
+                        Enter amount and details manually
+                      </div>
+                    </div>
+                  </label>
+                  {dvaPending.map((sale) => {
+                    const isSelected = linkedDvaSaleId === sale.id;
+                    const hint = (sale.customerHint as string | undefined) || sale.customerName || 'Bank Transfer';
+                    const amt = Number(sale.amount);
+                    const time = new Date(sale.transactionDate).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+                    const ref = (sale.referenceId || '').slice(-6);
+                    return (
+                      <label
+                        key={sale.id}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-blue-50 border-blue-500'
+                            : 'bg-white border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        <input
+                          type='radio'
+                          name='dva-picker'
+                          checked={isSelected}
+                          onChange={() => {
+                            setLinkedDvaSaleId(sale.id);
+                            setCustomerName(hint);
+                            if (mode === 'single') {
+                              setAmount(String(amt));
+                            }
+                          }}
+                          className='mt-0.5'
+                        />
+                        <div className='flex-1 min-w-0'>
+                          <div className='text-sm font-bold text-gray-900'>
+                            ₦{amt.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                          </div>
+                          <div className='text-xs text-gray-600 mt-1'>
+                            {hint} · {time} {ref && `· ref_${ref}`}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {linkedDvaSaleId && mode === 'single' && (
+                <div className='p-2 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700'>
+                  Amount locked to bank transfer — this sale will record at the bank amount
+                </div>
+              )}
+              {linkedDvaSaleId && mode === 'items' && (
+                <div className='p-2 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700'>
+                  Bank: ₦{dvaPending.find(s => s.id === linkedDvaSaleId) ? Number(dvaPending.find(s => s.id === linkedDvaSaleId)!.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '0.00'}
+                  {' · '}
+                  Basket: ₦{currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  {Math.abs(Number(dvaPending.find(s => s.id === linkedDvaSaleId)?.amount || 0) - currentTotal) > 0.01 && (
+                    <span className='ml-1 text-amber-700'>
+                      · Δ {(currentTotal - Number(dvaPending.find(s => s.id === linkedDvaSaleId)?.amount || 0)) > 0 ? '+' : ''}
+                      ₦{Math.abs(currentTotal - Number(dvaPending.find(s => s.id === linkedDvaSaleId)?.amount || 0)).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {isVoucher && (
           <div className='sm:col-span-2'>

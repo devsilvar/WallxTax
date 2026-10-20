@@ -46,6 +46,8 @@ import { getPlanLimits } from '@/config/subscription';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 
+import { NIGERIAN_STATES } from '@/config/states.ts';
+
 // Must match CreateBusinessModal — backend stores the enum value (`sole_proprietorship` / `llc`).
 const BUSINESS_TYPES = [
   { value: 'sole_proprietorship', label: 'Sole Proprietorship (Individual)' },
@@ -54,46 +56,6 @@ const BUSINESS_TYPES = [
 
 const businessTypeLabel = (value?: string | null) =>
   BUSINESS_TYPES.find((t) => t.value === value)?.label ?? value ?? '—';
-
-const NIGERIAN_STATES = [
-  'Abia',
-  'Adamawa',
-  'Akwa Ibom',
-  'Anambra',
-  'Bauchi',
-  'Bayelsa',
-  'Benue',
-  'Borno',
-  'Cross River',
-  'Delta',
-  'Ebonyi',
-  'Edo',
-  'Ekiti',
-  'Enugu',
-  'FCT - Abuja',
-  'Gombe',
-  'Imo',
-  'Jigawa',
-  'Kaduna',
-  'Kano',
-  'Katsina',
-  'Kebbi',
-  'Kogi',
-  'Kwara',
-  'Lagos',
-  'Nasarawa',
-  'Niger',
-  'Ogun',
-  'Ondo',
-  'Osun',
-  'Oyo',
-  'Plateau',
-  'Rivers',
-  'Sokoto',
-  'Taraba',
-  'Yobe',
-  'Zamfara',
-];
 
 type TabId = 'profile' | 'business' | 'team' | 'security';
 

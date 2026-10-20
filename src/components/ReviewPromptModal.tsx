@@ -210,7 +210,7 @@ export default function ReviewPromptModal() {
               onClick={dismiss}
               className='text-[11px] font-medium text-ink-subtle hover:text-ink underline transition-colors'
             >
-              Remind me in a week
+              Remind me in 10 days
             </button>
           </div>
         </div>

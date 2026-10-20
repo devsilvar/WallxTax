@@ -48,6 +48,7 @@ import {
   ChangePinModal,
   VoucherHistoryModal,
 } from '@/components/customers/VoucherActionModals.tsx';
+import { CrmDailyTotals } from '@/components/customers/CrmDailyTotals.tsx';
 import type { TimelineItem, UpdateCustomerPayload, SalesTransaction, Invoice, CustomerHistoryQuery } from '@/types/index.ts';
 
 /* ─── Helpers ──────────────────────────────────────────────── */
@@ -1043,6 +1044,10 @@ export default function CustomerDetail() {
       {/* ─── Tab Content: Store Card (Vouchers) ───────────────── */}
       {currentTab === 'vouchers' && (
         <div className="space-y-6">
+          {(myRole === 'manager' || myRole === 'owner') && activeBusiness?.id ? (
+            <CrmDailyTotals businessId={activeBusiness.id} />
+          ) : null}
+
           {activeCard && isManagerOrOwner && (
             <div className="flex items-center justify-end gap-2 flex-wrap pb-2 border-b border-gray-100">
               <Button

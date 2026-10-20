@@ -51,6 +51,7 @@ export function TopUpVoucherModal({
   const [topUpAmount, setTopUpAmount] = useState<string>('');
   const [topUpBonusPct, setTopUpBonusPct] = useState<string>('');
   const [topUpNotes, setTopUpNotes] = useState<string>('');
+  const [topUpSource, setTopUpSource] = useState<'cash' | 'bank_transfer'>('cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function TopUpVoucherModal({
       setTopUpAmount('');
       setTopUpBonusPct('');
       setTopUpNotes('');
+      setTopUpSource('cash');
       setIsSubmitting(false);
     }
   }, [isOpen, customer]);
@@ -86,10 +88,13 @@ export function TopUpVoucherModal({
         amount: num,
         bonusPct: bonusOverride,
         notes: topUpNotes.trim() || 'Prepaid voucher deposit',
+        source: topUpSource,
       });
 
-      if (res?.status === 'pending') {
+      if (res?.status === 'pending' || res?.data?.status === 'pending') {
         toast.success(`Top-up requested for ${customer.name} — queued for manager authorization`);
+      } else if (res?.status === 'awaiting_customer' || res?.data?.status === 'awaiting_customer') {
+        toast.success('Top-up request created — verification link sent to customer.');
       } else {
         const bonus = bonusOverride !== undefined ? bonusOverride : (customer.voucherBonusPct ?? activeBusiness?.voucherBonusPct ?? 0);
         const credited = bonus > 0 ? Math.round(num * (1 + bonus / 100)) : num;
@@ -145,6 +150,36 @@ export function TopUpVoucherModal({
                 +₦{preset.toLocaleString()}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Payment Source <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setTopUpSource('cash')}
+              className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all text-center flex items-center justify-center gap-1.5 ${
+                topUpSource === 'cash'
+                  ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <span>💵 Cash</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTopUpSource('bank_transfer')}
+              className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all text-center flex items-center justify-center gap-1.5 ${
+                topUpSource === 'bank_transfer'
+                  ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <span>🏦 Bank Transfer</span>
+            </button>
           </div>
         </div>
 

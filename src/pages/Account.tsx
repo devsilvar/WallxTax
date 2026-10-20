@@ -120,7 +120,10 @@ export default function Account() {
   const resolvedBankName = settlementPreview?.settlementAccount?.bankName || biz?.settlementBankName || user?.settlementBankName || 'Not Connected';
   const resolvedAccountNum = settlementPreview?.settlementAccount?.accountNumber || biz?.settlementAccountNumber || user?.settlementAccountNumber;
   const resolvedAccountName = settlementPreview?.settlementAccount?.accountName || biz?.settlementAccountName || user?.settlementAccountName;
-  const displayAccountName = dva?.accountName || biz?.ownerName || biz?.businessName || '';
+  // `dva.accountName` is the NUBAN's legal holder (Business.ownerName) — the
+  // name the bank resolves on transfer. Merchants and the customers paying
+  // them care about the business being paid, so the business name leads here.
+  const displayAccountName = biz?.businessName || dva?.accountName || biz?.ownerName || '';
 
   useEffect(() => {
     if (urlTab === 'withdrawals') setActiveFeedTab('withdrawals');

@@ -127,7 +127,7 @@ interface CustomerState {
     businessId: string,
     customerId: string,
     payload: TopUpCustomerCardPayload
-  ) => Promise<{ card: CustomerCard; ledger: CustomerCardLedger }>;
+  ) => Promise<any>;
   creditChange: (
     businessId: string,
     customerId: string,
@@ -351,11 +351,14 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   },
 
   topUpCard: async (businessId, customerId, payload) => {
+    if (payload.source !== 'cash' && payload.source !== 'bank_transfer') {
+      throw new Error('Source is required for top-ups');
+    }
     const res = await api.post(
       `/businesses/${businessId}/customers/${customerId}/card/top-up`,
       payload
     );
-    return res.data.data;
+    return res.data?.data ?? res.data;
   },
 
   creditChange: async (businessId, customerId, payload) => {

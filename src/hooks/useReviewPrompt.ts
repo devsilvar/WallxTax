@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import api from '@/lib/axios';
 
-const SNOOZE_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SNOOZE_DURATION_MS = 10 * 24 * 60 * 60 * 1000; // 10 days
 
-const KEY_SUBMITTED = 'wallx_review_submitted';
 const KEY_SNOOZED_UNTIL = 'wallx_review_snoozed_until';
 
 export function useReviewPrompt() {
@@ -53,12 +52,6 @@ export function useReviewPrompt() {
 
     if (isTestOverride) {
       return true;
-    }
-
-    // CRITICAL: Check if user already submitted feedback - never prompt again
-    const hasSubmitted = localStorage.getItem(KEY_SUBMITTED);
-    if (hasSubmitted === 'true') {
-      return false;
     }
 
     // Must have affirmative server eligibility
@@ -135,7 +128,6 @@ export function useReviewPrompt() {
   const handleSubmitted = useCallback(() => {
     setIsOpen(false);
     try {
-      localStorage.setItem(KEY_SUBMITTED, 'true');
       localStorage.removeItem('wallx_test_review');
     } catch {
       // Ignore storage errors

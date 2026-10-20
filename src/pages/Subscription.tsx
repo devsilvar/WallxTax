@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDocumentTitle } from '@/components/marketing/useDocumentTitle.ts';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus.ts';
+import TeamMemberSubscriptionOverview from '@/components/subscription/TeamMemberSubscriptionOverview';
 import zenithLogo from '@/assets/zenith.png';
 
 // Real Zenith Bank lockup (asset is opaque with a white ground — only valid on
@@ -424,6 +425,19 @@ export default function Subscription() {
     setStep('plans');
     scrollMainToTop();
   };
+
+  // Non-owner team members see dedicated organization subscription overview
+  if (isAuthenticated && user && user.isOwnerAccount === false) {
+    return (
+      <div
+        className={`space-y-5 ${
+          !isAuthenticated ? 'mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10' : ''
+        }`}
+      >
+        <TeamMemberSubscriptionOverview />
+      </div>
+    );
+  }
 
   return (
     <div

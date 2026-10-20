@@ -140,6 +140,17 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Inject active business ID header for backend context resolution
+  try {
+    const activeBizId = localStorage.getItem('activeBusinessId');
+    if (activeBizId && !config.headers['X-Business-Id']) {
+      config.headers['X-Business-Id'] = activeBizId;
+    }
+  } catch {
+    // LocalStorage read error fallback
+  }
+
   // If data is FormData, remove Content-Type so browser sets boundary automatically
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];

@@ -25,6 +25,9 @@ export interface SubscriptionStatus {
   daysRemaining: number;
   graceHoursRemaining: number;
   formattedCountdown: string;
+  isInherited: boolean;
+  ownerName: string | null;
+  ownerEmail: string | null;
 }
 
 const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
@@ -102,6 +105,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         daysRemaining: 30,
         graceHoursRemaining: 0,
         formattedCountdown: '30 Days Left',
+        isInherited: false,
+        ownerName: null,
+        ownerEmail: null,
       };
     }
 
@@ -120,8 +126,15 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         daysRemaining: 999,
         graceHoursRemaining: 0,
         formattedCountdown: 'Active',
+        isInherited: false,
+        ownerName: null,
+        ownerEmail: null,
       };
     }
+
+    const isInherited = Boolean(user.isSubscriptionInherited);
+    const ownerName = user.subscriptionOwner?.name || null;
+    const ownerEmail = user.subscriptionOwner?.email || null;
 
     const tier = canonicalTier(user.subscriptionTier);
 
@@ -147,6 +160,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
           daysRemaining: 999,
           graceHoursRemaining: 0,
           formattedCountdown: 'Active',
+          isInherited,
+          ownerName,
+          ownerEmail,
         };
       }
 
@@ -168,6 +184,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
           daysRemaining: days,
           graceHoursRemaining: 0,
           formattedCountdown: days === 1 ? '1 day left' : `${days} days left`,
+          isInherited,
+          ownerName,
+          ownerEmail,
         };
       }
 
@@ -188,6 +207,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
           daysRemaining: 0,
           graceHoursRemaining: hours,
           formattedCountdown: `Grace period (${hours}h left)`,
+          isInherited,
+          ownerName,
+          ownerEmail,
         };
       }
 
@@ -205,13 +227,36 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         daysRemaining: 0,
         graceHoursRemaining: 0,
         formattedCountdown: 'Expired',
+        isInherited,
+        ownerName,
+        ownerEmail,
       };
     }
 
-    // 2. Free Trial Tier — use longer of stored vs derived so a 10→30
-    // bump re-activates users whose stamp was written at the old length.
+    // 2. Free Trial Tier — inherited staff must mirror the Owner's clock.
+    // Using the staff's own `createdAt + 30` would resurrect a fresh 30-day
+    // trial and hide the Owner's remaining 22 days (reported bug). For
+    // isInherited we derive from subscriptionCreatedAt (Owner's createdAt)
+    // and mirror the backend's max(stored, derived) bump logic.
     let trialEndsAt: Date;
-    if (user.trialEndsAt) {
+    if (isInherited) {
+      const ownerCreatedRaw = (user as any).subscriptionCreatedAt as string | undefined;
+      if (user.trialEndsAt) {
+        const stored = new Date(user.trialEndsAt);
+        if (ownerCreatedRaw) {
+          const derived = new Date(new Date(ownerCreatedRaw).getTime() + TRIAL_DAYS * MS_PER_DAY);
+          trialEndsAt = stored.getTime() > derived.getTime() ? stored : derived;
+        } else {
+          trialEndsAt = stored;
+        }
+      } else if (ownerCreatedRaw) {
+        trialEndsAt = new Date(new Date(ownerCreatedRaw).getTime() + TRIAL_DAYS * MS_PER_DAY);
+      } else {
+        // Defensive: server should have sent subscriptionCreatedAt for inherited
+        // users — fall back to stored trialEndsAt rather than staff createdAt.
+        trialEndsAt = new Date(user.trialEndsAt as string);
+      }
+    } else if (user.trialEndsAt) {
       const stored = new Date(user.trialEndsAt);
       const derived = new Date(new Date(user.createdAt || now).getTime() + TRIAL_DAYS * MS_PER_DAY);
       trialEndsAt = stored.getTime() > derived.getTime() ? stored : derived;
@@ -237,6 +282,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         daysRemaining: days,
         graceHoursRemaining: 0,
         formattedCountdown: days === 1 ? '1 day left' : `${days} days left`,
+        isInherited,
+        ownerName,
+        ownerEmail,
       };
     }
 
@@ -257,6 +305,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
         daysRemaining: 0,
         graceHoursRemaining: hours,
         formattedCountdown: `Grace period (${hours}h left)`,
+        isInherited,
+        ownerName,
+        ownerEmail,
       };
     }
 
@@ -274,6 +325,9 @@ export function useSubscriptionStatus(): SubscriptionStatus {
       daysRemaining: 0,
       graceHoursRemaining: 0,
       formattedCountdown: 'Expired',
+      isInherited,
+      ownerName,
+      ownerEmail,
     };
   }, [user]);
 }

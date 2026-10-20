@@ -14,7 +14,7 @@ import { AlertTriangle, ArrowRight, X } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 export default function SubscriptionGraceBanner() {
-  const { isReadOnlyGrace, isExpired, canWrite, graceHoursRemaining } = useSubscriptionStatus();
+  const { isReadOnlyGrace, isExpired, canWrite, graceHoursRemaining, isInherited, ownerName } = useSubscriptionStatus();
   const [dismissed, setDismissed] = useState(false);
 
   const shouldShow = !canWrite && !!isExpired; // covers grace AND expired
@@ -23,7 +23,22 @@ export default function SubscriptionGraceBanner() {
   }
 
   const isGrace = isReadOnlyGrace;
-  const message = isGrace ? (
+  const ownerLabel = ownerName || 'your account owner';
+  const message = isInherited ? (
+    isGrace ? (
+      <>
+        <strong>Read-Only Grace Period:</strong> Your organization has{' '}
+        <span className="font-semibold underline">
+          {graceHoursRemaining > 0 ? `${graceHoursRemaining} hours left` : 'ending soon'}
+        </span>{' '}
+        in grace. Please contact {ownerLabel} to renew the subscription so you can create records.
+      </>
+    ) : (
+      <>
+        <strong>Organization subscription expired:</strong> Please contact {ownerLabel} to renew. Your data is safe and withdrawals remain available.
+      </>
+    )
+  ) : isGrace ? (
     <>
       <strong>Read-Only Grace Period:</strong> You have{' '}
       <span className="font-semibold underline">
@@ -50,7 +65,7 @@ export default function SubscriptionGraceBanner() {
             to="/subscription"
             className="inline-flex items-center gap-1 font-semibold text-purple-700 hover:text-purple-900 bg-white/80 hover:bg-white px-2.5 py-1 rounded-md border border-purple-200 transition-colors shadow-xs"
           >
-            Upgrade Now
+            {isInherited ? 'View Status' : 'Upgrade Now'}
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
           <button
