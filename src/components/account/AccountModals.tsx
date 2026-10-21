@@ -31,12 +31,6 @@ export interface AccountModalsProps {
     onClose: () => void;
     onSuccess: () => void;
   };
-  pinModal: {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: (token: string) => Promise<void>;
-    enabled: boolean;
-  };
   autoPayoutPinModal?: {
     isOpen: boolean;
     onClose: () => void;
@@ -56,7 +50,6 @@ export const AccountModals: React.FC<AccountModalsProps> = ({
   detailPanel,
   payoutDetailPanel,
   payoutModal,
-  pinModal,
   autoPayoutPinModal,
   exportModal,
 }) => {
@@ -96,19 +89,6 @@ export const AccountModals: React.FC<AccountModalsProps> = ({
           onClose={payoutModal.onClose}
           businessId={businessId}
           onSuccess={payoutModal.onSuccess}
-        />
-      )}
-
-      {/* Auto-Split Step-Up PIN Modal */}
-      {businessId && (
-        <PinModal
-          isOpen={pinModal.isOpen}
-          onClose={pinModal.onClose}
-          onSuccess={pinModal.onSuccess}
-          title="Confirm Auto-Split Update"
-          description={`Enter your 4-digit transaction PIN to ${
-            pinModal.enabled ? 'disable' : 'enable'
-          } 7.5% tax auto-split.`}
         />
       )}
 

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import type { PaystackFeeSchedule } from '@/lib/fees';
-import type { RegulatoryMeta } from '@/types';
+import type { DvaTransactionRow, RegulatoryMeta, SettlementInflow } from '@/types';
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -42,7 +42,9 @@ export interface PayoutPreviewData {
   totalInflows: number;
   businessInflows?: number;
   pooledInflows?: number;
-  totalSplitSettled: number;
+  pendingSettlement?: number;
+  pooledPendingSettlement?: number;
+  totalSplitSettled?: number;
   totalWithdrawn: number;
   businessWithdrawn?: number;
   pooledTotalWithdrawn?: number;
@@ -52,6 +54,11 @@ export interface PayoutPreviewData {
   pooledCompletedWithdrawn?: number;
   taxReserve: number;
   availableForWithdrawal: number;
+  businessBalance?: number;
+  isPooled?: boolean;
+  dailyPayoutLimit?: number;
+  dailyPaidOut?: number;
+  dailyRemaining?: number | null;
   /**
    * What Paystack has already deducted from these inflows (1% per DVA
    * transfer, capped at ₦300). Already subtracted from
@@ -91,8 +98,16 @@ interface SettlementStore {
   history: SettlementPayoutItem[];
   loadingPreview: boolean;
   loadingHistory: boolean;
+  /** DVA inflows with their settlement instant — the settlement timeline. */
+  inflows: SettlementInflow[];
+  loadingInflows: boolean;
+  inflowPagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
   withdrawing: boolean;
-  updatingAutoSplit: boolean;
   updatingAutoPayout: boolean;
   pagination: {
     page: number;
@@ -103,14 +118,11 @@ interface SettlementStore {
 
   fetchPreview: (businessId: string) => Promise<void>;
   fetchHistory: (businessId: string, page?: number, status?: string, search?: string) => Promise<void>;
+  fetchInflows: (businessId: string, page?: number) => Promise<void>;
   withdrawBalance: (
     businessId: string,
     input: { amount: number; pin?: string; stepUpToken?: string; narration?: string }
   ) => Promise<SettlementPayoutItem | null>;
-  toggleAutoSplit: (
-    businessId: string,
-    input: { enabled: boolean; taxSplitPercentage?: number; pin?: string; stepUpToken?: string }
-  ) => Promise<boolean>;
   toggleAutoPayout: (
     businessId: string,
     input: { enabled: boolean; pin?: string; stepUpToken?: string }
@@ -124,6 +136,7 @@ interface SettlementStore {
 
 let fetchPreviewSeq = 0;
 let fetchHistorySeq = 0;
+let fetchInflowsSeq = 0;
 
 export const useSettlementStore = create<SettlementStore>((set, get) => ({
   preview: null,
@@ -131,8 +144,15 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
   history: [],
   loadingPreview: false,
   loadingHistory: false,
+  inflows: [],
+  loadingInflows: false,
+  inflowPagination: {
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 1,
+  },
   withdrawing: false,
-  updatingAutoSplit: false,
   updatingAutoPayout: false,
   pagination: {
     page: 1,
@@ -188,6 +208,44 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     }
   },
 
+  fetchInflows: async (businessId, page = 1) => {
+    const seq = ++fetchInflowsSeq;
+    set({ loadingInflows: true });
+    try {
+      const res = await api.get(`/businesses/${businessId}/dva/transactions`, {
+        params: { page, limit: 25 },
+      });
+      if (seq !== fetchInflowsSeq) return; // a newer fetchInflows call superseded this one
+      const rows: SettlementInflow[] = (res.data.data || []).map((t: DvaTransactionRow) => ({
+        id: t.id,
+        amount: Number(t.amount),
+        status: t.status,
+        referenceId: t.referenceId ?? null,
+        customerName: t.customerName ?? null,
+        customerHint: t.customerHint ?? null,
+        transactionDate: t.transactionDate,
+        createdAt: t.createdAt,
+        settledAt: t.settledAt ?? null,
+        needsVerification: Boolean(t.needsVerification),
+      }));
+      set({
+        inflows: rows,
+        inflowPagination: res.data.pagination || {
+          page,
+          limit: 25,
+          total: rows.length,
+          totalPages: 1,
+        },
+      });
+    } catch (err) {
+      if (seq !== fetchInflowsSeq) return;
+      toast.error(getErrorMessage(err, 'Failed to load settlement inflows'));
+    } finally {
+      // Same rule as fetchPreview: only the current request may clear the flag.
+      if (seq === fetchInflowsSeq) set({ loadingInflows: false });
+    }
+  },
+
   withdrawBalance: async (businessId, input) => {
     set({ withdrawing: true });
     const toastId = toast.loading('Submitting withdrawal request…');
@@ -225,24 +283,6 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       return null;
     } finally {
       set({ withdrawing: false });
-    }
-  },
-
-  toggleAutoSplit: async (businessId, input) => {
-    set({ updatingAutoSplit: true });
-    const toastId = toast.loading('Updating auto-split settings…');
-    try {
-      const res = await api.patch(`/businesses/${businessId}/settlement/auto-split`, input);
-      toast.success(res.data.message || 'Auto-split settings updated', { id: toastId });
-      get().fetchPreview(businessId);
-      return true;
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.error?.message;
-      toast.error(errorMessage || getErrorMessage(err, 'Failed to update auto-split settings'), { id: toastId });
-      get().fetchPreview(businessId);
-      return false;
-    } finally {
-      set({ updatingAutoSplit: false });
     }
   },
 
@@ -294,8 +334,15 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       history: [],
       loadingPreview: false,
       loadingHistory: false,
+      inflows: [],
+      loadingInflows: false,
+      inflowPagination: {
+        page: 1,
+        limit: 25,
+        total: 0,
+        totalPages: 1,
+      },
       withdrawing: false,
-      updatingAutoSplit: false,
       updatingAutoPayout: false,
       pagination: {
         page: 1,

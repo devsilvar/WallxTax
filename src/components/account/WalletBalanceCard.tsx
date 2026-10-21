@@ -6,6 +6,7 @@ import DvaDetailsCard from './DvaDetailsCard.tsx';
 export interface WalletBalanceCardProps {
   availableBalance: number;
   totalInflows?: number;
+  pendingSettlement?: number;
   isLoading?: boolean;
   isRefreshing?: boolean;
   onRefresh?: () => void;
@@ -29,6 +30,7 @@ export function formatNaira(amount: number): string {
 
 export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   availableBalance,
+  pendingSettlement = 0,
   isLoading = false,
   isRefreshing = false,
   onRefresh,
@@ -103,9 +105,21 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
             </span>
           </div>
 
-          <p className="text-xs text-purple-200/60 mt-2">
-            Available balance for instant withdrawal to your payout bank.
-          </p>
+          {pendingSettlement > 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-purple-200/60">Available for withdrawal.</span>
+              <span
+                className="inline-flex items-center gap-1 rounded-md bg-amber-400/20 border border-amber-400/30 px-2 py-0.5 text-[11px] font-semibold text-amber-300"
+                title="Funds received today are held in settlement and unlock next business day (T+1)"
+              >
+                In settlement: {hideBalance ? '₦ •••••' : formatNaira(pendingSettlement)} (T+1)
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-purple-200/60 mt-2">
+              Available balance for instant withdrawal to your payout bank.
+            </p>
+          )}
         </div>
 
         {/* Right: Stacked Actions + Embedded Virtual NUBAN Card */}

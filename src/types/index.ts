@@ -1026,6 +1026,28 @@ export interface DvaTransactionRow {
   verifiedAt?: string | null;
   createdAt: string;
   metadata?: Record<string, unknown> | null;
+  /**
+   * The T+1 settlement instant: when this inflow becomes withdrawable.
+   * null = never held (e.g. rows predating the settlement hold).
+   */
+  settledAt?: string | null;
+}
+
+/**
+ * A DVA inflow as shown on the merchant settlement screen. Mirrors
+ * `DvaTransactionRow` with a numeric amount and the settlement instant kept.
+ */
+export interface SettlementInflow {
+  id: string;
+  amount: number;
+  status: string;
+  referenceId?: string | null;
+  customerName?: string | null;
+  customerHint?: string | null;
+  transactionDate: string;
+  createdAt: string;
+  settledAt?: string | null;
+  needsVerification: boolean;
 }
 
 export interface DvaTransactionsResponse {
@@ -1173,6 +1195,8 @@ export interface PlatformFeeConfig {
   withdrawalFeePct: number;
   withdrawalFeeCap: number;
   minWithdrawalAmount: number;
+  autoSweepEnabled?: boolean;
+  autoSweepThreshold?: number;
   updatedAt?: string;
   updatedBy?: string | null;
 }
@@ -1274,8 +1298,19 @@ export interface RegulatoryMeta {
   partnerPSPLicense: string;
   partnerBanks: string;
   governingLaw: string;
-  nonCustodialNotice: string;
+  custodyNotice: string;
   termsVersion: string;
+}
+
+export interface PlatformFeeConfig {
+  withdrawalFeePct: number;
+  withdrawalFeeCap: number;
+  minWithdrawalAmount: number;
+  autoSweepEnabled?: boolean;
+  autoSweepThreshold?: number;
+  maxDailyPayout?: number;
+  updatedAt?: string;
+  updatedBy?: string | null;
 }
 
 // ─── Customer Credits / Debtors ───────────────────────────

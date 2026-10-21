@@ -16,6 +16,7 @@ export const pageTitles: Record<string, string> = {
   '/subscription': 'Subscription',
   '/settings': 'Settings',
   '/transactions': 'Transactions',
+  '/settlement': 'Settlement',
   '/ai': 'AI Assistant',
 };
 

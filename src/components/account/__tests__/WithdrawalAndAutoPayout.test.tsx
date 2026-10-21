@@ -142,7 +142,7 @@ describe('Withdrawal UI & Auto-Payout Component Tests', () => {
   });
 
   describe('SettlementBankCard (Auto-Payout Toggle)', () => {
-    it('renders Instant Payout toggle switch with Automatic badge when enabled', () => {
+    it('renders Automatic Payout (T+1) toggle switch with Automatic badge when enabled', () => {
       const handleToggle = vi.fn();
       render(
         <SettlementBankCard
@@ -156,7 +156,7 @@ describe('Withdrawal UI & Auto-Payout Component Tests', () => {
         />
       );
 
-      expect(screen.getByText('Instant Payouts')).toBeDefined();
+      expect(screen.getByText('Automatic Payouts (T+1)')).toBeDefined();
       const badge = screen.getByTestId('auto-payout-mode-badge');
       expect(badge.textContent).toBe('Automatic');
 

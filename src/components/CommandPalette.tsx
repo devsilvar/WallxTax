@@ -221,6 +221,13 @@ export default function CommandPalette({
           onSelect: close(() => navigate('/tax?tab=payments')),
         },
         {
+          id: 'nav-settlement',
+          kind: 'nav',
+          label: 'Settlement',
+          icon: Landmark,
+          onSelect: close(() => navigate('/settlement')),
+        },
+        {
           id: 'nav-account',
           kind: 'nav',
           label: 'Banking & Wallet',

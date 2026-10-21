@@ -9,11 +9,13 @@ import ProtectedRoute from '@/routes/ProtectedRoute.tsx';
 import GuestRoute from '@/routes/GuestRoute.tsx';
 import PageLoader from '@/components/ui/PageLoader.tsx';
 import ScrollToTop from '@/components/ScrollToTop.tsx';
+import MaintenanceScreen from '@/components/MaintenanceScreen.tsx';
 
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout.ts';
 import { getSSEClient } from '@/lib/sse-client';
+import { isMaintenanceModeActive } from '@/lib/maintenance';
 
 const MarketingLayout = lazy(() => import('@/components/marketing/MarketingLayout.tsx'));
 const Home = lazy(() => import('@/pages/marketing/Home.tsx'));
@@ -46,6 +48,7 @@ const TestTransferSimulator = isSimulatorEnabled
 const TaxReports = lazy(() => import('@/pages/TaxReports.tsx'));
 const PaymentCallback = lazy(() => import('@/pages/PaymentCallback.tsx'));
 const Transactions = lazy(() => import('@/pages/Transactions.tsx'));
+const Settlement = lazy(() => import('@/pages/Settlement.tsx'));
 const Settings = lazy(() => import('@/pages/Settings.tsx'));
 const Account = lazy(() => import('@/pages/Account.tsx'));
 const Subscription = lazy(() => import('@/pages/Subscription.tsx'));
@@ -160,6 +163,7 @@ function AppRoutes() {
                 <Route path="/payments" element={<Navigate to="/tax?tab=payments" replace />} />
                 <Route path="/payments/callback" element={<PaymentCallback />} />
                 <Route path="/transactions" element={<Transactions />} />
+                <Route path="/settlement" element={<Settlement />} />
                 <Route path="/reminders" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/account" element={<Account />} />
@@ -185,6 +189,11 @@ function AppRoutes() {
 }
 
 export default function App() {
+  // Check for maintenance mode before rendering the app
+  if (isMaintenanceModeActive()) {
+    return <MaintenanceScreen />;
+  }
+
   return (
     <BrowserRouter>
       <AppRoutes />

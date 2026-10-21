@@ -24,13 +24,10 @@ export interface SettlementBankCardProps {
   accountName?: string;
   availableBalance?: number;
   pendingWithdrawn?: number;
-  autoSplitEnabled?: boolean;
-  updatingAutoSplit?: boolean;
   autoPayoutEnabled?: boolean;
   updatingAutoPayout?: boolean;
   isBalanceLoading?: boolean;
   onWithdraw?: () => void;
-  onToggleAutoSplit?: () => void;
   onToggleAutoPayout?: () => void;
   banks?: Bank[] | null;
   banksLoading?: boolean;
@@ -47,13 +44,10 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   accountName,
   availableBalance = 0,
   pendingWithdrawn = 0,
-  autoSplitEnabled: _autoSplitEnabled = false,
-  updatingAutoSplit: _updatingAutoSplit = false,
   autoPayoutEnabled = false,
   updatingAutoPayout = false,
   isBalanceLoading = false,
   onWithdraw,
-  onToggleAutoSplit: _onToggleAutoSplit,
   onToggleAutoPayout,
   banks,
   banksLoading = false,
@@ -109,7 +103,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
     setConnectingSettlement(true);
     try {
       const selectedBank = banks?.find((b) => b.code === settlementBank);
-      await api.post(`/businesses/${businessId}/dva/settlement/connect`, {
+      await api.post(`/businesses/${businessId}/settlement/connect`, {
         bankCode: settlementBank,
         bankName: selectedBank?.name || '',
         accountNumber: settlementAccount,
@@ -221,35 +215,11 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
             )}
           </div>
 
-          {/* Auto-Split 7.5% Tax Toggle - Disabled / Not needed */}
-          {/* <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-            <div>
-              <p className="text-xs font-semibold text-gray-900">7.5% Tax Auto-Split</p>
-              <p className="text-[10px] text-gray-500">Set aside 7.5% of every transfer for tax</p>
-            </div>
-            <button
-              type="button"
-              data-testid="auto-split-toggle"
-              aria-label="Toggle 7.5% tax auto-split"
-              disabled={updatingAutoSplit}
-              onClick={onToggleAutoSplit}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                autoSplitEnabled ? 'bg-purple-800' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                  autoSplitEnabled ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div> */}
-
-          {/* Instant Auto-Payout Mode Toggle */}
+          {/* Automatic Payouts (T+1) Mode Toggle */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <div className="pr-3">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-semibold text-gray-900">Instant Payouts</p>
+                <p className="text-xs font-semibold text-gray-900">Automatic Payouts (T+1)</p>
                 <span
                   data-testid="auto-payout-mode-badge"
                   className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
@@ -263,15 +233,15 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
               </div>
               <p className="text-[11px] text-gray-500 mt-0.5">
                 {autoPayoutEnabled
-                  ? 'Withdrawals process immediately without waiting for admin approval.'
-                  : 'When manual, funds accumulate in your wallet. Withdraw anytime with 1-2 hour review, or enable auto-payout for instant disbursement.'}
+                  ? 'Your balance is automatically paid out to your bank the next business day. No PIN required.'
+                  : 'Withdraw anytime with your 4-digit PIN. You control when money moves to your bank.'}
               </p>
             </div>
             {onToggleAutoPayout && (
               <button
                 type="button"
                 data-testid="auto-payout-toggle"
-                aria-label="Toggle instant automatic payouts"
+                aria-label="Toggle automatic daily payouts"
                 disabled={updatingAutoPayout}
                 onClick={onToggleAutoPayout}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden disabled:opacity-50 ${

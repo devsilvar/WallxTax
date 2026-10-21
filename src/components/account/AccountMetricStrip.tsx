@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDownLeft, ArrowUpRight, Building2, CheckCheck, Clock } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Building2, CheckCheck, Clock, Landmark } from 'lucide-react';
 import { formatNaira } from './WalletBalanceCard.tsx';
 
 export interface AccountMetricStripProps {
@@ -7,7 +7,10 @@ export interface AccountMetricStripProps {
   completedTransfersCount: number;
   totalWithdrawn: number;
   pendingWithdrawn: number;
-  receivedThisMonth: number;
+  receivedThisMonth?: number;
+  businessBalance?: number;
+  businessName?: string;
+  isPooled?: boolean;
   payoutBankName: string;
   payoutAccountNumber?: string;
 }
@@ -17,7 +20,10 @@ export const AccountMetricStrip: React.FC<AccountMetricStripProps> = ({
   completedTransfersCount,
   totalWithdrawn,
   pendingWithdrawn,
-  receivedThisMonth,
+  receivedThisMonth: _receivedThisMonth = 0,
+  businessBalance,
+  businessName,
+  isPooled = false,
   payoutBankName,
   payoutAccountNumber,
 }) => {
@@ -58,16 +64,21 @@ export const AccountMetricStrip: React.FC<AccountMetricStripProps> = ({
         </div>
       </div>
 
-      {/* Card 3: This Month */}
+      {/* Card 3: Business Balance */}
       <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs">
         <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-          <span className="font-medium">This Month</span>
-          <ArrowDownLeft className="h-4 w-4 text-primary-600 stroke-[2]" />
+          <span className="font-medium">{isPooled ? 'Business Balance' : 'Current Balance'}</span>
+          <Landmark className="h-4 w-4 text-indigo-600 stroke-[2]" />
         </div>
         <p className="text-xl font-bold text-gray-900 tracking-tight tabular-nums font-mono">
-          {formatNaira(receivedThisMonth)}
+          {formatNaira(businessBalance ?? 0)}
         </p>
-        <div className="mt-2 text-xs text-gray-500">Inflows this calendar month</div>
+        <div
+          className="mt-2 text-xs text-gray-500 truncate"
+          title={isPooled && businessName ? `Share for ${businessName}` : 'Available for this business'}
+        >
+          {isPooled && businessName ? `Share for ${businessName}` : 'Available for this business'}
+        </div>
       </div>
 
       {/* Card 4: Payout Bank */}

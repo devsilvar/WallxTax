@@ -47,7 +47,7 @@ export const ComplianceTierCard: React.FC<ComplianceTierCardProps> = ({
         <div className='flex items-center justify-between py-1.5 border-b border-gray-100'>
           <span className='text-gray-500'>Operating Model</span>
           <span className='font-semibold text-emerald-700'>
-            Non-Custodial Gateway
+            PSP-Backed Software Provider
           </span>
         </div>
         <div className='flex items-center justify-between py-1.5'>
@@ -62,8 +62,8 @@ export const ComplianceTierCard: React.FC<ComplianceTierCardProps> = ({
         <div className='flex items-start gap-2'>
           <Building2 className='h-4 w-4 text-gray-400 mt-0.5 shrink-0' />
           <p className='text-[11px] text-gray-500 leading-relaxed'>
-            {regulatory?.nonCustodialNotice ||
-              'WallXERP by WallX is a technology software provider, not a bank. Dedicated virtual accounts and split settlement transfers are provided by CBN-licensed financial institutions. Funds are held in trust by partner commercial banks.'}
+            {regulatory?.custodyNotice ||
+              "WallXERP by WallX is a financial technology software platform, not a bank or deposit-taking institution. Dedicated Virtual Accounts and payouts are provided by Paystack Payments Limited, a CBN-licensed Payment Solution Service Provider. Payments received into a merchant's virtual account are held by WallX in its Paystack account and are paid out to the merchant's own bank account on request, or automatically on the next business day."}
           </p>
         </div>
       </div>

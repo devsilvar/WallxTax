@@ -37,7 +37,12 @@ export function useAccountData(
 
   const [transactions, setTransactions] = useState<DvaTransactionItem[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
-  const [moneyIn, setMoneyIn] = useState({ totalBalance: 0, receivedThisMonth: 0 });
+  const [moneyIn, setMoneyIn] = useState<{ totalBalance: number; receivedThisMonth: number; businessBalance?: number; isPooled?: boolean }>({
+    totalBalance: 0,
+    receivedThisMonth: 0,
+    businessBalance: 0,
+    isPooled: false,
+  });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isFirstMountRef = useRef(true);
@@ -104,8 +109,13 @@ export function useAccountData(
     if (!bizId) return;
     try {
       const res = await api.get(`/businesses/${bizId}/dva/account-summary`);
-      const { ledgerBalance, receivedThisMonth } = res.data.data;
-      setMoneyIn({ totalBalance: Number(ledgerBalance), receivedThisMonth: Number(receivedThisMonth) });
+      const { ledgerBalance, receivedThisMonth, businessBalance, isPooled } = res.data.data;
+      setMoneyIn({
+        totalBalance: Number(ledgerBalance),
+        receivedThisMonth: Number(receivedThisMonth),
+        businessBalance: businessBalance !== undefined ? Number(businessBalance) : Number(ledgerBalance),
+        isPooled: Boolean(isPooled),
+      });
     } catch (err) {
       console.error('Account summary fetch error:', err);
     }

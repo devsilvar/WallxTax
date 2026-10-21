@@ -103,7 +103,11 @@ export default function PayoutWithdrawalModal({
 
   const handleMaxClick = () => {
     if (available < minWithdrawal) return;
-    const maxRequested = calculateMaxWithdrawable(available, preview.fees);
+    let maxBudget = available;
+    if (preview?.dailyPayoutLimit && preview.dailyPayoutLimit > 0 && typeof preview.dailyRemaining === 'number') {
+      maxBudget = Math.min(available, preview.dailyRemaining);
+    }
+    const maxRequested = calculateMaxWithdrawable(maxBudget, preview.fees);
     setAmountStr(String(maxRequested));
   };
 
@@ -125,6 +129,14 @@ export default function PayoutWithdrawalModal({
         toast.error('Amount plus fee exceeds your available balance');
       }
       return;
+    }
+
+    if (preview?.dailyPayoutLimit && preview.dailyPayoutLimit > 0 && typeof preview.dailyRemaining === 'number') {
+      const requiredDebit = feeEstimate ? feeEstimate.debitAmount : numAmount;
+      if (requiredDebit > preview.dailyRemaining) {
+        toast.error(`Amount exceeds your remaining daily payout allowance of ${formatNaira(preview.dailyRemaining)}`);
+        return;
+      }
     }
 
     if (!preview.security.hasPin) {
@@ -304,16 +316,34 @@ export default function PayoutWithdrawalModal({
                       <span className="text-gray-500">Total Inflows:</span>
                       <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalInflows)}</span>
                     </div>
-                    {preview.totalSplitSettled > 0 && (
+                    {Boolean((preview.pendingSettlement ?? 0) > 0) && (
+                      <div className="flex justify-between" title="Held in settlement — available on next business day (T+1)">
+                        <span className="text-gray-500">In settlement (T+1):</span>
+                        <span className="font-semibold font-mono text-amber-700">{formatNaira(preview.pendingSettlement!)}</span>
+                      </div>
+                    )}
+                    {Boolean((preview.totalSplitSettled ?? 0) > 0) && (
                       <div className="flex justify-between" title="Cleared by Paystack to your commercial bank on daily schedule">
                         <span className="text-gray-500">Auto-routed to bank (T+1):</span>
-                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalSplitSettled)}</span>
+                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalSplitSettled!)}</span>
                       </div>
                     )}
                     {preview.totalWithdrawn > 0 && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Withdrawn / in progress:</span>
                         <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalWithdrawn)}</span>
+                      </div>
+                    )}
+                    {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (
+                      <div className="flex justify-between" title="Daily rolling payout allowance across all owned businesses">
+                        <span className="text-gray-500">Daily limit:</span>
+                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.dailyPayoutLimit!)}</span>
+                      </div>
+                    )}
+                    {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Remaining today:</span>
+                        <span className="font-semibold font-mono text-emerald-700">{formatNaira(preview.dailyRemaining ?? 0)}</span>
                       </div>
                     )}
                   </div>
@@ -399,6 +429,9 @@ export default function PayoutWithdrawalModal({
 
                 <p className="text-[11px] text-gray-500">
                   Minimum withdrawal: {formatNaira(preview.fees?.withdrawal?.minAmount ?? minWithdrawal)} · Withdrawal fee: {preview.fees?.withdrawal?.ratePercent ?? 1}% capped at {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)} max.
+                  {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (
+                    <span> · Daily limit: {formatNaira(preview.dailyPayoutLimit!)} ({formatNaira(preview.dailyRemaining ?? 0)} remaining)</span>
+                  )}
                 </p>
 
                 {/* Real-time Dynamic Fee Calculation Card */}
@@ -515,22 +548,13 @@ export default function PayoutWithdrawalModal({
                 </div>
               </div>
 
-              {/* Admin Approval Notice */}
-              {preview.autoPayoutEnabled ? (
-                <div className="rounded-none bg-emerald-50 border border-emerald-300 p-2.5 flex items-start gap-2 text-[11px] text-emerald-900">
-                  <Zap className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
-                  <span>
-                    ⚡ Automatic payout enabled. Transfer will process immediately upon submission.
-                  </span>
-                </div>
-              ) : (
-                <div className="rounded-none bg-amber-50 border border-amber-300 p-2.5 flex items-start gap-2 text-[11px] text-amber-900">
-                  <Clock className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
-                  <span>
-                    Admin approval required (~1-2 business hours). Funds are reserved immediately upon submission.
-                  </span>
-                </div>
-              )}
+              {/* Instant On-Demand Transfer Notice */}
+              <div className="rounded-none bg-emerald-50 border border-emerald-300 p-2.5 flex items-start gap-2 text-[11px] text-emerald-900">
+                <Zap className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+                <span>
+                  Instant transfer. Once authorized with your PIN, funds will be dispatched immediately to your destination bank.
+                </span>
+              </div>
 
               {/* 4-Digit PIN Entry */}
               <div className="space-y-2 pt-1 text-center">

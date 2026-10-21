@@ -38,6 +38,25 @@ export function formatDate(date: string | Date | undefined | null): string {
 }
 
 /**
+ * Formats a calendar date pinned to Africa/Lagos.
+ *
+ * Settlement instants are stored at 00:00 Africa/Lagos, which is 23:00 UTC the
+ * previous day. `formatDate` renders in the browser's local zone, so it shows
+ * the wrong day for any client west of Lagos. Use this for settlement dates.
+ */
+export function formatLagosDate(date: string | Date | undefined | null): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Africa/Lagos',
+  });
+}
+
+/**
  * Extract the last 4 digits of a phone number for voucher authentication.
  * Returns empty string if phone is too short or invalid.
  * 

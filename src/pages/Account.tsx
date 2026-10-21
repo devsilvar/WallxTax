@@ -27,6 +27,7 @@ import {
 
 export default function Account() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const businesses = useBusinessStore((s) => s.businesses);
   const businessStoreLoading = useBusinessStore((s) => s.isLoading);
   const fetchBusinesses = useBusinessStore((s) => s.fetchBusinesses);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -47,7 +48,6 @@ export default function Account() {
 
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showAutoSplitPinModal, setShowAutoSplitPinModal] = useState(false);
   const [showAutoPayoutPinModal, setShowAutoPayoutPinModal] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetailData | null>(null);
@@ -57,8 +57,6 @@ export default function Account() {
   const regulatory = useSettlementStore((s) => s.regulatory);
   const loadingPreview = useSettlementStore((s) => s.loadingPreview);
   const fetchSettlementPreview = useSettlementStore((s) => s.fetchPreview);
-  const toggleAutoSplit = useSettlementStore((s) => s.toggleAutoSplit);
-  const updatingAutoSplit = useSettlementStore((s) => s.updatingAutoSplit);
   const toggleAutoPayout = useSettlementStore((s) => s.toggleAutoPayout);
   const updatingAutoPayout = useSettlementStore((s) => s.updatingAutoPayout);
   const payoutHistory = useSettlementStore((s) => s.history);
@@ -124,6 +122,8 @@ export default function Account() {
   // name the bank resolves on transfer. Merchants and the customers paying
   // them care about the business being paid, so the business name leads here.
   const displayAccountName = biz?.businessName || dva?.accountName || biz?.ownerName || '';
+  const isMultiBusiness = (businesses?.length ?? 0) > 1 || Boolean(settlementPreview?.isPooled);
+  const activeBusinessBalance = settlementPreview?.businessBalance ?? moneyIn.businessBalance ?? settlementPreview?.availableForWithdrawal ?? 0;
 
   useEffect(() => {
     if (urlTab === 'withdrawals') setActiveFeedTab('withdrawals');
@@ -207,6 +207,7 @@ export default function Account() {
           <WalletBalanceCard
             availableBalance={settlementPreview?.availableForWithdrawal ?? 0}
             totalInflows={settlementPreview?.totalInflows ?? moneyIn.totalBalance}
+            pendingSettlement={settlementPreview?.pendingSettlement ?? 0}
             isLoading={isBalanceLoading}
             isRefreshing={isRefreshing}
             onRefresh={() => refreshAccountData(true)}
@@ -225,6 +226,9 @@ export default function Account() {
             completedTransfersCount={transactions.filter((t) => t.status === 'completed').length}
             totalWithdrawn={settlementPreview?.totalWithdrawn ?? 0}
             pendingWithdrawn={settlementPreview?.pendingWithdrawn ?? 0}
+            businessBalance={activeBusinessBalance}
+            businessName={biz?.businessName}
+            isPooled={isMultiBusiness}
             receivedThisMonth={moneyIn.receivedThisMonth}
             payoutBankName={resolvedBankName}
             payoutAccountNumber={resolvedAccountNum || undefined}
@@ -273,13 +277,10 @@ export default function Account() {
                 accountName={resolvedAccountName || biz.ownerName}
                 availableBalance={settlementPreview?.availableForWithdrawal ?? 0}
                 pendingWithdrawn={settlementPreview?.pooledPendingWithdrawn ?? settlementPreview?.pendingWithdrawn ?? 0}
-                autoSplitEnabled={Boolean(settlementPreview?.autoSplit.enabled)}
-                updatingAutoSplit={updatingAutoSplit}
                 autoPayoutEnabled={Boolean(settlementPreview?.autoPayoutEnabled)}
                 updatingAutoPayout={updatingAutoPayout}
                 isBalanceLoading={isBalanceLoading}
                 onWithdraw={isOwner ? () => setShowPayoutModal(true) : undefined}
-                onToggleAutoSplit={isOwner ? () => setShowAutoSplitPinModal(true) : undefined}
                 onToggleAutoPayout={isOwner ? () => setShowAutoPayoutPinModal(true) : undefined}
                 banks={banks}
                 banksLoading={banksLoading}
@@ -360,20 +361,6 @@ export default function Account() {
             fetchSettlementPreview(biz.id);
             fetchPayoutHistory(biz.id);
             handleTabChange('withdrawals');
-          },
-        }}
-        pinModal={{
-          isOpen: showAutoSplitPinModal,
-          onClose: () => setShowAutoSplitPinModal(false),
-          enabled: Boolean(settlementPreview?.autoSplit.enabled),
-          onSuccess: async (stepUpToken: string) => {
-            setShowAutoSplitPinModal(false);
-            if (biz?.id) {
-              await toggleAutoSplit(biz.id, {
-                enabled: !settlementPreview?.autoSplit.enabled,
-                stepUpToken,
-              });
-            }
           },
         }}
         autoPayoutPinModal={{

@@ -98,6 +98,12 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           icon: FileText,
           permission: 'wallet.read',
         },
+        {
+          to: '/settlement',
+          label: t('settlement', { defaultValue: 'Settlement' }),
+          icon: Landmark,
+          permission: 'wallet.read',
+        },
         { to: '/account', label: t('bank_account', { defaultValue: 'Banking & Wallet' }), icon: Landmark, permission: 'wallet.read' },
       ],
     },
