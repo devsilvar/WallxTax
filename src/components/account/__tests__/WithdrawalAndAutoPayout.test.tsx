@@ -72,7 +72,7 @@ describe('Withdrawal UI & Auto-Payout Component Tests', () => {
 
       // Verify status pills
       expect(screen.getByText('Sent to Bank')).toBeDefined();
-      expect(screen.getByText('Awaiting Approval')).toBeDefined();
+      expect(screen.getByText('Queued')).toBeDefined();
       expect(screen.getByText('Failed')).toBeDefined();
 
       // Verify View Details action indicator is rendered

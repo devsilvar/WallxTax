@@ -9,7 +9,6 @@ import {
   Lock,
   AlertTriangle,
   Clock,
-  Zap,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -119,7 +118,7 @@ export default function PayoutWithdrawalModal({
       } else if (numAmount > available) {
         if ((preview.pendingWithdrawn ?? 0) > 0) {
           toast.error(
-            `${formatNaira(preview.pendingWithdrawn)} is currently reserved in a pending withdrawal awaiting approval. Check the Withdrawals tab.`,
+            `${formatNaira(preview.pendingWithdrawn)} is currently reserved by a withdrawal that's in flight. Check the Withdrawals tab.`,
             { duration: 6000 }
           );
         } else {
@@ -379,7 +378,7 @@ export default function PayoutWithdrawalModal({
                   <div>
                     <p className="font-semibold text-amber-900">Withdrawal In Progress</p>
                     <p className="text-amber-800 text-[11px]">
-                      {formatNaira(preview.pendingWithdrawn)} is currently reserved awaiting admin approval. Remaining available: {formatNaira(available)}.
+                      {formatNaira(preview.pendingWithdrawn)} is currently reserved while your transfer completes. Remaining available: {formatNaira(available)}.
                     </p>
                   </div>
                 </div>
@@ -548,13 +547,8 @@ export default function PayoutWithdrawalModal({
                 </div>
               </div>
 
-              {/* Instant On-Demand Transfer Notice */}
-              <div className="rounded-none bg-emerald-50 border border-emerald-300 p-2.5 flex items-start gap-2 text-[11px] text-emerald-900">
-                <Zap className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
-                <span>
-                  Instant transfer. Once authorized with your PIN, funds will be dispatched immediately to your destination bank.
-                </span>
-              </div>
+          
+               
 
               {/* 4-Digit PIN Entry */}
               <div className="space-y-2 pt-1 text-center">
@@ -653,12 +647,12 @@ export default function PayoutWithdrawalModal({
 
               <div>
                 <h4 className="text-sm font-bold text-gray-900">
-                  {isPending ? 'Withdrawal Request Submitted!' : 'Withdrawal Completed!'}
+                  {isPending ? 'Withdrawal Queued' : 'Transfer Started!'}
                 </h4>
                 <p className="text-xs text-gray-500 mt-0.5 max-w-[280px]">
                   {isPending
-                    ? 'Your funds are reserved and awaiting admin approval. You will receive an alert once transferred.'
-                    : 'Your funds have been transferred directly to your commercial bank.'}
+                    ? "Your funds are reserved. We'll transfer as soon as our gateway is funded."
+                    : 'Your funds are on their way to your bank.'}
                 </p>
               </div>
 
@@ -700,7 +694,7 @@ export default function PayoutWithdrawalModal({
                   <div className="flex justify-between items-center pt-1 border-t border-gray-200">
                     <span className="text-gray-500">Status</span>
                     <span className="inline-flex items-center gap-1 rounded-none bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 border border-amber-300">
-                      <Clock className="h-3 w-3" /> Awaiting Approval
+                      <Clock className="h-3 w-3" /> Queued
                     </span>
                   </div>
                 )}

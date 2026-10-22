@@ -40,7 +40,7 @@ describe('WithdrawalsTable', () => {
 
     expect(screen.getByText('Payout to Zenith Bank')).toBeInTheDocument();
     expect(screen.getByText('Sent to Bank')).toBeInTheDocument();
-    expect(screen.getByText('Awaiting Approval')).toBeInTheDocument();
+    expect(screen.getByText('Queued')).toBeInTheDocument();
   });
 
   it('filters status when Sent filter chip is clicked', () => {

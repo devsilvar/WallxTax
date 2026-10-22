@@ -243,7 +243,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       {isPending && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                          <Clock className="h-3 w-3" /> Awaiting Approval
+                          <Clock className="h-3 w-3" /> Queued
                         </span>
                       )}
                       {isProcessing && (

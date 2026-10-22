@@ -252,11 +252,13 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     try {
       const res = await api.post(`/businesses/${businessId}/settlement/withdraw`, input);
       
-      // Handle pending status (awaiting admin approval)
+      // Handle pending status (awaiting funding) vs processing/completed
       if (res.data.data.status === 'pending') {
-        toast.success('Withdrawal request submitted. Awaiting admin approval.', { id: toastId });
+        toast.success("Queued — we'll transfer as soon as our gateway is funded.", { id: toastId });
       } else {
-        toast.success('Withdrawal initiated successfully', { id: toastId });
+        // Use the message from the executor (accurate per-outcome text)
+        const message = res.data.message || 'Withdrawal initiated successfully';
+        toast.success(message, { id: toastId });
       }
       
       // Refresh preview and history
@@ -269,7 +271,7 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       
       // Handle specific error codes
       if (errorCode === 'DUPLICATE_WITHDRAWAL_REQUEST') {
-        toast.error('You already have a withdrawal request for this amount awaiting approval. Check its status or wait for it to be processed.', { id: toastId });
+        toast.error("You already have a withdrawal request for this amount that's in flight. Check its status or wait for it to be processed.", { id: toastId });
       } else if (errorCode === 'WITHDRAWAL_IN_PROGRESS') {
         toast.error('A withdrawal request is already being processed. Please wait a few seconds and try again.', { id: toastId });
       } else if (errorCode === 'INSUFFICIENT_FUNDS') {

@@ -2,13 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowUpRight,
-  CheckCircle2,
-  Clock,
   Landmark,
-  Loader2,
   RefreshCw,
   ShieldAlert,
-  XCircle,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
@@ -51,16 +47,6 @@ const INFLOW_STATE_META: Record<
   },
 };
 
-const PAYOUT_STATUS_META: Record<
-  string,
-  { label: string; chip: string }
-> = {
-  pending: { label: 'Awaiting approval', chip: 'bg-amber-50 border-amber-200 text-amber-800' },
-  processing: { label: 'Processing', chip: 'bg-blue-50 border-blue-200 text-blue-800' },
-  completed: { label: 'Sent to bank', chip: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
-  failed: { label: 'Failed', chip: 'bg-rose-50 border-rose-200 text-rose-800' },
-};
-
 function inflowState(inflow: SettlementInflow, now: number): InflowState {
   if (!SETTLED_SALE_STATUSES.includes(inflow.status)) return 'unverified';
   if (inflow.settledAt && new Date(inflow.settledAt).getTime() > now) return 'settling';
@@ -77,15 +63,12 @@ export default function Settlement() {
   const inflows = useSettlementStore((s) => s.inflows);
   const loadingInflows = useSettlementStore((s) => s.loadingInflows);
   const inflowPagination = useSettlementStore((s) => s.inflowPagination);
-  const history = useSettlementStore((s) => s.history);
-  const loadingHistory = useSettlementStore((s) => s.loadingHistory);
   const fetchPreview = useSettlementStore((s) => s.fetchPreview);
   const fetchInflows = useSettlementStore((s) => s.fetchInflows);
-  const fetchHistory = useSettlementStore((s) => s.fetchHistory);
 
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const isOwner = Boolean(
     biz ? (biz.myRole === 'owner' || biz.userId === user?.id) : user?.isOwnerAccount !== false
@@ -107,17 +90,25 @@ export default function Settlement() {
     if (!businessId || !canView) return;
     void fetchPreview(businessId);
     void fetchInflows(businessId, 1);
-    void fetchHistory(businessId, 1);
-  }, [businessId, canView, fetchPreview, fetchInflows, fetchHistory]);
+  }, [businessId, canView, fetchPreview, fetchInflows]);
+
+  // Refresh clock every 60 seconds so settlement status updates when time crosses boundary
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRefresh = async () => {
     if (!businessId) return;
     setIsRefreshing(true);
+    setNow(Date.now()); // Update now on manual refresh
     try {
       await Promise.allSettled([
         fetchPreview(businessId),
         fetchInflows(businessId, 1),
-        fetchHistory(businessId, 1),
       ]);
     } finally {
       setIsRefreshing(false);
@@ -173,7 +164,6 @@ export default function Settlement() {
   const autoPayoutEnabled = Boolean(preview?.autoPayoutEnabled);
   const bankName = preview?.settlementAccount?.bankName ?? 'Not connected';
   const accountNumber = preview?.settlementAccount?.accountNumber ?? null;
-  const recentPayouts = history.slice(0, 5);
 
   const scopeLabel = isPooled
     ? `Across all ${businesses.length} businesses`
@@ -186,7 +176,10 @@ export default function Settlement() {
         <div>
           <h1 className='text-xl font-bold text-gray-900'>Settlement</h1>
           <p className='text-xs text-gray-500 mt-0.5'>
-            Your money, and when you can withdraw it
+            Your money, and when you can withdraw it ·{' '}
+            <Link to='/account?tab=withdrawals' className='text-primary-700 hover:text-primary-900 font-medium'>
+              Withdrawal history →
+            </Link>
           </p>
         </div>
         <div className='flex items-center gap-2'>
@@ -350,7 +343,7 @@ export default function Settlement() {
         <div className='p-4 sm:p-5 border-b border-gray-100'>
           <h2 className='text-sm font-bold text-gray-900'>Settlement timeline</h2>
           <p className='text-xs text-gray-500 mt-0.5'>
-            Each payment received into {biz.businessName}, and when it becomes withdrawable
+            Money received is available on the next business day — weekends are excluded, so a Friday payment is available on Monday.
           </p>
         </div>
 
@@ -388,7 +381,7 @@ export default function Settlement() {
                     Amount
                   </th>
                   <th className='px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400'>
-                    Available on
+                    Settles on
                   </th>
                   <th className='px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400'>
                     Status
@@ -495,81 +488,6 @@ export default function Settlement() {
               </div>
             )}
           </>
-        )}
-      </div>
-
-      {/* Recent withdrawals */}
-      <div className='rounded-xl border border-gray-200/80 bg-white overflow-hidden'>
-        <div className='p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between gap-3'>
-          <div>
-            <h2 className='text-sm font-bold text-gray-900'>Recent withdrawals</h2>
-            <p className='text-xs text-gray-500 mt-0.5'>Transfers sent to your bank</p>
-          </div>
-          <Link
-            to='/account?tab=withdrawals'
-            className='text-[11px] font-semibold text-primary-700 hover:text-primary-900 shrink-0'
-          >
-            View all
-          </Link>
-        </div>
-
-        {loadingHistory && history.length === 0 ? (
-          <div className='p-5 space-y-3'>
-            <Skeleton width='100%' height={56} rounded='xl' />
-            <Skeleton width='100%' height={56} rounded='xl' />
-          </div>
-        ) : recentPayouts.length === 0 ? (
-          <div className='flex flex-col items-center py-12 text-center px-6'>
-            <div className='flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-900 mb-3 border border-purple-100'>
-              <ArrowUpRight className='h-5 w-5 stroke-[2]' />
-            </div>
-            <p className='text-sm font-semibold text-gray-900'>No withdrawals yet</p>
-            <p className='text-xs text-gray-500 mt-1 max-w-xs'>
-              When you move money from your wallet to your bank, it will show up here.
-            </p>
-          </div>
-        ) : (
-          <div className='divide-y divide-gray-100'>
-            {recentPayouts.map((payout) => {
-              const meta =
-                PAYOUT_STATUS_META[payout.status] ?? PAYOUT_STATUS_META.pending;
-              return (
-                <div
-                  key={payout.id}
-                  className='px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3'
-                >
-                  <div className='min-w-0'>
-                    <p className='text-xs font-bold text-gray-900 truncate'>
-                      {payout.narration || `Payout to ${payout.destinationBankName}`}
-                    </p>
-                    <p className='text-[11px] text-gray-500 mt-0.5 truncate'>
-                      {payout.destinationBankName} ····{payout.destinationAccountNum?.slice(-4)}{' '}
-                      · {formatLagosDate(payout.initiatedAt)}
-                    </p>
-                  </div>
-                  <div className='text-right shrink-0 flex items-center gap-3'>
-                    <span
-                      className={`hidden sm:inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${meta.chip}`}
-                    >
-                      {payout.status === 'processing' ? (
-                        <Loader2 className='h-3 w-3 animate-spin' />
-                      ) : payout.status === 'completed' ? (
-                        <CheckCircle2 className='h-3 w-3' />
-                      ) : payout.status === 'failed' ? (
-                        <XCircle className='h-3 w-3' />
-                      ) : (
-                        <Clock className='h-3 w-3' />
-                      )}
-                      {meta.label}
-                    </span>
-                    <p className='text-sm font-bold font-mono text-gray-950 tabular-nums'>
-                      −{formatNaira(payout.amount)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         )}
       </div>
 

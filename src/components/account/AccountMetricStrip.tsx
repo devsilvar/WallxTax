@@ -56,7 +56,7 @@ export const AccountMetricStrip: React.FC<AccountMetricStripProps> = ({
         <div className="mt-2 text-xs text-gray-500">
           {pendingWithdrawn > 0 ? (
             <span className="text-amber-700 font-semibold inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {formatNaira(pendingWithdrawn)} awaiting approval
+              <Clock className="h-3 w-3" /> {formatNaira(pendingWithdrawn)} in flight
             </span>
           ) : (
             'Transferred to payout bank'

@@ -197,7 +197,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
               >
                 <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
                 <span>
-                  {formatNaira(pendingWithdrawn)} currently reserved in a pending withdrawal awaiting approval.
+                  {formatNaira(pendingWithdrawn)} currently reserved by a withdrawal that's in flight.
                 </span>
               </div>
             )}

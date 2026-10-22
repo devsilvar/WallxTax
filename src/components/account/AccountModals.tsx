@@ -101,7 +101,7 @@ export const AccountModals: React.FC<AccountModalsProps> = ({
           title={autoPayoutPinModal.enabled ? 'Switch to Manual Payouts' : 'Enable Instant Auto-Payouts'}
           description={
             autoPayoutPinModal.enabled
-              ? 'Enter your 4-digit transaction PIN to disable instant payouts. Future withdrawals will require admin approval.'
+              ? "Enter your 4-digit transaction PIN to disable instant payouts. Turn off automatic daily payouts. You'll still be able to withdraw instantly, any time you want."
               : 'Enter your 4-digit transaction PIN to enable instant automatic payouts directly to your connected bank.'
           }
         />
