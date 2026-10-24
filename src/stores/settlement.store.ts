@@ -86,7 +86,6 @@ export interface AdvancePreviewData {
   maxAdvancePct?: number;
   minAdvanceAmount?: number;
   remainingPending: number;
-  pendingSettlement: number;
   hasOutstandingAdvance: boolean;
   batchStartDate: string | null;
   fees: {
