@@ -1031,6 +1031,8 @@ export interface DvaTransactionRow {
    * null = never held (e.g. rows predating the settlement hold).
    */
   settledAt?: string | null;
+  released?: boolean;
+  releasedAt?: string | null;
 }
 
 /**
@@ -1048,6 +1050,8 @@ export interface SettlementInflow {
   createdAt: string;
   settledAt?: string | null;
   needsVerification: boolean;
+  released?: boolean;
+  releasedAt?: string | null;
 }
 
 export interface DvaTransactionsResponse {

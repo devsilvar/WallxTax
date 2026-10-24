@@ -380,16 +380,16 @@ export default function TransactionDetailPanel({
                 <div className='flex-1 min-w-0'>
                   <div className='flex items-center justify-between gap-2 flex-wrap'>
                     <h4 className='text-xs font-bold text-amber-950 uppercase tracking-wide'>
-                      Tax Revenue Review Required
+                      {isDva ? 'Verification Required' : 'Tax Revenue Review Required'}
                     </h4>
                     <span className='px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300'>
                       Action Required
                     </span>
                   </div>
                   <p className='text-xs text-amber-800 mt-1 leading-relaxed'>
-                    This transfer was captured automatically. Confirm if this
-                    is taxable sales income or non-taxable funds
-                    (loan, capital injection, or debtor repayment).
+                    {isDva
+                      ? 'This transfer was captured automatically. Verify and attach it to a sale when ready. The advance (if any) does not affect sales classification.'
+                      : 'This transfer was captured automatically. Confirm if this is taxable sales income or non-taxable funds (loan, capital injection, or debtor repayment).'}
                   </p>
                   <div className='mt-3 flex flex-wrap items-center gap-2'>
                     <button

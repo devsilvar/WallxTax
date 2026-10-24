@@ -71,14 +71,16 @@ describe('Messages Inbox Page', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Inbox')).toBeInTheDocument();
+      expect(screen.getByText('Messages')).toBeInTheDocument();
       expect(screen.getByText('Welcome to WallX Enterprise')).toBeInTheDocument();
       expect(screen.getByText('FIRS Monthly Deadline Reminder')).toBeInTheDocument();
     });
 
-    // Click on unread message to expand and mark as read
-    const unreadMessageCard = screen.getByText('Welcome to WallX Enterprise');
-    fireEvent.click(unreadMessageCard);
+    // Click on unread message in list to select and mark as read
+    const unreadMessageButton = screen.getAllByText('Welcome to WallX Enterprise')[0].closest('button');
+    if (unreadMessageButton) {
+      fireEvent.click(unreadMessageButton);
+    }
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith('/messages/msg-1/read');

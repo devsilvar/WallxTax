@@ -452,297 +452,412 @@ export default function CustomerDetail() {
   }
 
   return (
-    <div className="space-y-6 pb-16 animate-fade-in p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* ─── Breadcrumb & Top Bar ────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <Link
-          to="/customers"
-          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Customers
-        </Link>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white">
+      <div className="space-y-6 pb-16 animate-fade-in p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        {/* ─── Breadcrumb & Top Bar ────────────────────────────── */}
+        <div className="flex items-center justify-between">
+          <Link
+            to="/customers"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition-all"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Customers</span>
+          </Link>
 
-        {isManagerOrOwner && (
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {activeCard && (
-              <>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    if (blockIfNeeded()) return;
-                    setIsChangePinOpen(true);
-                  }}
-                  className="inline-flex items-center text-xs"
-                >
-                  <Lock className="h-3.5 w-3.5 mr-1.5 text-blue-600" /> Change PIN
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    if (blockIfNeeded()) return;
-                    setIsAdjustOpen(true);
-                  }}
-                  className="inline-flex items-center text-xs"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5 text-purple-600" /> Adjust Balance
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  subscriptionExempt={true}
-                  onClick={() => setIsHistoryOpen(true)}
-                  className="inline-flex items-center text-xs"
-                >
-                  <History className="h-3.5 w-3.5 mr-1.5 text-gray-500" /> View Voucher History
-                </Button>
-              </>
-            )}
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex items-center text-xs"
-            >
-              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Profile
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleToggleArchive}
-              className={`inline-flex items-center text-xs ${
-                activeCustomer.isActive ? 'text-gray-600 hover:text-amber-700' : 'text-emerald-700 hover:text-emerald-800'
-              }`}
-            >
-              {activeCustomer.isActive ? (
+          {isManagerOrOwner && (
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {activeCard && (
                 <>
-                  <Archive className="h-3.5 w-3.5 mr-1.5" /> Archive
-                </>
-              ) : (
-                <>
-                  <ArchiveRestore className="h-3.5 w-3.5 mr-1.5" /> Restore
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      if (blockIfNeeded()) return;
+                      setIsChangePinOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs"
+                  >
+                    <Lock className="h-3.5 w-3.5 text-blue-600" />
+                    <span className="hidden sm:inline">Change PIN</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      if (blockIfNeeded()) return;
+                      setIsAdjustOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-purple-600" />
+                    <span className="hidden sm:inline">Adjust Balance</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    subscriptionExempt={true}
+                    onClick={() => setIsHistoryOpen(true)}
+                    className="inline-flex items-center gap-1.5 text-xs"
+                  >
+                    <History className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="hidden md:inline">Voucher History</span>
+                  </Button>
                 </>
               )}
-            </Button>
-            {activeKpis?.orderCount === 0 && activeKpis?.totalInvoices === 0 && activeKpis?.totalCredits === 0 && (
               <Button
                 size="sm"
-                variant="danger"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="inline-flex items-center text-xs"
+                variant="secondary"
+                onClick={() => setIsEditModalOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Pencil className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Edit</span>
               </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleToggleArchive}
+                className={`inline-flex items-center gap-1.5 text-xs ${
+                  activeCustomer.isActive ? 'text-gray-600 hover:text-amber-700' : 'text-emerald-700 hover:text-emerald-800'
+                }`}
+              >
+                {activeCustomer.isActive ? (
+                  <>
+                    <Archive className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Archive</span>
+                  </>
+                ) : (
+                  <>
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Restore</span>
+                  </>
+                )}
+              </Button>
+              {activeKpis?.orderCount === 0 && activeKpis?.totalInvoices === 0 && activeKpis?.totalCredits === 0 && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="inline-flex items-center text-xs"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ─── Customer Profile Header Card ────────────────────── */}
+        <Card className="overflow-hidden border-0 shadow-lg shadow-gray-100/50">
+          <div className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 px-6 py-8">
+            {/* Decorative gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mt-20 -mr-20" />
+            
+            <div className="relative flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white text-2xl font-bold shadow-xl flex-shrink-0">
+                  {getInitials(activeCustomer.name)}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{activeCustomer.name}</h1>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${
+                        activeCustomer.isActive
+                          ? 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/30'
+                          : 'bg-gray-500/20 text-gray-100 border border-gray-400/30'
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          activeCustomer.isActive ? 'bg-emerald-300' : 'bg-gray-300'
+                        }`}
+                      />
+                      {activeCustomer.isActive ? 'Active' : 'Archived'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-xs text-primary-100">
+                      Member since {formatDate(activeCustomer.createdAt)}
+                    </p>
+                    {activeKpis?.firstSeenAt && (
+                      <>
+                        <span className="text-primary-300">•</span>
+                        <p className="text-xs text-primary-100">
+                          First purchase {formatDate(activeKpis.firstSeenAt)}
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {(isManagerOrOwner && activeBusiness?.id) || activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined ? (
+                    <div className="pt-1">
+                      {isManagerOrOwner && activeBusiness?.id ? (
+                        <CustomerBonusControl
+                          businessId={activeBusiness.id}
+                          customerId={activeCustomer.id}
+                          businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
+                          personalPct={activeCustomer.voucherBonusPct}
+                          onSaved={() => {
+                            if (activeBusiness?.id && activeCustomer?.id) {
+                              fetchCustomer(activeBusiness.id, activeCustomer.id);
+                            }
+                          }}
+                        />
+                      ) : (
+                        activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/20 text-purple-100 border border-purple-400/30 backdrop-blur-sm">
+                            <Coins className="h-3 w-3" />
+                            {activeCustomer.voucherBonusPct}% Bonus Rate
+                          </span>
+                        )
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Info Section */}
+          <div className="bg-white p-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Contact Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {activeCustomer.phone ? (
+                <button
+                  onClick={() => copyToClipboard(activeCustomer.phone!, 'phone')}
+                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all text-left group border border-transparent hover:border-gray-200"
+                >
+                  <div className="flex items-center gap-3 truncate">
+                    <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                      <Phone className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+                      <p className="truncate font-medium text-sm font-mono">{activeCustomer.phone}</p>
+                    </div>
+                  </div>
+                  {copiedField === 'phone' ? (
+                    <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <Copy className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  )}
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 text-gray-400 border border-gray-100">
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <Phone className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Phone</p>
+                    <p className="text-sm italic">Not provided</p>
+                  </div>
+                </div>
+              )}
+
+              {activeCustomer.email ? (
+                <button
+                  onClick={() => copyToClipboard(activeCustomer.email!, 'email')}
+                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all text-left group border border-transparent hover:border-gray-200"
+                >
+                  <div className="flex items-center gap-3 truncate">
+                    <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
+                      <Mail className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                      <p className="truncate font-medium text-sm">{activeCustomer.email}</p>
+                    </div>
+                  </div>
+                  {copiedField === 'email' ? (
+                    <Check className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <Copy className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  )}
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 text-gray-400 border border-gray-100">
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Email</p>
+                    <p className="text-sm italic">Not provided</p>
+                  </div>
+                </div>
+              )}
+
+              {activeCustomer.address || activeCustomer.city || activeCustomer.state ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 mb-0.5">Location</p>
+                    <p className="truncate font-medium text-sm">
+                      {[activeCustomer.address, activeCustomer.city, activeCustomer.state].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 text-gray-400 border border-gray-100">
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <MapPin className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Location</p>
+                    <p className="text-sm italic">Not provided</p>
+                  </div>
+                </div>
+              )}
+
+              {activeCustomer.taxId ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 mb-0.5">Tax ID (TIN)</p>
+                    <p className="truncate font-medium text-sm font-mono">{activeCustomer.taxId}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 text-gray-400 border border-gray-100">
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Tax ID (TIN)</p>
+                    <p className="text-sm italic">Not provided</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {activeCustomer.notes && (
+              <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200/60">
+                <div className="flex items-start gap-2">
+                  <div className="p-1.5 rounded-lg bg-amber-100">
+                    <FileText className="h-3.5 w-3.5 text-amber-700" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-amber-900 mb-1">Notes</p>
+                    <p className="text-xs text-amber-800 leading-relaxed">{activeCustomer.notes}</p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* ─── Customer Profile Header Card ────────────────────── */}
-      <Card className="p-6 border border-gray-200/80 shadow-sm bg-gradient-to-br from-white via-white to-gray-50/50">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start sm:items-center space-x-4">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-primary-500/10 flex-shrink-0">
-              {getInitials(activeCustomer.name)}
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center space-x-3 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{activeCustomer.name}</h1>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                    activeCustomer.isActive
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-gray-100 text-gray-600 border border-gray-200'
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
-                      activeCustomer.isActive ? 'bg-emerald-500' : 'bg-gray-400'
-                    }`}
-                  />
-                  {activeCustomer.isActive ? 'Active Client' : 'Archived'}
-                </span>
-                {isManagerOrOwner && activeBusiness?.id ? (
-                  <div className="inline-flex items-center">
-                    <CustomerBonusControl
-                      businessId={activeBusiness.id}
-                      customerId={activeCustomer.id}
-                      businessDefaultPct={activeBusiness.voucherBonusPct ?? 0}
-                      personalPct={activeCustomer.voucherBonusPct}
-                      onSaved={() => {
-                        if (activeBusiness?.id && activeCustomer?.id) {
-                          fetchCustomer(activeBusiness.id, activeCustomer.id);
-                        }
-                      }}
-                    />
-                  </div>
-                ) : (
-                  activeCustomer.voucherBonusPct !== null && activeCustomer.voucherBonusPct !== undefined && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                      <Coins className="h-3 w-3 mr-1" />
-                      {activeCustomer.voucherBonusPct}% Bonus Rate
-                    </span>
-                  )
-                )}
-              </div>
-              <p className="text-xs text-gray-400">
-                Created on {formatDate(activeCustomer.createdAt)}
-                {activeKpis?.firstSeenAt && ` • First purchase on ${formatDate(activeKpis.firstSeenAt)}`}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact Info Pills */}
-        <div className="mt-6 pt-5 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-          {activeCustomer.phone ? (
-            <button
-              onClick={() => copyToClipboard(activeCustomer.phone!, 'phone')}
-              className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors text-left group"
-            >
-              <div className="flex items-center space-x-2.5 truncate">
-                <Phone className="h-4 w-4 text-gray-400 group-hover:text-primary-600 flex-shrink-0" />
-                <span className="truncate font-mono text-xs">{activeCustomer.phone}</span>
-              </div>
-              {copiedField === 'phone' ? (
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-              )}
-            </button>
-          ) : (
-            <div className="flex items-center p-2.5 rounded-xl bg-gray-50 text-gray-400 text-xs italic">
-              <Phone className="h-4 w-4 mr-2 text-gray-300" /> No phone recorded
-            </div>
-          )}
-
-          {activeCustomer.email ? (
-            <button
-              onClick={() => copyToClipboard(activeCustomer.email!, 'email')}
-              className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors text-left group"
-            >
-              <div className="flex items-center space-x-2.5 truncate">
-                <Mail className="h-4 w-4 text-gray-400 group-hover:text-primary-600 flex-shrink-0" />
-                <span className="truncate text-xs">{activeCustomer.email}</span>
-              </div>
-              {copiedField === 'email' ? (
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-              )}
-            </button>
-          ) : (
-            <div className="flex items-center p-2.5 rounded-xl bg-gray-50 text-gray-400 text-xs italic">
-              <Mail className="h-4 w-4 mr-2 text-gray-300" /> No email recorded
-            </div>
-          )}
-
-          {activeCustomer.address || activeCustomer.city || activeCustomer.state ? (
-            <div className="flex items-center p-2.5 rounded-xl bg-gray-50 text-gray-700 text-xs truncate">
-              <MapPin className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-              <span className="truncate">
-                {[activeCustomer.address, activeCustomer.city, activeCustomer.state].filter(Boolean).join(', ')}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center p-2.5 rounded-xl bg-gray-50 text-gray-400 text-xs italic">
-              <MapPin className="h-4 w-4 mr-2 text-gray-300" /> No location provided
-            </div>
-          )}
-
-          {activeCustomer.taxId ? (
-            <div className="flex items-center p-2.5 rounded-xl bg-gray-50 text-gray-700 text-xs truncate">
-              <FileText className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
-              <span className="truncate">TIN: {activeCustomer.taxId}</span>
-            </div>
-          ) : (
-            <div className="flex items-center p-2.5 rounded-xl bg-gray-50 text-gray-400 text-xs italic">
-              <FileText className="h-4 w-4 mr-2 text-gray-300" /> No Tax ID / TIN
-            </div>
-          )}
-        </div>
-
-        {activeCustomer.notes && (
-          <div className="mt-3.5 p-3 rounded-xl bg-amber-50/50 border border-amber-100/60 text-xs text-amber-900 flex items-start space-x-2">
-            <span className="font-semibold text-amber-950 flex-shrink-0">Notes:</span>
-            <span className="leading-relaxed">{activeCustomer.notes}</span>
-          </div>
-        )}
-      </Card>
-
-      {/* ─── 6-Card KPI Strip ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <Card className="p-4 border border-gray-100 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Total Spent</p>
-          <p className="text-xl font-bold text-gray-900 mt-1.5 tracking-tight">
-            {formatNaira(activeKpis?.totalSpent ?? 0)}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">Lifetime settled sales</p>
         </Card>
 
-        <Card className="p-4 border border-gray-100 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Total Orders</p>
-          <p className="text-xl font-bold text-gray-900 mt-1.5 tracking-tight">
-            {activeKpis?.orderCount ?? 0}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            {activeKpis?.avgOrder ? `Avg: ${formatNaira(activeKpis.avgOrder)}` : 'No orders yet'}
-          </p>
-        </Card>
+        {/* ─── 6-Card KPI Strip ─────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <Card className="p-5 border-0 shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-gray-50/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-emerald-100">
+                <ShoppingBag className="h-5 w-5 text-emerald-700" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Spent</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
+              {formatNaira(activeKpis?.totalSpent ?? 0)}
+            </p>
+            <p className="text-[11px] text-gray-500">Lifetime revenue</p>
+          </Card>
 
-        <Card
-          className={`p-4 border shadow-sm ${
-            (activeKpis?.outstandingCredit ?? 0) > 0
-              ? 'border-rose-200 bg-rose-50/30'
-              : 'border-gray-100'
-          }`}
-        >
-          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Debtor Balance</p>
-          <p
-            className={`text-xl font-bold mt-1.5 tracking-tight ${
-              (activeKpis?.outstandingCredit ?? 0) > 0 ? 'text-rose-600' : 'text-gray-900'
+          <Card className="p-5 border-0 shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-gray-50/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <CheckCircle2 className="h-5 w-5 text-blue-700" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Orders</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
+              {activeKpis?.orderCount ?? 0}
+            </p>
+            <p className="text-[11px] text-gray-500">
+              {activeKpis?.avgOrder ? `Avg: ${formatNaira(activeKpis.avgOrder)}` : 'No orders yet'}
+            </p>
+          </Card>
+
+          <Card
+            className={`p-5 border-0 shadow-md hover:shadow-lg transition-shadow ${
+              (activeKpis?.outstandingCredit ?? 0) > 0
+                ? 'bg-gradient-to-br from-rose-50 to-rose-100/50'
+                : 'bg-gradient-to-br from-white to-gray-50/50'
             }`}
           >
-            {formatNaira(activeKpis?.outstandingCredit ?? 0)}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            {(activeKpis?.totalCredits ?? 0) > 0
-              ? `${activeKpis?.totalCredits} credit line(s)`
-              : 'No debt outstanding'}
-          </p>
-        </Card>
+            <div className="flex items-start justify-between mb-3">
+              <div className={`p-2 rounded-lg ${
+                (activeKpis?.outstandingCredit ?? 0) > 0 ? 'bg-rose-200' : 'bg-gray-100'
+              }`}>
+                <AlertCircle className={`h-5 w-5 ${
+                  (activeKpis?.outstandingCredit ?? 0) > 0 ? 'text-rose-700' : 'text-gray-500'
+                }`} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Debt</span>
+            </div>
+            <p
+              className={`text-2xl font-bold tracking-tight mb-1 ${
+                (activeKpis?.outstandingCredit ?? 0) > 0 ? 'text-rose-700' : 'text-gray-900'
+              }`}
+            >
+              {formatNaira(activeKpis?.outstandingCredit ?? 0)}
+            </p>
+            <p className="text-[11px] text-gray-500">
+              {(activeKpis?.totalCredits ?? 0) > 0
+                ? `${activeKpis?.totalCredits} credit line(s)`
+                : 'No outstanding debt'}
+            </p>
+          </Card>
 
-        <Card className="p-4 border border-gray-100 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Store Card</p>
-          <p className="text-xl font-bold text-purple-700 mt-1.5 tracking-tight">
-            {formatNaira(activeCard?.balance ?? activeKpis?.voucherBalance ?? 0)}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            {activeCard?.cardCode ? activeCard.cardCode : 'Virtual card inactive'}
-          </p>
-        </Card>
+          <Card className="p-5 border-0 shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-purple-100/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-purple-200">
+                <CreditCard className="h-5 w-5 text-purple-700" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Store Card</span>
+            </div>
+            <p className="text-2xl font-bold text-purple-700 tracking-tight mb-1">
+              {formatNaira(activeCard?.balance ?? activeKpis?.voucherBalance ?? 0)}
+            </p>
+            <p className="text-[11px] text-gray-600 font-mono">
+              {activeCard?.cardCode ? activeCard.cardCode : 'Not activated'}
+            </p>
+          </Card>
 
-        <Card className="p-4 border border-gray-100 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Invoices</p>
-          <p className="text-xl font-bold text-gray-900 mt-1.5 tracking-tight">
-            {activeKpis?.totalInvoices ?? 0}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">Total issued</p>
-        </Card>
+          <Card className="p-5 border-0 shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-gray-50/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-amber-100">
+                <FileText className="h-5 w-5 text-amber-700" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Invoices</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
+              {activeKpis?.totalInvoices ?? 0}
+            </p>
+            <p className="text-[11px] text-gray-500">Total issued</p>
+          </Card>
 
-        <Card className="p-4 border border-gray-100 shadow-sm">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Last Purchase</p>
-          <p className="text-sm font-bold text-gray-900 mt-2 truncate">
-            {activeKpis?.lastPurchaseAt ? formatDate(activeKpis.lastPurchaseAt) : 'Never'}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5 truncate">
-            {activeKpis?.lastPurchaseAt ? 'Most recent transaction' : 'No purchase activity'}
-          </p>
-        </Card>
-      </div>
+          <Card className="p-5 border-0 shadow-md hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-gray-50/50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-gray-100">
+                <Clock className="h-5 w-5 text-gray-700" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Order</span>
+            </div>
+            <p className="text-sm font-bold text-gray-900 tracking-tight mb-1 truncate">
+              {activeKpis?.lastPurchaseAt ? formatDate(activeKpis.lastPurchaseAt) : 'Never'}
+            </p>
+            <p className="text-[11px] text-gray-500 truncate">
+              {activeKpis?.lastPurchaseAt ? 'Most recent' : 'No activity'}
+            </p>
+          </Card>
+        </div>
 
-      {/* ─── Tabs Navigation ─────────────────────────────────── */}
+        {/* ─── Tabs Navigation ─────────────────────────────────── */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8 -mb-px">
           {[
@@ -1396,6 +1511,7 @@ export default function CustomerDetail() {
         customer={activeCustomer}
         onClose={() => setIsHistoryOpen(false)}
       />
+      </div>
     </div>
   );
 }

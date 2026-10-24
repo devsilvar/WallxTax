@@ -12,9 +12,9 @@ export interface AccountFeedSectionProps {
   payouts: PayoutItem[];
   isPayoutsLoading: boolean;
   payoutPagination: PayoutPagination;
-  payoutStatusFilter: 'all' | 'completed' | 'pending' | 'failed';
+  payoutStatusFilter: 'all' | 'completed' | 'pending' | 'failed' | 'advance';
   payoutSearch: string;
-  onStatusFilterChange: (status: 'all' | 'completed' | 'pending' | 'failed') => void;
+  onStatusFilterChange: (status: 'all' | 'completed' | 'pending' | 'failed' | 'advance') => void;
   onSearchChange: (search: string) => void;
   onPageChange: (page: number) => void;
   onRequestWithdrawal?: () => void;

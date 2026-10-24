@@ -37,7 +37,7 @@ describe('SettlementBankCard', () => {
     const alertEl = screen.getByTestId('pending-withdrawal-alert');
     expect(alertEl).toBeInTheDocument();
     expect(alertEl.textContent).toContain('20,000.00');
-    expect(alertEl.textContent).toContain('currently reserved in a pending withdrawal');
+    expect(alertEl.textContent).toContain("withdrawal that's in flight");
   });
 
   it.skip('calls onToggleAutoSplit when the auto-split switch is clicked (toggle disabled in UI)', () => {

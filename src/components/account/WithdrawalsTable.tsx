@@ -16,6 +16,7 @@ import { formatNaira } from './WalletBalanceCard.tsx';
 
 export interface PayoutItem {
   id: string;
+  isAdvance?: boolean;
   amount: number;
   fee: number;
   netAmount: number;
@@ -43,10 +44,10 @@ export interface WithdrawalsTableProps {
   pagination?: PayoutPagination;
   onPageChange?: (page: number) => void;
   onSearchChange?: (search: string) => void;
-  onStatusFilterChange?: (status: 'all' | 'completed' | 'pending' | 'failed') => void;
+  onStatusFilterChange?: (status: 'all' | 'completed' | 'pending' | 'failed' | 'advance') => void;
   onRequestWithdrawal?: () => void;
   onSelectPayout?: (payout: PayoutItem) => void;
-  statusFilter?: 'all' | 'completed' | 'pending' | 'failed';
+  statusFilter?: 'all' | 'completed' | 'pending' | 'failed' | 'advance';
   searchQuery?: string;
   className?: string;
 }
@@ -96,7 +97,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 self-start sm:self-auto bg-gray-100/80 p-1 rounded-lg">
-          {(['all', 'completed', 'pending', 'failed'] as const).map((s) => (
+          {(['all', 'completed', 'pending', 'failed', 'advance'] as const).map((s) => (
             <button
               key={s}
               type="button"
@@ -107,7 +108,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {s === 'completed' ? 'Sent' : s}
+              {s === 'completed' ? 'Sent' : s === 'advance' ? 'Advances (ADV)' : s}
             </button>
           ))}
         </div>
@@ -191,6 +192,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
               const isProcessing = payout.status === 'processing';
               const isCompleted = payout.status === 'completed';
               const isFailed = payout.status === 'failed';
+              const isAdvance = Boolean(payout.isAdvance || payout.transferReference?.startsWith('ADV-'));
 
               return (
                 <div
@@ -216,9 +218,19 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
                         <ArrowUpRight className="h-4 w-4 stroke-[2.2]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-gray-900 truncate group-hover:text-purple-950 transition-colors">
-                          {payout.narration || `Payout to ${payout.destinationBankName}`}
-                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-gray-900 truncate group-hover:text-purple-950 transition-colors">
+                            {payout.narration || (isAdvance ? 'Settlement Advance Disbursal' : `Payout to ${payout.destinationBankName}`)}
+                          </p>
+                          {isAdvance && (
+                            <span
+                              data-testid="advance-badge"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-purple-100 text-purple-900 border border-purple-200"
+                            >
+                              ADV
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-gray-500 truncate mt-0.5 font-medium">
                           {payout.destinationBankName} · •••• {payout.destinationAccountNum?.slice(-4)}
                         </p>

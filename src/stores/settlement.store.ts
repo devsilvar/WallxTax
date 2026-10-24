@@ -76,8 +76,43 @@ export interface PayoutPreviewData {
   security: SecurityInfo;
 }
 
+export interface AdvancePreviewData {
+  pooledPending: number;
+  maxAdvance: number;
+  remainingPending: number;
+  pendingSettlement: number;
+  hasOutstandingAdvance: boolean;
+  batchStartDate: string | null;
+  fees: {
+    advance: {
+      pct: number;
+      cap: number;
+      maxPct: number;
+      minAmount: number;
+    };
+  };
+  settlementAccount: {
+    isConnected: boolean;
+    bankName: string | null;
+    bankCode: string | null;
+    accountNumber: string | null;
+    accountName: string | null;
+  };
+  security: {
+    hasPin: boolean;
+    isPinLocked: boolean;
+    remainingAttempts: number;
+  };
+  dailyPayout?: {
+    dailyLimit: number;
+    dailyUsed: number;
+    dailyRemaining: number;
+  };
+}
+
 export interface SettlementPayoutItem {
   id: string;
+  isAdvance?: boolean;
   amount: number;
   fee: number;
   netAmount: number;
@@ -109,6 +144,9 @@ interface SettlementStore {
   };
   withdrawing: boolean;
   updatingAutoPayout: boolean;
+  advancePreview: AdvancePreviewData | null;
+  loadingAdvancePreview: boolean;
+  requestingAdvance: boolean;
   pagination: {
     page: number;
     limit: number;
@@ -117,7 +155,12 @@ interface SettlementStore {
   };
 
   fetchPreview: (businessId: string) => Promise<void>;
-  fetchHistory: (businessId: string, page?: number, status?: string, search?: string) => Promise<void>;
+  fetchHistory: (businessId: string, page?: number, status?: string, search?: string, isAdvance?: boolean) => Promise<void>;
+  fetchAdvancePreview: (businessId: string) => Promise<AdvancePreviewData | null>;
+  requestAdvance: (
+    businessId: string,
+    input: { amount: number; pin?: string; stepUpToken?: string; narration?: string; acceptCharge: boolean }
+  ) => Promise<SettlementPayoutItem | null>;
   fetchInflows: (businessId: string, page?: number) => Promise<void>;
   withdrawBalance: (
     businessId: string,
@@ -154,6 +197,9 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
   },
   withdrawing: false,
   updatingAutoPayout: false,
+  advancePreview: null,
+  loadingAdvancePreview: false,
+  requestingAdvance: false,
   pagination: {
     page: 1,
     limit: 10,
@@ -183,7 +229,7 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     }
   },
 
-  fetchHistory: async (businessId: string, page = 1, status?: string, search?: string) => {
+  fetchHistory: async (businessId: string, page = 1, status?: string, search?: string, isAdvance?: boolean) => {
     const seq = ++fetchHistorySeq;
     set({ loadingHistory: true });
     try {
@@ -193,6 +239,7 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
           limit: 10,
           ...(status && status !== 'all' ? { status } : {}),
           ...(search && search.trim() ? { search: search.trim() } : {}),
+          ...(isAdvance !== undefined ? { isAdvance } : {}),
         },
       });
       if (seq !== fetchHistorySeq) return; // a newer fetchHistory call superseded this one
@@ -227,6 +274,8 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
         createdAt: t.createdAt,
         settledAt: t.settledAt ?? null,
         needsVerification: Boolean(t.needsVerification),
+        released: Boolean(t.released),
+        releasedAt: t.releasedAt ?? null,
       }));
       set({
         inflows: rows,
@@ -311,6 +360,38 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
       return false;
     } finally {
       set({ updatingAutoPayout: false });
+    }
+  },
+
+  fetchAdvancePreview: async (businessId: string) => {
+    set({ loadingAdvancePreview: true });
+    try {
+      const res = await api.get(`/businesses/${businessId}/settlement/advance/preview`);
+      set({ advancePreview: res.data.data });
+      return res.data.data;
+    } catch (err: any) {
+      toast.error(getErrorMessage(err, 'Failed to fetch advance preview'));
+      return null;
+    } finally {
+      set({ loadingAdvancePreview: false });
+    }
+  },
+
+  requestAdvance: async (businessId: string, input) => {
+    set({ requestingAdvance: true });
+    const toastId = toast.loading('Submitting settlement advance request...');
+    try {
+      const res = await api.post(`/businesses/${businessId}/settlement/advance`, input);
+      toast.success(res.data.message || 'Settlement advance approved and disbursed to bank', { id: toastId });
+      void get().fetchAdvancePreview(businessId);
+      void get().fetchHistory(businessId);
+      return res.data.data;
+    } catch (err: any) {
+      const msg = getErrorMessage(err, 'Failed to process settlement advance');
+      toast.error(msg, { id: toastId });
+      throw err;
+    } finally {
+      set({ requestingAdvance: false });
     }
   },
 

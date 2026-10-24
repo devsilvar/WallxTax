@@ -20,7 +20,7 @@ export function useAccountData(
   fetchBusinesses?: (force?: boolean) => Promise<any>,
   fetchMe?: () => Promise<any>,
   fetchSettlementPreview?: (id: string) => Promise<any>,
-  fetchPayoutHistory?: (id: string, page?: number, status?: string, q?: string) => Promise<any>,
+  fetchPayoutHistory?: (id: string, page?: number, status?: string, q?: string, isAdvance?: boolean) => Promise<any>,
   payoutStatusFilter?: string,
   payoutSearch?: string
 ) {
@@ -133,8 +133,9 @@ export function useAccountData(
             fetchPayoutHistory(
               bizId,
               1,
-              payoutStatusFilter !== 'all' ? payoutStatusFilter : undefined,
-              payoutSearch
+              payoutStatusFilter !== 'all' ? (payoutStatusFilter === 'advance' ? undefined : payoutStatusFilter) : undefined,
+              payoutSearch,
+              payoutStatusFilter === 'advance' ? true : undefined
             )
           );
         }

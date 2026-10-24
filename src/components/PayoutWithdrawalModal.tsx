@@ -313,12 +313,12 @@ export default function PayoutWithdrawalModal({
                   <div className="border-t border-gray-200 pt-2 space-y-1.5 text-[11px] text-gray-600 animate-in fade-in">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Total Inflows:</span>
-                      <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalInflows)}</span>
+                      <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.pooledInflows ?? preview.totalInflows)}</span>
                     </div>
-                    {Boolean((preview.pendingSettlement ?? 0) > 0) && (
+                    {Boolean(((preview.pooledPendingSettlement ?? preview.pendingSettlement) ?? 0) > 0) && (
                       <div className="flex justify-between" title="Held in settlement — available on next business day (T+1)">
                         <span className="text-gray-500">In settlement (T+1):</span>
-                        <span className="font-semibold font-mono text-amber-700">{formatNaira(preview.pendingSettlement!)}</span>
+                        <span className="font-semibold font-mono text-amber-700">{formatNaira((preview.pooledPendingSettlement ?? preview.pendingSettlement)!)}</span>
                       </div>
                     )}
                     {Boolean((preview.totalSplitSettled ?? 0) > 0) && (
@@ -327,10 +327,10 @@ export default function PayoutWithdrawalModal({
                         <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalSplitSettled!)}</span>
                       </div>
                     )}
-                    {preview.totalWithdrawn > 0 && (
+                    {((preview.pooledTotalWithdrawn ?? preview.totalWithdrawn) > 0) && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Withdrawn / in progress:</span>
-                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalWithdrawn)}</span>
+                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.pooledTotalWithdrawn ?? preview.totalWithdrawn)}</span>
                       </div>
                     )}
                     {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (

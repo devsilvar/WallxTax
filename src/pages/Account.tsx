@@ -14,6 +14,7 @@ import { useSSE } from '@/hooks/useSSE';
 import {
   WalletBalanceCard,
   SettlementBankCard,
+  SettlementAdvanceCard,
   DvaVerificationScreen,
   DvaOnboardingWizard,
   AccountMetricStrip,
@@ -69,7 +70,7 @@ export default function Account() {
   const [activeFeedTab, setActiveFeedTab] = useState<'inflows' | 'withdrawals'>(
     urlTab === 'withdrawals' ? 'withdrawals' : 'inflows'
   );
-  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all');
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all' | 'completed' | 'pending' | 'failed' | 'advance'>('all');
   const [payoutSearch, setPayoutSearch] = useState('');
 
   const {
@@ -206,8 +207,8 @@ export default function Account() {
         <div className="space-y-6">
           <WalletBalanceCard
             availableBalance={settlementPreview?.availableForWithdrawal ?? 0}
-            totalInflows={settlementPreview?.totalInflows ?? moneyIn.totalBalance}
-            pendingSettlement={settlementPreview?.pendingSettlement ?? 0}
+            totalInflows={(isMultiBusiness ? settlementPreview?.pooledInflows : settlementPreview?.totalInflows) ?? moneyIn.totalBalance}
+            pendingSettlement={(isMultiBusiness ? settlementPreview?.pooledPendingSettlement : settlementPreview?.pendingSettlement) ?? 0}
             isLoading={isBalanceLoading}
             isRefreshing={isRefreshing}
             onRefresh={() => refreshAccountData(true)}
@@ -262,7 +263,15 @@ export default function Account() {
               payoutSearch={payoutSearch}
               onStatusFilterChange={setPayoutStatusFilter}
               onSearchChange={setPayoutSearch}
-              onPageChange={(page) => fetchPayoutHistory(biz.id, page, payoutStatusFilter !== 'all' ? payoutStatusFilter : undefined, payoutSearch)}
+              onPageChange={(page) =>
+                fetchPayoutHistory(
+                  biz.id,
+                  page,
+                  payoutStatusFilter !== 'all' ? (payoutStatusFilter === 'advance' ? undefined : payoutStatusFilter) : undefined,
+                  payoutSearch,
+                  payoutStatusFilter === 'advance' ? true : undefined
+                )
+              }
               onRequestWithdrawal={isOwner ? () => setShowPayoutModal(true) : undefined}
               onSelectPayout={(payout) => setSelectedPayout(payout)}
             />
@@ -290,6 +299,23 @@ export default function Account() {
                   if (biz?.id) await fetchSettlementPreview(biz.id);
                 } : undefined}
               />
+
+              {isOwner && (
+                <SettlementAdvanceCard
+                  businessId={biz.id}
+                  isOwner={isOwner}
+                  isLinked={isSettlementLinked}
+                  onSuccess={() => {
+                    fetchDVA();
+                    fetchTransactions();
+                    if (biz?.id) {
+                      fetchSettlementPreview(biz.id);
+                      fetchPayoutHistory(biz.id);
+                    }
+                    handleTabChange('withdrawals');
+                  }}
+                />
+              )}
 
               {isOwner && (
                 <ComplianceTierCard

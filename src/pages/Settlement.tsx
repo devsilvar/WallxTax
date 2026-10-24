@@ -47,9 +47,13 @@ const INFLOW_STATE_META: Record<
   },
 };
 
-function inflowState(inflow: SettlementInflow, now: number): InflowState {
-  if (!SETTLED_SALE_STATUSES.includes(inflow.status)) return 'unverified';
-  if (inflow.settledAt && new Date(inflow.settledAt).getTime() > now) return 'settling';
+function inflowState(inflow: SettlementInflow, _now: number): InflowState {
+  if (inflow.status === 'reversed' || inflow.status === 'disputed') return 'unverified';
+  if (!inflow.releasedAt && !inflow.released) {
+    return SETTLED_SALE_STATUSES.includes(inflow.status)
+      ? 'settling'
+      : 'unverified';
+  }
   return 'withdrawable';
 }
 
@@ -208,9 +212,10 @@ export default function Settlement() {
 
       {isPooled && (
         <p className='rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900'>
-          Your wallet is shared across all {businesses.length} businesses, so the amounts
-          below cover all of them. The timeline further down lists only{' '}
-          <strong>{biz.businessName}</strong>.
+          <strong>Pooled wallet —</strong> your {businesses.length} businesses share one wallet,
+          so the figures above reflect your combined balance. Withdrawals draw from this
+          shared pot. The payment timeline below shows only{' '}
+          <strong>{biz.businessName}</strong>'s incoming payments.
         </p>
       )}
 
