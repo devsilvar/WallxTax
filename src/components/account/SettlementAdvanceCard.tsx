@@ -49,7 +49,7 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
 
   const preview = advancePreview;
   const maxAdvance = preview?.maxAdvance ?? 0;
-  const pooledPending = preview?.pooledPending ?? 0;
+  const pooledPending = preview?.pooledPendingSettlement ?? 0;
   const remainingPending = preview?.remainingPending ?? 0;
   const hasOutstandingAdvance = Boolean(preview?.hasOutstandingAdvance);
 

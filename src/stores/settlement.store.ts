@@ -77,8 +77,14 @@ export interface PayoutPreviewData {
 }
 
 export interface AdvancePreviewData {
-  pooledPending: number;
+  businessId?: string;
+  businessName?: string;
+  isPooled?: boolean;
+  pendingSettlement?: number;
+  pooledPendingSettlement: number;
   maxAdvance: number;
+  maxAdvancePct?: number;
+  minAdvanceAmount?: number;
   remainingPending: number;
   pendingSettlement: number;
   hasOutstandingAdvance: boolean;
