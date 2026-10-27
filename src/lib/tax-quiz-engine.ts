@@ -4,11 +4,20 @@ import type { QuizAnswers, TaxProfileConfiguration } from './tax-constants';
 export * from './tax-constants';
 
 /**
- * Evaluates quiz answers and generates tax profile configuration (Frontend Client Engine)
+ * Evaluates quiz answers and generates tax profile configuration
+ * 
+ * PURE DETERMINISTIC FUNCTION with zero side effects:
+ * - No database calls
+ * - No external network calls
+ * - 100% testable
+ * 
+ * @param answers - User's 10-question quiz responses
+ * @returns Computed tax profile configuration
  */
 export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration {
   const currentYear = new Date().getFullYear();
   const config: TaxProfileConfiguration = {
+    // Defaults (overridden by rules)
     vatExempt: false,
     mustChargeVat: false,
     isCorporate: false,
@@ -25,13 +34,15 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     hasExportExemption: false,
     isFtzExempt: false,
     primaryTaxAuthority: 'SIRS_STATE',
-    filingDeadline: new Date(Date.UTC(currentYear, 2, 31)),
+    filingDeadline: new Date(Date.UTC(currentYear, 2, 31)), // March 31
     requiresNilReturns: true,
     needsManualReview: false,
     reviewReasons: [],
   };
 
-  // Priority 1: Free Trade Zone
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 1: Free Trade Zone (Overrides Everything)
+  // ═══════════════════════════════════════════════════════════
   if (answers.isInFreeTradeZone) {
     config.isFtzExempt = true;
     config.vatExempt = true;
@@ -42,20 +53,25 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     return config;
   }
 
-  // Priority 2: Legal Structure
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 2: Legal Structure (Corporate vs Personal)
+  // ═══════════════════════════════════════════════════════════
   if (answers.legalStructure === 'LLC') {
     config.isCorporate = true;
     config.incomeTaxType = 'CIT';
     config.primaryTaxAuthority = 'NRS_FEDERAL';
+    // CIT filing deadline: 6 months after fiscal year end (default Dec 31 -> June 30)
     config.filingDeadline = new Date(Date.UTC(currentYear, 5, 30));
   } else {
     config.isCorporate = false;
     config.incomeTaxType = 'PIT';
     config.primaryTaxAuthority = 'SIRS_STATE';
-    config.filingDeadline = new Date(Date.UTC(currentYear, 2, 31));
+    config.filingDeadline = new Date(Date.UTC(currentYear, 2, 31)); // March 31
   }
 
-  // Priority 3: VAT Exemption
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 3: VAT Exemption (₦25M Threshold) — NTA 2025 ss144-188
+  // ═══════════════════════════════════════════════════════════
   if (answers.annualTurnover === 'UNDER_25M') {
     config.vatExempt = true;
     config.mustChargeVat = false;
@@ -70,7 +86,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     );
   }
 
-  // Priority 4: Small Company 0% CIT (₦100M turnover + ₦250M assets)
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 4: Small Company 0% CIT (₦100M Turnover + ₦250M Assets) — NTA 2025 s56(6)
+  // ═══════════════════════════════════════════════════════════
   if (config.isCorporate) {
     const turnoverQualifies = ['UNDER_25M', 'M25M_TO_50M', 'M50M_TO_100M'].includes(answers.annualTurnover);
     const assetsQualify = answers.fixedAssetsValue === 'UNDER_250M';
@@ -109,7 +127,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     }
   }
 
-  // Priority 5: Agriculture Holiday
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 5: Agriculture Holiday (5 Years)
+  // ═══════════════════════════════════════════════════════════
   if (answers.businessType === 'AGRICULTURE' && config.isCorporate) {
     config.hasAgricultureHoliday = true;
     config.citRate = 0;
@@ -119,7 +139,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     );
   }
 
-  // Priority 6: Export Exemption
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 6: Export Exemption
+  // ═══════════════════════════════════════════════════════════
   if (answers.isExportOriented) {
     config.hasExportExemption = true;
     config.reviewReasons.push(
@@ -127,7 +149,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     );
   }
 
-  // Priority 7: Employee Tax (PAYE)
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 7: Employee Tax (PAYE) — NTA 2025 s81
+  // ═══════════════════════════════════════════════════════════
   if (answers.hasEmployeesAbove800k) {
     config.mustDeductPAYE = true;
     config.reviewReasons.push(
@@ -142,7 +166,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     }
   }
 
-  // Priority 8: Withholding Tax
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 8: Withholding Tax (Transaction-Level Rule)
+  // ═══════════════════════════════════════════════════════════
   if (answers.annualTurnover !== 'UNDER_25M' && answers.annualTurnover !== 'UNKNOWN') {
     config.mustDeductWHT = true;
 
@@ -166,7 +192,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     );
   }
 
-  // Priority 9: Capital Gains Tax
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 9: Capital Gains Tax (Digital Assets)
+  // ═══════════════════════════════════════════════════════════
   if (answers.hasDigitalAssets) {
     if (config.isCorporate) {
       config.cgtTreatment = config.citRate === 0 ? 'EXEMPT_SMALL_COMPANY_0_PCT' : 'COMPANY_30_PCT';
@@ -185,7 +213,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     );
   }
 
-  // Priority 10: Manual Review Triggers
+  // ═══════════════════════════════════════════════════════════
+  // PRIORITY 10: Manual Review Triggers
+  // ═══════════════════════════════════════════════════════════
   if (answers.annualTurnover === 'UNKNOWN') {
     config.needsManualReview = true;
     config.reviewReasons.push(

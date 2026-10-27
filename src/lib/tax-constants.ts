@@ -129,45 +129,63 @@ export type FixedAssetsOption = 'UNDER_250M' | 'ABOVE_250M';
 export type BusinessTypeOption = 'STANDARD' | 'PROFESSIONAL' | 'TECH_SOFTWARE' | 'AGRICULTURE' | 'REGULATED_FINANCIAL' | 'OTHER';
 
 export interface QuizAnswers {
+  // Q1: Legal Structure
   legalStructure: LegalStructureOption;
+  // Q2: Annual Turnover
   annualTurnover: AnnualTurnoverOption;
+  // Q3: Fixed Assets Value
   fixedAssetsValue: FixedAssetsOption;
+  // Q4: Business Type
   businessType: BusinessTypeOption;
   businessTypeOther?: string;
+  // Q5: Employees earning above ₦800,000/year (₦66,667/month)
   hasEmployeesAbove800k: boolean;
+  // Q6: Multiple state presence
   isMultiState: boolean;
+  // Q7: Digital assets trading
   hasDigitalAssets: boolean;
+  // Q8: 100% export-oriented
   isExportOriented: boolean;
+  // Q9: Corporate clients deducting WHT
   hasCorporateClientsWithWHT: boolean;
+  // Q10: Free trade zone
   isInFreeTradeZone: boolean;
 }
 
 export interface TaxProfileConfiguration {
+  // VAT Configuration
   vatExempt: boolean;
   mustChargeVat: boolean;
 
+  // Income Tax Configuration
   isCorporate: boolean;
   incomeTaxType: 'PIT' | 'CIT';
   citRate: 0 | 30;
   devLevyRate: 0 | 4;
 
+  // Employee Tax (PAYE)
   mustDeductPAYE: boolean;
   mustSplitPAYEByState: boolean;
 
+  // Withholding Tax
   mustDeductWHT: boolean;
   whtTransactionExemptionLimit: number | null;
   enableWHTCreditTracking: boolean;
 
+  // Capital Gains Tax
   cgtTreatment: 'EXEMPT_SMALL_COMPANY_0_PCT' | 'COMPANY_30_PCT' | 'INDIVIDUAL_PROGRESSIVE_PIT';
 
+  // Special Incentives
   hasAgricultureHoliday: boolean;
   hasExportExemption: boolean;
   isFtzExempt: boolean;
 
+  // Filing Requirements
   primaryTaxAuthority: 'NRS_FEDERAL' | 'SIRS_STATE';
   filingDeadline: Date;
   requiresNilReturns: boolean;
 
+  // Manual Review Flags
   needsManualReview: boolean;
   reviewReasons: string[];
 }

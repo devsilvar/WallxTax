@@ -34,6 +34,7 @@ import ErrorState from '@/components/ui/ErrorState.tsx';
 import EmptyState from '@/components/ui/EmptyState.tsx';
 import PaymentConfirmationModal from '@/components/PaymentConfirmationModal.tsx';
 import FinalizeConfirmationModal from '@/components/FinalizeConfirmationModal.tsx';
+import TaxProfileCard from '@/components/TaxProfileCard.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
@@ -499,6 +500,7 @@ function TaxReportsList({
 
   return (
     <div className='space-y-5'>
+      {biz && <TaxProfileCard businessId={biz.id} businessName={biz.businessName} />}
       {/* Top Filter & Action Bar */}
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs'>
         <div className='flex flex-wrap items-center gap-2'>

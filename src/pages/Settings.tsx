@@ -37,6 +37,7 @@ import UpdateBvnModal from '@/components/UpdateBvnModal.tsx';
 import TeamSettingsTab from '@/components/settings/TeamSettingsTab.tsx';
 import VoucherBonusCard from '@/components/voucher/VoucherBonusCard.tsx';
 import VoucherThresholdCard from '@/components/voucher/VoucherThresholdCard.tsx';
+import TaxProfileCard from '@/components/TaxProfileCard.tsx';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { usePinStore } from '@/stores/pin.store.ts';
@@ -497,7 +498,9 @@ export default function Settings() {
           )}
 
           {activeTab === 'business' && biz && (
-            <BusinessPanel
+            <div className='space-y-6'>
+              <TaxProfileCard businessId={biz.id} businessName={biz.businessName} />
+              <BusinessPanel
               bizName={bizName}
               setBizName={setBizName}
               ownerName={ownerName}
@@ -529,6 +532,7 @@ export default function Settings() {
               voucherAdjustmentThreshold={biz.voucherAdjustmentThreshold ?? 50000}
               isManagerOrOwner={isManagerOrOwner}
             />
+            </div>
           )}
 
           {activeTab === 'business' && !biz && (

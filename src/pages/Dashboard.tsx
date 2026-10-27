@@ -65,6 +65,9 @@ import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/typ
 const SalesExpenseChart = lazy(
   () => import('@/components/dashboard/SalesExpenseChart.tsx'),
 );
+const TaxProfileMigrationBanner = lazy(
+  () => import('@/components/TaxProfileMigrationBanner.tsx'),
+);
 
 // ─── Merchant ID display format ─────────────────────────────
 // Stored form (DB): `PMTW` + 7 digits, e.g. `PMTW0000001`.
@@ -1058,6 +1061,11 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+
+      {/* Tax Assessment Prompt Banner (NTA 2025) */}
+      <Suspense fallback={null}>
+        <TaxProfileMigrationBanner />
+      </Suspense>
 
       {/* ── Welcome Header (Stunning Purple Gradient) ────── */}
       <div className='animate-slide-up relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 p-5 sm:p-6 text-white shadow-xl shadow-purple-950/20 border border-purple-800/40'>
