@@ -49,7 +49,11 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
 
   const preview = advancePreview;
   const maxAdvance = preview?.maxAdvance ?? 0;
-  const pooledPending = preview?.pooledPendingSettlement ?? 0;
+  const pooledPending =
+    preview?.pooledPendingSettlement ??
+    (preview as any)?.pooledPending ??
+    preview?.pendingSettlement ??
+    0;
   const remainingPending = preview?.remainingPending ?? 0;
   const hasOutstandingAdvance = Boolean(preview?.hasOutstandingAdvance);
 
@@ -117,6 +121,7 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
 
   return (
     <div
+      id="settlement-advance"
       data-testid="settlement-advance-card"
       className={`rounded-2xl border border-purple-200/80 bg-linear-to-b from-purple-50/40 to-white p-5 shadow-xs transition-all ${className}`}
     >

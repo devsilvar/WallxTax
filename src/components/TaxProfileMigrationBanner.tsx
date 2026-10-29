@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight, FileCheck } from 'lucide-react';
 import api from '@/lib/axios.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import TaxAssessmentModal from '@/components/TaxAssessmentModal.tsx';
@@ -42,7 +42,7 @@ export default function TaxProfileMigrationBanner() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-transparent border border-primary-200/80 shadow-xs animate-fade-in mb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600 text-white shadow-xs shrink-0">
-            <Sparkles className="h-5 w-5" />
+            <FileCheck className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">

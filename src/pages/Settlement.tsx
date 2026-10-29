@@ -5,6 +5,7 @@ import {
   Landmark,
   RefreshCw,
   ShieldAlert,
+  Zap,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
@@ -297,6 +298,36 @@ export default function Settlement() {
           <p className='text-[10px] text-gray-500 mt-1'>Ready to send to your bank</p>
         </div>
       </div>
+
+      {/* Advance Callout */}
+      {inSettlement > 0 && isOwner && (
+        <div className='rounded-xl border border-purple-200/80 bg-gradient-to-r from-purple-50/80 via-white to-purple-50/30 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm'>
+          <div className='flex items-start gap-3'>
+            <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-900 text-purple-100'>
+              <Zap className='h-4 w-4 fill-purple-300 stroke-purple-900' />
+            </div>
+            <div>
+              <div className='flex items-center gap-2'>
+                <h3 className='text-xs font-bold text-gray-900'>
+                  Need funds before next business day?
+                </h3>
+                <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200'>
+                  30% Advance Available
+                </span>
+              </div>
+              <p className='text-xs text-gray-600 mt-0.5'>
+                Access up to {formatNaira(Math.floor(inSettlement * 0.3))} instantly to your connected bank account ahead of the T+1 settlement cycle.
+              </p>
+            </div>
+          </div>
+          <Link
+            to='/account#settlement-advance'
+            className='inline-flex items-center justify-center rounded-lg bg-purple-900 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-purple-800 transition shrink-0'
+          >
+            Get Advance →
+          </Link>
+        </div>
+      )}
 
       {/* Payout mode — read-only. The toggle lives on /account. */}
       <div className='rounded-xl border border-gray-200/80 bg-white p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>

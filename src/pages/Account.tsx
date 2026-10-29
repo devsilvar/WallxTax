@@ -70,6 +70,18 @@ export default function Account() {
   const [activeFeedTab, setActiveFeedTab] = useState<'inflows' | 'withdrawals'>(
     urlTab === 'withdrawals' ? 'withdrawals' : 'inflows'
   );
+
+  useEffect(() => {
+    if (window.location.hash === '#settlement-advance') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('settlement-advance');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all' | 'completed' | 'pending' | 'failed' | 'advance'>('all');
   const [payoutSearch, setPayoutSearch] = useState('');
 
