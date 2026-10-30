@@ -1458,3 +1458,69 @@ export interface UserMessage {
 }
 
 
+
+// ─── Marketplace & Inventory Types ──────────────────────────────────────────
+
+export type ProductType = 'physical' | 'service';
+
+export type ProductListingStatus =
+  | 'draft'
+  | 'pending_approval'
+  | 'approved'
+  | 'rejected'
+  | 'archived';
+
+export type MarketplaceCategory =
+  | 'fashion'
+  | 'bags'
+  | 'books'
+  | 'furniture'
+  | 'electronics'
+  | 'food'
+  | 'services'
+  | 'other';
+
+export interface MarketplaceProduct {
+  id: string;
+  businessId: string;
+  name: string;
+  slug: string;
+  productType: ProductType;
+  category: MarketplaceCategory;
+  description: string;
+  price: number;
+  compareAtPrice?: number | null;
+  currency: string;
+  stockQuantity?: number | null;
+  trackInventory: boolean;
+  attributes?: Record<string, any> | null;
+  images: string[];
+  contactPhone?: string | null;
+  contactWhatsapp?: string | null;
+  purchaseUrl?: string | null;
+  status: ProductListingStatus;
+  rejectionReason?: string | null;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProductPayload {
+  name: string;
+  productType: ProductType;
+  category: MarketplaceCategory;
+  description: string;
+  price: number;
+  compareAtPrice?: number | null;
+  currency?: string;
+  stockQuantity?: number | null;
+  trackInventory?: boolean;
+  attributes?: Record<string, any> | null;
+  images?: string[];
+  contactPhone?: string | null;
+  contactWhatsapp?: string | null;
+  purchaseUrl?: string | null;
+}
+
+export type UpdateProductPayload = Partial<CreateProductPayload>;

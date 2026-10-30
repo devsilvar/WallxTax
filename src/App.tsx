@@ -40,6 +40,7 @@ const Debtors = lazy(() => import('@/pages/Debtors.tsx'));
 const DebtorDetail = lazy(() => import('@/pages/DebtorDetail.tsx'));
 const Customers = lazy(() => import('@/pages/Customers.tsx'));
 const CustomerDetail = lazy(() => import('@/pages/CustomerDetail.tsx'));
+const Inventory = lazy(() => import('@/pages/Inventory.tsx'));
 const AIAssistant = lazy(() => import('@/pages/AIAssistant.tsx'));
 const isSimulatorEnabled = import.meta.env.VITE_ENABLE_TRANSFER_SIMULATOR === 'true';
 const TestTransferSimulator = isSimulatorEnabled
@@ -158,6 +159,7 @@ function AppRoutes() {
                 <Route path="/debtors/:id" element={<DebtorDetail />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/customers/:customerId" element={<CustomerDetail />} />
+                <Route path="/inventory" element={<Inventory />} />
                 <Route path="/ai" element={<AIAssistant />} />
                 <Route path="/tax" element={<TaxReports />} />
                 <Route path="/payments" element={<Navigate to="/tax?tab=payments" replace />} />
