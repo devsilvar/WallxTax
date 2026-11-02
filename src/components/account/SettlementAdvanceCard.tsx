@@ -10,9 +10,10 @@ import {
   EyeOff,
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
-import { formatNaira } from './WalletBalanceCard.tsx';
+import { formatNaira } from '@/lib/format';
 import { useSettlementStore } from '@/stores/settlement.store.ts';
 import toast from 'react-hot-toast';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface SettlementAdvanceCardProps {
   businessId?: string;
@@ -29,6 +30,7 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
   onSuccess,
   className = '',
 }) => {
+  useDisplayCurrency();
   const advancePreview = useSettlementStore((s) => s.advancePreview);
   const loadingAdvancePreview = useSettlementStore((s) => s.loadingAdvancePreview);
   const requestingAdvance = useSettlementStore((s) => s.requestingAdvance);

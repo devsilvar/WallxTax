@@ -1,4 +1,4 @@
-export { WalletBalanceCard, type WalletBalanceCardProps, formatNaira } from './WalletBalanceCard.tsx';
+export { WalletBalanceCard, type WalletBalanceCardProps } from './WalletBalanceCard.tsx';
 export { DvaDetailsCard, type DvaDetailsCardProps } from './DvaDetailsCard.tsx';
 export { SettlementBankCard, type SettlementBankCardProps } from './SettlementBankCard.tsx';
 export { DvaTransactionsTable, type DvaTransactionsTableProps, type DvaTransactionItem } from './DvaTransactionsTable.tsx';

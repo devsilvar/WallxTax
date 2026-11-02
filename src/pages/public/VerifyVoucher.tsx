@@ -13,7 +13,7 @@ import {
   ArrowRight,
   Wifi,
 } from 'lucide-react';
-import { formatNaira } from '@/lib/format';
+import { formatNgn } from '@/lib/format';
 
 interface VoucherPreviewData {
   id: string;
@@ -265,13 +265,13 @@ export default function VerifyVoucher() {
                   Total Voucher Credit
                 </div>
                 <div className="text-3xl font-extrabold text-white tracking-tight mt-1">
-                  {formatNaira(preview.totalCredit)}
+                  {formatNgn(preview.totalCredit)}
                 </div>
 
                 {preview.bonusAmount && preview.bonusAmount > 0 && (
                   <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Includes +{formatNaira(preview.bonusAmount)} Store Bonus Reward ({preview.bonusPct}%)
+                    Includes +{formatNgn(preview.bonusAmount)} Store Bonus Reward ({preview.bonusPct}%)
                   </div>
                 )}
               </div>
@@ -313,17 +313,17 @@ export default function VerifyVoucher() {
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-slate-400">Base Top-Up Amount</span>
-                <span className="font-medium text-slate-200">{formatNaira(preview.amount)}</span>
+                <span className="font-medium text-slate-200">{formatNgn(preview.amount)}</span>
               </div>
               {preview.bonusAmount && preview.bonusAmount > 0 && (
                 <div className="py-2.5 flex justify-between text-emerald-400">
                   <span>Store Reward Bonus ({preview.bonusPct}%)</span>
-                  <span className="font-semibold">+{formatNaira(preview.bonusAmount)}</span>
+                  <span className="font-semibold">+{formatNgn(preview.bonusAmount)}</span>
                 </div>
               )}
               <div className="py-2.5 flex justify-between text-base font-bold">
                 <span className="text-white">Credited to Voucher</span>
-                <span className="text-purple-400">{formatNaira(preview.totalCredit)}</span>
+                <span className="text-purple-400">{formatNgn(preview.totalCredit)}</span>
               </div>
               {preview.notes && (
                 <div className="py-2.5 flex flex-col space-y-1">
@@ -368,7 +368,7 @@ export default function VerifyVoucher() {
                 <div className="text-right">
                   <span className="text-xs text-slate-400 block">Total Credit</span>
                   <span className="text-lg font-extrabold text-emerald-400">
-                    {formatNaira(preview.totalCredit)}
+                    {formatNgn(preview.totalCredit)}
                   </span>
                 </div>
               </div>
@@ -471,7 +471,7 @@ export default function VerifyVoucher() {
               <p className="text-sm text-slate-300">
                 Your store voucher at <strong>{preview?.businessName}</strong> has been credited with{' '}
                 <strong className="text-emerald-400 font-bold">
-                  {formatNaira(preview?.totalCredit || 0)}
+                  {formatNgn(preview?.totalCredit || 0)}
                 </strong>
                 .
               </p>
@@ -483,7 +483,7 @@ export default function VerifyVoucher() {
                   New Available Balance
                 </span>
                 <span className="text-2xl font-extrabold text-white mt-0.5 block">
-                  {formatNaira(confirmedBalance)}
+                  {formatNgn(confirmedBalance)}
                 </span>
               </div>
             )}
@@ -520,7 +520,7 @@ export default function VerifyVoucher() {
                   Current Card Balance
                 </span>
                 <span className="text-2xl font-extrabold text-white mt-0.5 block">
-                  {formatNaira(confirmedBalance)}
+                  {formatNgn(confirmedBalance)}
                 </span>
               </div>
             )}

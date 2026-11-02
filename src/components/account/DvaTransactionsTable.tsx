@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import {
   ArrowDownLeft,
   CheckCheck,
@@ -7,7 +7,8 @@ import {
   Search,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
-import { formatNaira } from './WalletBalanceCard.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface DvaTransactionItem {
   id: string;
@@ -42,6 +43,7 @@ export const DvaTransactionsTable: React.FC<DvaTransactionsTableProps> = ({
   onSelectTransaction,
   className = '',
 }) => {
+  useDisplayCurrency();
   const [filter, setFilter] = useState<'all' | 'verified' | 'pending'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -128,7 +130,7 @@ export const DvaTransactionsTable: React.FC<DvaTransactionsTableProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search transfers…"
+            placeholder="Search transfersâ€¦"
             className="w-full bg-transparent text-xs text-gray-800 placeholder-gray-400 focus:outline-none"
             aria-label="Search transfers"
           />
@@ -200,7 +202,7 @@ export const DvaTransactionsTable: React.FC<DvaTransactionsTableProps> = ({
                   <span>{formatDate(txn.date)}</span>
                   {txn.referenceId && (
                     <>
-                      <span>·</span>
+                      <span>Â·</span>
                       <span className="font-mono text-[10px] text-gray-400 truncate max-w-[130px]">
                         {txn.referenceId}
                       </span>

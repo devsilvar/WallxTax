@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { Banknote, Building2, SlidersHorizontal, RefreshCw } from 'lucide-react';
 
 interface CrmTotals {
@@ -15,6 +16,7 @@ interface CrmDailyTotalsProps {
 }
 
 export function CrmDailyTotals({ businessId }: CrmDailyTotalsProps) {
+  useDisplayCurrency();
   const [totals, setTotals] = useState<CrmTotals | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 

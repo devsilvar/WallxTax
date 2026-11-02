@@ -24,6 +24,8 @@ import api from '@/lib/axios.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface SearchResults {
   invoices: Array<{
@@ -68,9 +70,6 @@ interface Section {
   items: Item[];
 }
 
-const formatNaira = (n: number) =>
-  `₦${n.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
-
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-NG', {
     day: 'numeric',
@@ -90,6 +89,7 @@ export default function CommandPalette({
   isOpen,
   onClose,
 }: CommandPaletteProps) {
+  useDisplayCurrency();
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);

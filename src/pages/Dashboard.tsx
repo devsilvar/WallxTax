@@ -54,6 +54,8 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import api from '@/lib/axios.ts';
 import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/types/index.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 // Recharts is ~100kB gzipped and this is the post-login landing page. Keeping
 // the chart out of the dashboard chunk lets the KPI strip, trends and activity
@@ -116,10 +118,6 @@ interface TrendItem {
 }
 
 // ─── Helpers ────────────────────────────────────────────────
-
-function formatNaira(amount: number): string {
-  return `\u20A6${Number(amount).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-NG', {
@@ -553,6 +551,7 @@ async function fetchDashboardBundle(
 // ─── Component ──────────────────────────────────────────────
 
 export default function Dashboard() {
+  useDisplayCurrency();
   const { t } = useTranslation('dashboard');
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);

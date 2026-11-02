@@ -16,8 +16,10 @@ import {
   Share2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatNaira } from './WalletBalanceCard';
+
 import type { PayoutItem } from './WithdrawalsTable';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface PayoutDetailPanelProps {
   isOpen: boolean;
@@ -48,6 +50,7 @@ export const PayoutDetailPanel: React.FC<PayoutDetailPanelProps> = ({
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+  useDisplayCurrency();
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }

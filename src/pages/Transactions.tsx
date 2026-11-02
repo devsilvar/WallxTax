@@ -18,14 +18,8 @@ import TransactionDetailPanel, {
   type TransactionDetailType,
 } from '@/components/TransactionDetailPanel';
 import type { UnifiedLedgerRow } from '@/types';
-
-const formatNaira = (amount: number) =>
-  new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('en-NG', {
@@ -35,6 +29,7 @@ const formatDate = (d: string) =>
   });
 
 export default function Transactions() {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const { items, summary, scope, loading, setScope, fetchLedger, pagination } =
     useLedgerStore();

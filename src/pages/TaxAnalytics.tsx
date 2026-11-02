@@ -32,16 +32,10 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import api from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxAnalyticsResponse, TaxAnalyticsSeriesPoint } from '@/types/index.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 // ─── Helpers ────────────────────────────────────────────────
-
-function formatNaira(n: number, compact = false) {
-  if (compact) {
-    if (Math.abs(n) >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-    if (Math.abs(n) >= 1_000) return `₦${(n / 1_000).toFixed(0)}K`;
-  }
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 // "2026-04" → "Apr 26"
 function formatMonthShort(key: string) {
@@ -66,6 +60,7 @@ const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
 // ─── Page ───────────────────────────────────────────────────
 
 export default function TaxAnalytics() {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const navigate = useNavigate();
   const [params] = useSearchParams();

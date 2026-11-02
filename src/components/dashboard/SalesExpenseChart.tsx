@@ -20,6 +20,8 @@ import {
   RefreshCw,
   Lock,
 } from 'lucide-react';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -33,17 +35,6 @@ import type {
 } from '@/types/index.ts';
 
 // ─── Helpers ────────────────────────────────────────────────
-
-function formatNaira(n: number, compact = false): string {
-  if (compact) {
-    if (Math.abs(n) >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
-    if (Math.abs(n) >= 1_000) return `₦${(n / 1_000).toFixed(0)}K`;
-  }
-  return `₦${Number(n).toLocaleString('en-NG', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 const PERIOD_OPTIONS: Array<{ key: OverviewPeriodKey; label: string }> = [
   { key: '7d', label: '7D' },
@@ -137,6 +128,7 @@ export default function SalesExpenseChart({
   className?: string;
   defaultPeriod?: OverviewPeriodKey;
 }) {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   // This endpoint is sales data. Without the gate, a team member whose role
   // excludes sales.read got a 403 on every dashboard visit, surfaced as an

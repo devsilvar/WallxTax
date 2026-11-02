@@ -25,6 +25,8 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useBusinessStore } from '@/stores/business.store';
 import type { SaleLineItem } from '@/types/index.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export type TransactionDetailType =
   | 'dva_inflow'
@@ -74,17 +76,6 @@ interface TransactionDetailPanelProps {
   onVerifySuccess?: () => void;
 }
 
-function formatNaira(amount: number | string | undefined | null): string {
-  const num = typeof amount === 'number' ? amount : Number(amount || 0);
-  return (
-    '₦' +
-    num.toLocaleString('en-NG', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  );
-}
-
 function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
@@ -103,6 +94,7 @@ export default function TransactionDetailPanel({
   transaction,
   onVerifySuccess,
 }: TransactionDetailPanelProps) {
+  useDisplayCurrency();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [verifying, setVerifying] = useState(false);

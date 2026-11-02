@@ -20,6 +20,7 @@ import { TableSkeleton } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import { useCustomerStore } from '@/stores/customer.store';
 import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import type { VoucherLedgerRequest, VoucherRequestStatus } from '@/types';
 
 interface Props {
@@ -35,6 +36,7 @@ export default function VoucherRequestsTab({
   isOwner,
   threshold = 50000,
 }: Props) {
+  useDisplayCurrency();
   const {
     voucherRequests,
     voucherRequestsPagination,

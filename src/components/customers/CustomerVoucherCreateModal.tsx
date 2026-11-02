@@ -7,6 +7,7 @@ import PhoneInput, { extractLocalNigerianDigits } from '@/components/ui/PhoneInp
 import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { formatNaira } from '@/lib/format.ts';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { getErrorMessage } from '@/lib/axios.ts';
 import type { Customer, VoucherLedgerRequest } from '@/types/index.ts';
 
@@ -29,6 +30,7 @@ export default function CustomerVoucherCreateModal({
   onClose,
   onCreated,
 }: CustomerVoucherCreateModalProps) {
+  useDisplayCurrency();
   const formId = useId();
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const quickCreateWithVoucher = useCustomerStore((s) => s.quickCreateWithVoucher);

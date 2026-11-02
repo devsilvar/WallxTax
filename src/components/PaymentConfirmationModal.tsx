@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import PinModal from '@/components/PinModal';
-import { formatNaira } from '@/lib/format';
+import { formatNgn } from '@/lib/format';
 import { usePinStore } from '@/stores/pin.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
 import api from '@/lib/axios';
@@ -170,19 +170,19 @@ export default function PaymentConfirmationModal({
                   <div className='flex justify-between py-2 text-gray-600'>
                     <span>Total Sales Revenue</span>
                     <span className='font-medium text-gray-900'>
-                      {formatNaira(report.totalSales)}
+                      {formatNgn(report.totalSales)}
                     </span>
                   </div>
                   <div className='flex justify-between py-2 text-gray-600'>
                     <span>Allowable Deductible Expenses</span>
                     <span className='font-medium text-red-600'>
-                      - {formatNaira(report.totalExpenses)}
+                      - {formatNgn(report.totalExpenses)}
                     </span>
                   </div>
                   <div className='flex justify-between py-2 text-gray-700 font-medium'>
                     <span>Net Assessable Gross Profit</span>
                     <span className='text-gray-900'>
-                      {formatNaira(report.grossProfit)}
+                      {formatNgn(report.grossProfit)}
                     </span>
                   </div>
                   <div className='flex justify-between py-2 text-gray-600'>
@@ -204,7 +204,7 @@ export default function PaymentConfirmationModal({
                     </span>
                   </div>
                   <span className='text-lg font-bold text-emerald-900 font-mono'>
-                    {formatNaira(report.taxPayable)}
+                    {formatNgn(report.taxPayable)}
                   </span>
                 </div>
               </div>
@@ -243,7 +243,7 @@ export default function PaymentConfirmationModal({
                 isLoading={isLoading}
               >
                 {hasPin ? <Lock className='h-3.5 w-3.5 mr-1.5' /> : null}
-                Authorize &amp; Pay {formatNaira(report.taxPayable)}
+                Authorize &amp; Pay {formatNgn(report.taxPayable)}
                 <ArrowRight className='h-3.5 w-3.5 ml-1.5' />
               </Button>
             </div>
@@ -258,7 +258,7 @@ export default function PaymentConfirmationModal({
         onClose={() => setIsPinModalOpen(false)}
         onSuccess={handlePinSuccess}
         title='Authorize Tax Remittance'
-        subtitle={`Enter your 4-digit PIN to authorize payment of ${formatNaira(report.taxPayable)} for ${monthName}.`}
+        subtitle={`Enter your 4-digit PIN to authorize payment of ${formatNgn(report.taxPayable)} for ${monthName}.`}
       />
     </>
   );

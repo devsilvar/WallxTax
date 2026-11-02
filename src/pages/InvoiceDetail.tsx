@@ -34,10 +34,10 @@ import {
   invoicePaymentMethodLabel,
 } from '@/types/index.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatInvoiceMoney } from '@/lib/currency';
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 function formatDate(d: string | null | undefined) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-NG', {
@@ -94,6 +94,7 @@ function effectiveStatus(s: InvoiceStatus, dueDate: string): InvoiceStatus {
 }
 
 export default function InvoiceDetail() {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -499,24 +500,24 @@ export default function InvoiceDetail() {
                 isPaid ? 'text-emerald-600' : eff === 'overdue' ? 'text-rose-600' : 'text-gray-900'
               }`}
             >
-              {formatNaira(Number(inv.total))}
+              {formatInvoiceMoney(inv, inv.total)}
             </p>
             <div className='mt-2.5 space-y-0.5 text-xs'>
               <div className='flex justify-between gap-6 lg:justify-end'>
                 <span className='text-gray-500'>Subtotal</span>
-                <span className='tabular-nums text-gray-700'>{formatNaira(Number(inv.subtotal))}</span>
+                <span className='tabular-nums text-gray-700'>{formatInvoiceMoney(inv, inv.subtotal)}</span>
               </div>
               {Number(inv.discount) > 0 && (
                 <div className='flex justify-between gap-6 lg:justify-end'>
                   <span className='text-gray-500'>Discount</span>
                   <span className='tabular-nums text-gray-700'>
-                    -{formatNaira(Number(inv.discount))}
+                    -{formatInvoiceMoney(inv, inv.discount)}
                   </span>
                 </div>
               )}
               <div className='flex justify-between gap-6 lg:justify-end'>
                 <span className='text-gray-500'>VAT ({Number(inv.vatRate)}%)</span>
-                <span className='tabular-nums text-gray-700'>{formatNaira(Number(inv.vatAmount))}</span>
+                <span className='tabular-nums text-gray-700'>{formatInvoiceMoney(inv, inv.vatAmount)}</span>
               </div>
             </div>
           </div>
@@ -748,7 +749,7 @@ export default function InvoiceDetail() {
       {payOpen && (
         <Modal onClose={() => setPayOpen(false)} title='Mark invoice as paid'>
           <p className='font-body text-xs text-gray-600'>
-            This will record a sale for {formatNaira(Number(inv.total))} on the
+            This will record a sale for {formatInvoiceMoney(inv, inv.total)} on the
             payment date. The payment month cannot be finalized or locked.
           </p>
           <div className='mt-4 space-y-4'>

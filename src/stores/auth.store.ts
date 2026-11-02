@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import api from '@/lib/axios.ts';
 import {
   startSession,
@@ -15,6 +15,7 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useLedgerStore } from '@/stores/ledger.store.ts';
 import { useSettlementStore } from '@/stores/settlement.store.ts';
+import { useCurrencyStore } from '@/stores/currency.store';
 import { useMessageStore } from '@/stores/message.store.ts';
 import type { User } from '@/types/index.ts';
 
@@ -50,13 +51,13 @@ interface AuthState {
 }
 
 // Per-call AbortController. Prior versions cached the in-flight Promise at
-// module scope (`fetchMeInflight`); if that Promise was ever aborted — by a
-// tab-throttled browser, hot reload, or React effect cleanup — the cache
+// module scope (`fetchMeInflight`); if that Promise was ever aborted â€” by a
+// tab-throttled browser, hot reload, or React effect cleanup â€” the cache
 // held a never-resolving Promise and `isBootstrapping` stayed `true`
 // forever. That hung ProtectedRoute's <GlobalLoadingSkeleton/> until manual
 // refresh. AbortController per call plus "only settle the flags if we are
 // still the active controller" is the same pattern Dashboard.tsx uses
-// (bundleAbortRef) — promoted to store layer because fetchMe is called from
+// (bundleAbortRef) â€” promoted to store layer because fetchMe is called from
 // non-component contexts (axios interceptor, login flow).
 let fetchMeCtrl: AbortController | null = null;
 
@@ -103,7 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 
   // Logout must wipe every cache that holds the previous user's data.
-  // Zustand stores are module singletons — clearing localStorage alone
+  // Zustand stores are module singletons â€” clearing localStorage alone
   // doesn't touch them, so each domain store exposes a clear() that
   // resets it to its initial state. Without this, the next user logging
   // in on the same tab sees the previous user's businesses/invoices/
@@ -112,7 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     fetchMeCtrl?.abort();
     fetchMeCtrl = null;
 
-    // ─── Clear Axios Default Auth Header (prevent zombie token) ──
+    // â”€â”€â”€ Clear Axios Default Auth Header (prevent zombie token) â”€â”€
     // api.defaults.headers holds the last refreshed token in-memory.
     // Clearing localStorage alone leaves it there, so the next
     // request still sends `Authorization: Bearer <old>` and can
@@ -121,23 +122,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       delete (api.defaults.headers.common as Record<string, unknown>).Authorization;
       delete (api.defaults.headers as Record<string, unknown>).Authorization;
     } catch {
-      // no-op — defensive for test env where api may be mocked
+      // no-op â€” defensive for test env where api may be mocked
     }
 
-    // ─── Clear Authentication Tokens ───────────────────────────────
+    // â”€â”€â”€ Clear Authentication Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     clearSessionMeta();
 
-    // ─── Clear Business & User Context ────────────────────────────
+    // â”€â”€â”€ Clear Business & User Context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     localStorage.removeItem('activeBusinessId');
     localStorage.removeItem('signupPlan');
 
-    // ─── Clear Trial & Subscription Data ──────────────────────────
+    // â”€â”€â”€ Clear Trial & Subscription Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     localStorage.removeItem('wallx_trial_started_at');
     localStorage.removeItem('hasSeenTrialWelcome');
 
-    // ─── Clear AI Chat History (Per-Business) ────────────────────
+    // â”€â”€â”€ Clear AI Chat History (Per-Business) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // AI chats are stored with business-specific keys like:
     // - ai_chats_v2_{businessId}
     // - ai_active_chat_{businessId}
@@ -156,19 +157,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
 
-    // ─── Clear Review Prompt State ────────────────────────────────
+    // â”€â”€â”€ Clear Review Prompt State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     localStorage.removeItem('wallx_review_prompt_dismissed');
     localStorage.removeItem('wallx_review_prompt_snoozed_until');
     localStorage.removeItem('wallx_review_submitted');
     localStorage.removeItem('wallx_test_review');
 
-    // ─── Clear SessionStorage Items ───────────────────────────────
+    // â”€â”€â”€ Clear SessionStorage Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     sessionStorage.removeItem('pendingVerificationEmail');
     sessionStorage.removeItem('businessCreatedAt');
     sessionStorage.removeItem('businessCreatedName');
     sessionStorage.removeItem('justCreatedFirstBiz');
 
-    // ─── Clear Zustand Store State ────────────────────────────────
+    // â”€â”€â”€ Clear Zustand Store State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     useReminderStore.getState().clear();
     useMessageStore.getState().clear();
     useBusinessStore.getState().clear();
@@ -178,14 +179,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useCustomerStore.getState().clear();
     useLedgerStore.getState().clear();
     useSettlementStore.getState().clear();
+    useCurrencyStore.getState().clear(); // reset display preference for next user
 
     // Note: The following stores don't need clearing:
     // - dashboard.store (event counter only - stateless)
     // - pin.store (stateless UI state only - no user data)
     // - admin.stats.store (admin only, separate context)
     // - language.store (user preference - intentionally persists)
+    // Note: currency.store IS cleared above so the next user starts in Naira.
 
-    // ─── Reset Auth State ──────────────────────────────────────────
+    // â”€â”€â”€ Reset Auth State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Must happen BEFORE any await so callers that do not await logout()
     // (e.g. legacy tests, fire-and-forget guards) still see the reset
     // synchronously. Anything after the first await runs in a microtask.
@@ -194,7 +197,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, isAuthenticated: false, isBootstrapping: false, hasCheckedAuth: true });
 
     // Close SSE to prevent zombie events with old JWT after logout.
-    // Fire-and-forget — must not delay the synchronous reset above.
+    // Fire-and-forget â€” must not delay the synchronous reset above.
     import('@/lib/sse-client').then(m => m.getSSEClient().disconnect()).catch(() => {});
   },
 
@@ -206,7 +209,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     // Abort any prior in-flight fetchMe so its termination cannot strand
     // us. The new call's `finally` below is the single settler of the
-    // bootstrap flags — only the *currently-active* controller flips them.
+    // bootstrap flags â€” only the *currently-active* controller flips them.
     fetchMeCtrl?.abort();
     const ctrl = new AbortController();
     fetchMeCtrl = ctrl;
@@ -226,7 +229,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       // Only settle bootstrap flags if WE are still the active call.
       // A newer fetchMe will settle its own flags when it finishes; if we
-      // were aborted, do not flip isBootstrapping — the new call owns it.
+      // were aborted, do not flip isBootstrapping â€” the new call owns it.
       if (fetchMeCtrl === ctrl) {
         set({ isBootstrapping: false, hasCheckedAuth: true });
         fetchMeCtrl = null;

@@ -28,14 +28,11 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { getErrorMessage } from '@/lib/axios.ts';
-import { maskPhoneSuffix } from '@/lib/format';
+import { maskPhoneSuffix, formatNaira } from '@/lib/format';
 import { TopUpVoucherModal } from '@/components/customers/VoucherActionModals.tsx';
 import VoucherRequestsTab from '@/components/customers/VoucherRequestsTab.tsx';
 import type { Customer } from '@/types/index.ts';
-
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-NG', {
@@ -67,6 +64,7 @@ function getInitials(name: string) {
 }
 
 export default function Customers() {
+  useDisplayCurrency();
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
   const myRole = activeBusiness?.myRole;
   const isManagerOrOwner = myRole === 'owner' || myRole === 'manager';

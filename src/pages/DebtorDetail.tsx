@@ -27,12 +27,10 @@ import RecordCreditPaymentModal from '@/components/debtors/RecordCreditPaymentMo
 import LinkDvaCreditModal from '@/components/debtors/LinkDvaCreditModal.tsx';
 import WriteOffModal from '@/components/debtors/WriteOffModal.tsx';
 import EditCreditModal from '@/components/debtors/EditCreditModal.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 /* ─── Helpers ──────────────────────────────────────────────── */
-
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function formatDate(d: string | null | undefined) {
   if (!d) return '—';
@@ -102,6 +100,7 @@ const STATUS_STYLES: Record<CreditStatus, { label: string; cls: string }> = {
 /* ─── Component ────────────────────────────────────────────── */
 
 export default function DebtorDetail() {
+  useDisplayCurrency();
   const { id } = useParams<{ id: string }>();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const activeCredit = useCreditStore((s) => s.activeCredit);

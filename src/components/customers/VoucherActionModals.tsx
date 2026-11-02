@@ -7,6 +7,7 @@ import { useCustomerStore } from '@/stores/customer.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
 import { maskPhoneSuffix, formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import type { Customer } from '@/types/index.ts';
 
 export interface VoucherModalProps {
@@ -614,6 +615,7 @@ export function VoucherHistoryModal({
   customer,
   onClose,
 }: VoucherHistoryModalProps) {
+  useDisplayCurrency();
   const { activeCustomerCard, cardLoading, fetchCustomerCard } = useCustomerStore();
 
   useEffect(() => {

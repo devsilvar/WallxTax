@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
-import { formatNaira } from '@/lib/format';
+import { formatNgn } from '@/lib/format';
 import { estimateWithdrawal, calculateMaxWithdrawable } from '@/lib/fees';
 import { useSettlementStore, type SettlementPayoutItem } from '@/stores/settlement.store';
 import { usePinStore } from '@/stores/pin.store';
@@ -114,11 +114,11 @@ export default function PayoutWithdrawalModal({
     e.preventDefault();
     if (!isAmountValid) {
       if (numAmount < minWithdrawal) {
-        toast.error(`Minimum withdrawal amount is ${formatNaira(minWithdrawal)}`);
+        toast.error(`Minimum withdrawal amount is ${formatNgn(minWithdrawal)}`);
       } else if (numAmount > available) {
         if ((preview.pendingWithdrawn ?? 0) > 0) {
           toast.error(
-            `${formatNaira(preview.pendingWithdrawn)} is currently reserved by a withdrawal that's in flight. Check the Withdrawals tab.`,
+            `${formatNgn(preview.pendingWithdrawn)} is currently reserved by a withdrawal that's in flight. Check the Withdrawals tab.`,
             { duration: 6000 }
           );
         } else {
@@ -133,7 +133,7 @@ export default function PayoutWithdrawalModal({
     if (preview?.dailyPayoutLimit && preview.dailyPayoutLimit > 0 && typeof preview.dailyRemaining === 'number') {
       const requiredDebit = feeEstimate ? feeEstimate.debitAmount : numAmount;
       if (requiredDebit > preview.dailyRemaining) {
-        toast.error(`Amount exceeds your remaining daily payout allowance of ${formatNaira(preview.dailyRemaining)}`);
+        toast.error(`Amount exceeds your remaining daily payout allowance of ${formatNgn(preview.dailyRemaining)}`);
         return;
       }
     }
@@ -291,7 +291,7 @@ export default function PayoutWithdrawalModal({
                     Wallet Balance
                   </span>
                   <span className="text-lg font-bold text-gray-900 font-mono tabular-nums">
-                    {formatNaira(available)}
+                    {formatNgn(available)}
                   </span>
                 </div>
 
@@ -313,36 +313,36 @@ export default function PayoutWithdrawalModal({
                   <div className="border-t border-gray-200 pt-2 space-y-1.5 text-[11px] text-gray-600 animate-in fade-in">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Total Inflows:</span>
-                      <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.pooledInflows ?? preview.totalInflows)}</span>
+                      <span className="font-semibold font-mono text-gray-900">{formatNgn(preview.pooledInflows ?? preview.totalInflows)}</span>
                     </div>
                     {Boolean(((preview.pooledPendingSettlement ?? preview.pendingSettlement) ?? 0) > 0) && (
                       <div className="flex justify-between" title="Held in settlement — available on next business day (T+1)">
                         <span className="text-gray-500">In settlement (T+1):</span>
-                        <span className="font-semibold font-mono text-amber-700">{formatNaira((preview.pooledPendingSettlement ?? preview.pendingSettlement)!)}</span>
+                        <span className="font-semibold font-mono text-amber-700">{formatNgn((preview.pooledPendingSettlement ?? preview.pendingSettlement)!)}</span>
                       </div>
                     )}
                     {Boolean((preview.totalSplitSettled ?? 0) > 0) && (
                       <div className="flex justify-between" title="Cleared by Paystack to your commercial bank on daily schedule">
                         <span className="text-gray-500">Auto-routed to bank (T+1):</span>
-                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.totalSplitSettled!)}</span>
+                        <span className="font-semibold font-mono text-gray-900">{formatNgn(preview.totalSplitSettled!)}</span>
                       </div>
                     )}
                     {((preview.pooledTotalWithdrawn ?? preview.totalWithdrawn) > 0) && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Withdrawn / in progress:</span>
-                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.pooledTotalWithdrawn ?? preview.totalWithdrawn)}</span>
+                        <span className="font-semibold font-mono text-gray-900">{formatNgn(preview.pooledTotalWithdrawn ?? preview.totalWithdrawn)}</span>
                       </div>
                     )}
                     {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (
                       <div className="flex justify-between" title="Daily rolling payout allowance across all owned businesses">
                         <span className="text-gray-500">Daily limit:</span>
-                        <span className="font-semibold font-mono text-gray-900">{formatNaira(preview.dailyPayoutLimit!)}</span>
+                        <span className="font-semibold font-mono text-gray-900">{formatNgn(preview.dailyPayoutLimit!)}</span>
                       </div>
                     )}
                     {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Remaining today:</span>
-                        <span className="font-semibold font-mono text-emerald-700">{formatNaira(preview.dailyRemaining ?? 0)}</span>
+                        <span className="font-semibold font-mono text-emerald-700">{formatNgn(preview.dailyRemaining ?? 0)}</span>
                       </div>
                     )}
                   </div>
@@ -378,7 +378,7 @@ export default function PayoutWithdrawalModal({
                   <div>
                     <p className="font-semibold text-amber-900">Withdrawal In Progress</p>
                     <p className="text-amber-800 text-[11px]">
-                      {formatNaira(preview.pendingWithdrawn)} is currently reserved while your transfer completes. Remaining available: {formatNaira(available)}.
+                      {formatNgn(preview.pendingWithdrawn)} is currently reserved while your transfer completes. Remaining available: {formatNgn(available)}.
                     </p>
                   </div>
                 </div>
@@ -427,9 +427,9 @@ export default function PayoutWithdrawalModal({
                 </div>
 
                 <p className="text-[11px] text-gray-500">
-                  Minimum withdrawal: {formatNaira(preview.fees?.withdrawal?.minAmount ?? minWithdrawal)} · Withdrawal fee: {preview.fees?.withdrawal?.ratePercent ?? 1}% capped at {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)} max.
+                  Minimum withdrawal: {formatNgn(preview.fees?.withdrawal?.minAmount ?? minWithdrawal)} · Withdrawal fee: {preview.fees?.withdrawal?.ratePercent ?? 1}% capped at {formatNgn(preview.fees?.withdrawal?.capAmount ?? 300)} max.
                   {Boolean((preview.dailyPayoutLimit ?? 0) > 0) && (
-                    <span> · Daily limit: {formatNaira(preview.dailyPayoutLimit!)} ({formatNaira(preview.dailyRemaining ?? 0)} remaining)</span>
+                    <span> · Daily limit: {formatNgn(preview.dailyPayoutLimit!)} ({formatNgn(preview.dailyRemaining ?? 0)} remaining)</span>
                   )}
                 </p>
 
@@ -439,19 +439,19 @@ export default function PayoutWithdrawalModal({
                     <div className="flex justify-between text-gray-600">
                       <span>Amount to receive in bank:</span>
                       <span className="font-mono font-bold text-emerald-700">
-                        {formatNaira(feeEstimate.netAmount)}
+                        {formatNgn(feeEstimate.netAmount)}
                       </span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>Withdrawal fee ({preview.fees?.withdrawal?.ratePercent ?? 1}%, max {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)}):</span>
+                      <span>Withdrawal fee ({preview.fees?.withdrawal?.ratePercent ?? 1}%, max {formatNgn(preview.fees?.withdrawal?.capAmount ?? 300)}):</span>
                       <span className="font-mono font-medium text-gray-700">
-                        +{formatNaira(feeEstimate.fee)}
+                        +{formatNgn(feeEstimate.fee)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
                       <span className="font-medium text-gray-900">Total debited from WallX balance:</span>
                       <span className="font-mono font-bold text-gray-900 text-sm">
-                        {formatNaira(feeEstimate.debitAmount)}
+                        {formatNgn(feeEstimate.debitAmount)}
                       </span>
                     </div>
                   </div>
@@ -508,21 +508,21 @@ export default function PayoutWithdrawalModal({
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">Amount to your bank</span>
                   <span className="font-mono font-bold text-emerald-700 text-sm">
-                    {formatNaira(feeEstimate ? feeEstimate.netAmount : numAmount)}
+                    {formatNgn(feeEstimate ? feeEstimate.netAmount : numAmount)}
                   </span>
                 </div>
                 {feeEstimate && (
                   <div className="flex justify-between items-center text-gray-500">
-                    <span>Withdrawal fee ({preview.fees?.withdrawal?.ratePercent ?? 1}%, max {formatNaira(preview.fees?.withdrawal?.capAmount ?? 300)})</span>
+                    <span>Withdrawal fee ({preview.fees?.withdrawal?.ratePercent ?? 1}%, max {formatNgn(preview.fees?.withdrawal?.capAmount ?? 300)})</span>
                     <span className="font-mono font-medium text-gray-700">
-                      +{formatNaira(feeEstimate.fee)}
+                      +{formatNgn(feeEstimate.fee)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-1.5 border-t border-gray-200">
                   <span className="font-semibold text-gray-900">Total debited from balance</span>
                   <span className="font-mono font-bold text-gray-900 text-base">
-                    {formatNaira(feeEstimate ? feeEstimate.debitAmount : numAmount)}
+                    {formatNgn(feeEstimate ? feeEstimate.debitAmount : numAmount)}
                   </span>
                 </div>
                 <div className="pt-2 border-t border-gray-200 space-y-1">
@@ -660,21 +660,21 @@ export default function PayoutWithdrawalModal({
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount</span>
                   <span className="font-mono font-bold text-gray-900">
-                    {formatNaira(completedPayout.amount)}
+                    {formatNgn(completedPayout.amount)}
                   </span>
                 </div>
                 {completedPayout.fee > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">Withdrawal fee</span>
                     <span className="font-mono font-medium text-gray-700">
-                      +{formatNaira(completedPayout.fee)}
+                      +{formatNgn(completedPayout.fee)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Net Receivable</span>
                   <span className="font-mono font-bold text-emerald-700">
-                    {formatNaira(completedPayout.netAmount)}
+                    {formatNgn(completedPayout.netAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between">

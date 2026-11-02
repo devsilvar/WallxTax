@@ -7,6 +7,8 @@ import api from '@/lib/axios.ts';
 import type { CustomerCredit, SalesTransaction } from '@/types/index.ts';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface LinkDvaCreditModalProps {
   businessId: string;
@@ -14,10 +16,6 @@ interface LinkDvaCreditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-}
-
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function formatDate(d: string) {
@@ -31,6 +29,7 @@ export default function LinkDvaCreditModal({
   onClose,
   onSuccess,
 }: LinkDvaCreditModalProps) {
+  useDisplayCurrency();
   const reconcileDva = useCreditStore((s) => s.reconcileDva);
 
   const [unverifiedSales, setUnverifiedSales] = useState<SalesTransaction[]>([]);

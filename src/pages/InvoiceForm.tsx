@@ -11,6 +11,8 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { CreateInvoicePayload } from '@/types/index.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface LineRow {
   description: string;
@@ -38,10 +40,6 @@ function money(n: number) {
   return Math.round(n * 100) / 100;
 }
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 function buildPaymentTerms(
   account: WalletAccountInfo,
   totalAmount?: number
@@ -61,6 +59,7 @@ function buildPaymentTerms(
 const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '' });
 
 export default function InvoiceForm() {
+  useDisplayCurrency();
   const { blockIfNeeded } = useSubscriptionWriteGate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const user = useAuthStore((s) => s.user);

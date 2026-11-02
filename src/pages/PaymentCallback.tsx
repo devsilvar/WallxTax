@@ -12,7 +12,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useBusinessStore } from '@/stores/business.store';
 import { useDashboardEvents } from '@/stores/dashboard.store';
-import { formatNaira } from '@/lib/format';
+import { formatNgn } from '@/lib/format';
 import { mapPaystackError } from '@/lib/paystack-errors';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
@@ -196,7 +196,7 @@ export default function PaymentCallback() {
                   <span className='text-gray-500 text-xs'>Amount Remitted</span>
                   <span className='font-bold text-emerald-700 text-base'>
                     {paymentData
-                      ? formatNaira(Number(paymentData.amountPaid))
+                      ? formatNgn(Number(paymentData.amountPaid))
                       : '—'}
                   </span>
                 </div>

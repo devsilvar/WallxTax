@@ -3,7 +3,16 @@
  * Handles currency (NGN), compact numbers, and localized date presentation.
  */
 
-export function formatNaira(
+import { formatMoney, getDisplayCurrency } from './currency';
+
+/**
+ * NGN-locked formatter. Use ONLY where the figure must NEVER convert:
+ * subscription pricing, tax-quiz amounts, payment confirmations,
+ * withdrawal confirmations, tax-finalisation amounts, public records.
+ *
+ * For every other money display, use formatNaira() (display-aware).
+ */
+export function formatNgn(
   amount: number | string | undefined | null,
   compact = false
 ): string {
@@ -24,6 +33,14 @@ export function formatNaira(
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+/** Display-aware. Renders in the user's selected currency. */
+export function formatNaira(
+  amount: number | string | undefined | null,
+  compact = false
+): string {
+  return formatMoney(amount, getDisplayCurrency(), { compact });
 }
 
 export function formatDate(date: string | Date | undefined | null): string {

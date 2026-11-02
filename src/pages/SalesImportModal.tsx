@@ -33,6 +33,8 @@ import Button from '@/components/ui/Button.tsx';
 import api from '@/lib/axios.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import toast from 'react-hot-toast';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import type {
   SalesImportPreview,
   SalesImportPreviewRow,
@@ -81,11 +83,8 @@ const STATUS_COPY: Record<SalesImportRowStatus, { label: string; className: stri
   },
 };
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
 export default function SalesImportModal({ isOpen, businessId, onClose, onImported }: Props) {
+  useDisplayCurrency();
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);

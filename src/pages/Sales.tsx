@@ -40,6 +40,8 @@ import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination } from '@/types/index.ts';
 import { paymentTypeLabel } from '@/lib/paymentTypes.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 // 'manual' is retired from the UI (migration 20260904120000_retire_manual_source
 // mapped legacy no-reference rows to 'cash'); rows that kept 'manual' still
@@ -69,9 +71,6 @@ const DAILY_SOURCES = [
 ] as const;
 const STATUSES = ['confirmed', 'completed', 'pending', 'reversed', 'disputed'] as const;
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-NG', {
     day: 'numeric',
@@ -153,6 +152,7 @@ const SOURCE_COLORS: Record<string, string> = {
 // ─── Component ──────────────────────────────────────────────
 
 export default function Sales() {
+  useDisplayCurrency();
   const { writesBlocked, blockIfNeeded } = useSubscriptionWriteGate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const creditSummary = useCreditStore((s) => s.summary);

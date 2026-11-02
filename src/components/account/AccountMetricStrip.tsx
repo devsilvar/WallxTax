@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowDownLeft, ArrowUpRight, Building2, CheckCheck, Clock, Landmark } from 'lucide-react';
-import { formatNaira } from './WalletBalanceCard.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface AccountMetricStripProps {
   totalInflows: number;
@@ -27,6 +28,7 @@ export const AccountMetricStrip: React.FC<AccountMetricStripProps> = ({
   payoutBankName,
   payoutAccountNumber,
 }) => {
+  useDisplayCurrency();
   return (
     <div data-testid="account-metric-strip" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Card 1: Total Inflows */}

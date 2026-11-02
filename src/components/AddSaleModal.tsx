@@ -27,6 +27,8 @@ import CustomerAutocomplete from '@/components/customers/CustomerAutocomplete.ts
 import VoucherAuthModal from '@/components/customers/VoucherAuthModal.tsx';
 import CustomerVoucherCreateModal from '@/components/customers/CustomerVoucherCreateModal.tsx';
 import { useSSE } from '@/hooks/useSSE';
+import { formatMoney } from '@/lib/currency';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 const SOURCES = [
   'bank_transfer',
@@ -76,6 +78,7 @@ export default function AddSaleModal({
   onClose,
   onSaved,
 }: AddSaleModalProps) {
+  useDisplayCurrency();
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);
 
   // Mode: 'items' (Products / Goods) or 'single' (Service / Flat Amount)
@@ -473,7 +476,7 @@ export default function AddSaleModal({
     if (source === 'store_voucher') {
       if (insufficientVoucherFunds) {
         toast.error(
-          `Voucher balance ₦${(voucherBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })} is less than sale total ₦${currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })} — not enough funds`
+          `Voucher balance ${formatMoney(voucherBalance ?? 0)} is less than sale total ₦${currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })} — not enough funds`
         );
         setSaving(false);
         return;
@@ -595,7 +598,7 @@ export default function AddSaleModal({
             disabled={insufficientVoucherFunds}
             title={
               insufficientVoucherFunds
-                ? `Voucher balance ₦${(voucherBalance ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })} is less than sale total ₦${currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })} — top up or reduce items`
+                ? `Voucher balance ${formatMoney(voucherBalance ?? 0)} is less than sale total ₦${currentTotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })} — top up or reduce items`
                 : undefined
             }
             className='rounded-none disabled:opacity-50 disabled:cursor-not-allowed'
@@ -835,7 +838,7 @@ export default function AddSaleModal({
                           Voucher balance
                         </div>
                         <div className={`text-sm font-extrabold tabular-nums ${voucherBalance !== null && voucherBalance < currentTotal ? 'text-red-700' : 'text-emerald-700'}`}>
-                          {voucherBalance !== null ? `₦${voucherBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}` : 'Verified on submit'}
+                          {voucherBalance !== null ? formatMoney(voucherBalance) : 'Verified on submit'}
                         </div>
                       </div>
                     </div>

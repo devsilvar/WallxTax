@@ -6,6 +6,8 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CustomerCredit } from '@/types/index.ts';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface RecordCreditPaymentModalProps {
   businessId: string;
@@ -15,10 +17,6 @@ interface RecordCreditPaymentModalProps {
   onSuccess?: () => void;
 }
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
 export default function RecordCreditPaymentModal({
   businessId,
   credit,
@@ -26,6 +24,7 @@ export default function RecordCreditPaymentModal({
   onClose,
   onSuccess,
 }: RecordCreditPaymentModalProps) {
+  useDisplayCurrency();
   const recordPayment = useCreditStore((s) => s.recordPayment);
 
   const todayStr = new Date().toISOString().slice(0, 10);

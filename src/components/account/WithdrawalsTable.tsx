@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button.tsx';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
-import { formatNaira } from './WalletBalanceCard.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface PayoutItem {
   id: string;
@@ -73,6 +74,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
   searchQuery = '',
   className = '',
 }) => {
+  useDisplayCurrency();
   const [internalSearch, setInternalSearch] = useState(searchQuery);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

@@ -5,6 +5,8 @@ import Sidebar from './Sidebar.tsx';
 import NotificationBell from './NotificationBell.tsx';
 import MessageBell from './MessageBell.tsx';
 import UserMenu from './UserMenu.tsx';
+import CurrencySwitcher from './CurrencySwitcher.tsx';
+import CurrencySwitchVeil from './CurrencySwitchVeil.tsx';
 import RouteTransitionLoader from './RouteTransitionLoader.tsx';
 import CommandPalette from '@/components/CommandPalette.tsx';
 import ReviewPromptModal from '@/components/ReviewPromptModal.tsx';
@@ -13,6 +15,7 @@ import SubscriptionGraceBanner from '@/components/subscription/SubscriptionGrace
 import TrialWelcomeModal from '@/components/TrialWelcomeModal';
 import { resolvePageTitle } from '@/lib/pageTitles.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
+import { useCurrencyStore } from '@/stores/currency.store';
 
 // Mac users get ⌘K, everyone else gets Ctrl+K. Detected once at module load — the
 // platform doesn't change mid-session.
@@ -118,6 +121,10 @@ export default function AppLayout({
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    void useCurrencyStore.getState().fetchRates();
+  }, []);
+
   const pageTitle = resolvePageTitle(location.pathname);
 
   return (
@@ -164,6 +171,7 @@ export default function AppLayout({
             >
               <Search className='h-5 w-5 text-gray-600' />
             </button>
+            <CurrencySwitcher />
             <MessageBell />
             <NotificationBell />
             <UserMenu />
@@ -174,6 +182,7 @@ export default function AppLayout({
 
         {/* Main content */}
         <main ref={mainContentRef} className='relative flex-1 overflow-y-auto'>
+          <CurrencySwitchVeil />
           <Suspense fallback={<RouteTransitionLoader />}>
             <div className='mx-auto max-w-6xl px-4 py-6'>
               {children || <Outlet />}

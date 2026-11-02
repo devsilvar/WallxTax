@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import { formatNaira } from '@/lib/format';
+import { formatNgn } from '@/lib/format';
 import api from '@/lib/axios';
 import type { TaxReport } from '@/types';
 
@@ -234,19 +234,19 @@ export default function FinalizeConfirmationModal({
                 {Math.abs(salesDelta) > 0.01 && (
                   <span className='bg-amber-100/90 text-amber-900 px-2 py-0.5 rounded border border-amber-300'>
                     Sales: {salesDelta > 0 ? '+' : ''}
-                    {formatNaira(salesDelta)}
+                    {formatNgn(salesDelta)}
                   </span>
                 )}
                 {Math.abs(expensesDelta) > 0.01 && (
                   <span className='bg-amber-100/90 text-amber-900 px-2 py-0.5 rounded border border-amber-300'>
                     Expenses: {expensesDelta > 0 ? '+' : ''}
-                    {formatNaira(expensesDelta)}
+                    {formatNgn(expensesDelta)}
                   </span>
                 )}
                 {Math.abs(taxDelta) > 0.01 && (
                   <span className='bg-amber-100/90 text-amber-950 font-bold px-2 py-0.5 rounded border border-amber-400'>
                     Tax Payable: {taxDelta > 0 ? '+' : ''}
-                    {formatNaira(taxDelta)}
+                    {formatNgn(taxDelta)}
                   </span>
                 )}
               </div>
@@ -272,7 +272,7 @@ export default function FinalizeConfirmationModal({
               <div className='flex justify-between py-2 text-gray-600'>
                 <span className='font-medium'>Total Turnover (Sales)</span>
                 <span className='font-bold text-gray-900 font-mono'>
-                  {formatNaira(displaySales)}
+                  {formatNgn(displaySales)}
                 </span>
               </div>
               <div className='flex justify-between py-2 text-gray-600'>
@@ -280,7 +280,7 @@ export default function FinalizeConfirmationModal({
                   Allowable Expenses (Deductible)
                 </span>
                 <span className='font-bold text-gray-900 font-mono'>
-                  {formatNaira(displayExpenses)}
+                  {formatNgn(displayExpenses)}
                 </span>
               </div>
               <div className='flex justify-between py-2 text-gray-700'>
@@ -288,7 +288,7 @@ export default function FinalizeConfirmationModal({
                   Gross Profit (Tax Base)
                 </span>
                 <span className='font-bold text-purple-950 font-mono'>
-                  {formatNaira(displayGrossProfit)}
+                  {formatNgn(displayGrossProfit)}
                 </span>
               </div>
             </div>
@@ -302,7 +302,7 @@ export default function FinalizeConfirmationModal({
                 </span>
               </div>
               <span className='text-lg font-extrabold text-purple-950 font-mono'>
-                {formatNaira(displayTaxPayable)}
+                {formatNgn(displayTaxPayable)}
               </span>
             </div>
           </div>

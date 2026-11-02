@@ -7,6 +7,8 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/axios.ts';
 import type { CustomerCredit } from '@/types/index.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface EditCreditModalProps {
   businessId: string;
@@ -28,10 +30,6 @@ function nextItemKey() {
   return `item-${++itemKeyCounter}`;
 }
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
 export default function EditCreditModal({
   businessId,
   credit,
@@ -39,6 +37,7 @@ export default function EditCreditModal({
   onClose,
   onUpdated,
 }: EditCreditModalProps) {
+  useDisplayCurrency();
   const updateCredit = useCreditStore((s) => s.updateCredit);
 
   const [customerName, setCustomerName] = useState('');

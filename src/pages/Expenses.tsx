@@ -26,6 +26,8 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
 import type { Expense, Pagination } from '@/types/index.ts';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 // Core and system expense categories
 const CATEGORIES = [
@@ -70,9 +72,6 @@ function formatCategoryLabel(cat: string): string {
 // even at ₦0 (dimmed), so the layout doesn't reshuffle through the day.
 const DAILY_CATEGORIES = CATEGORIES;
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -161,6 +160,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // ─── Component ──────────────────────────────────────────────
 
 export default function Expenses() {
+  useDisplayCurrency();
   const { writesBlocked, blockIfNeeded } = useSubscriptionWriteGate();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const fetchExpensesSeqRef = useRef(0);

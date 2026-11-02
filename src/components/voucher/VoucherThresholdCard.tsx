@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShieldCheck, Info, Check, X } from 'lucide-react';
 import { useBusinessStore } from '@/stores/business.store';
 import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -17,6 +18,7 @@ export default function VoucherThresholdCard({
   isManagerOrOwner,
   onSaved,
 }: Props) {
+  useDisplayCurrency();
   const [threshold, setThreshold] = useState<number>(initialThreshold);
   const [saving, setSaving] = useState(false);
   const [hasChanged, setHasChanged] = useState(false);

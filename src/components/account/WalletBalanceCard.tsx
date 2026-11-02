@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Wallet, Eye, EyeOff, RefreshCw, Download, Share2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
 import DvaDetailsCard from './DvaDetailsCard.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface WalletBalanceCardProps {
   availableBalance: number;
@@ -20,14 +22,6 @@ export interface WalletBalanceCardProps {
   onShowQR?: () => void;
 }
 
-export function formatNaira(amount: number): string {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
-
 export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   availableBalance,
   pendingSettlement = 0,
@@ -41,6 +35,7 @@ export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({
   accountName,
   onShowQR,
 }) => {
+  useDisplayCurrency();
   const [hideBalance, setHideBalance] = useState(false);
 
   return (

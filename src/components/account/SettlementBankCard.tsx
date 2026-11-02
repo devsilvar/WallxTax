@@ -13,7 +13,8 @@ import BankSelect from '@/components/BankSelect.tsx';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
 import type { Bank } from '@/types';
 import api from '@/lib/axios.ts';
-import { formatNaira } from './WalletBalanceCard.tsx';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 export interface SettlementBankCardProps {
   businessId?: string;
@@ -54,6 +55,7 @@ export const SettlementBankCard: React.FC<SettlementBankCardProps> = ({
   banksError = '',
   onSettlementLinkedSuccess,
 }) => {
+  useDisplayCurrency();
   const isOwner = isOwnerProp ?? Boolean(onSettlementLinkedSuccess);
   const [showForm, setShowForm] = useState(false);
   const [settlementBank, setSettlementBank] = useState('');

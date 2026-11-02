@@ -11,6 +11,8 @@ import toast from 'react-hot-toast';
 import type { TransactionDetailData } from '@/components/TransactionDetailPanel';
 import { useAccountData } from '@/hooks/useAccountData.ts';
 import { useSSE } from '@/hooks/useSSE';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import {
   WalletBalanceCard,
   SettlementBankCard,
@@ -27,6 +29,7 @@ import {
 } from '@/components/account';
 
 export default function Account() {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const businessStoreLoading = useBusinessStore((s) => s.isLoading);
@@ -103,7 +106,7 @@ export default function Account() {
     'dva_transfer_received',
     (e: any) => {
       if (!activeBusinessId || e.businessId !== activeBusinessId) return;
-      toast.success(`💰 ₦${Number(e.amount).toLocaleString()} from ${e.customerName}`);
+      toast.success(`💰 ${formatNaira(Number(e.amount))} from ${e.customerName}`);
       refreshAccountData?.(false);
     },
     [activeBusinessId, refreshAccountData]
@@ -114,7 +117,7 @@ export default function Account() {
     (e: any) => {
       if (!activeBusinessId || e.businessId !== activeBusinessId) return;
       if (e.status === 'completed') {
-        toast.success(`✅ Payout ₦${Number(e.amount).toLocaleString()} completed`);
+        toast.success(`✅ Payout ${formatNaira(Number(e.amount))} completed`);
       } else {
         toast.error(e.failureReason || 'Payout failed');
       }

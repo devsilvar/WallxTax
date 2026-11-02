@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 import type { SalesTransaction, Pagination, Invoice, CustomerCredit } from '@/types';
 import NoBusinessPrompt from '@/components/NoBusinessPrompt';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface TransactionClassification {
   id: string;
@@ -24,10 +26,6 @@ interface TransactionClassification {
 
 type WizardStep = 'primary' | 'revenue' | 'non_revenue' | 'all' | 'match_invoice' | 'match_credit';
 type PrimaryChoice = 'business_sale' | 'not_sale' | 'not_sure' | 'invoice_payment' | 'credit_payment';
-
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-NG', {
@@ -42,6 +40,7 @@ interface UnverifiedTransactionsProps {
 }
 
 export default function UnverifiedTransactions({ embedded = false }: UnverifiedTransactionsProps = {}) {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const invalidateDashboard = useDashboardEvents((s) => s.invalidateDashboard);

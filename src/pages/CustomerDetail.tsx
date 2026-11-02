@@ -50,13 +50,10 @@ import {
 } from '@/components/customers/VoucherActionModals.tsx';
 import { CrmDailyTotals } from '@/components/customers/CrmDailyTotals.tsx';
 import type { TimelineItem, UpdateCustomerPayload, SalesTransaction, Invoice, CustomerHistoryQuery } from '@/types/index.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 /* ─── Helpers ──────────────────────────────────────────────── */
-
-function formatNaira(n: number | null | undefined) {
-  if (n === null || n === undefined) return '₦0.00';
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 function formatDate(d: string | null | undefined) {
   if (!d) return '—';
@@ -134,6 +131,7 @@ const TIMELINE_KIND_META: Record<
 /* ─── Main Component ───────────────────────────────────────── */
 
 export default function CustomerDetail() {
+  useDisplayCurrency();
   const { customerId } = useParams<{ customerId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'overview';

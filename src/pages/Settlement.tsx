@@ -11,6 +11,7 @@ import Button from '@/components/ui/Button.tsx';
 import { Skeleton } from '@/components/ui/Skeleton.tsx';
 import PayoutWithdrawalModal from '@/components/PayoutWithdrawalModal.tsx';
 import { formatLagosDate, formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useSettlementStore } from '@/stores/settlement.store.ts';
@@ -59,6 +60,7 @@ function inflowState(inflow: SettlementInflow, _now: number): InflowState {
 }
 
 export default function Settlement() {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const businesses = useBusinessStore((s) => s.businesses);
   const user = useAuthStore((s) => s.user);

@@ -40,14 +40,13 @@ import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
 import type { TaxReport, Pagination } from '@/types/index.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 // Lazy-load the Analytics tab so Recharts (~150kB gz) only ships when needed.
 const LazyTaxAnalytics = lazy(() => import('./TaxAnalytics.tsx'));
 const LazyPayments = lazy(() => import('./Payments.tsx'));
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 function formatMonth(d: string) {
   return new Date(d).toLocaleDateString('en-NG', {
     month: 'long',
@@ -95,6 +94,7 @@ const TAX_PAYMENTS_ENABLED =
   import.meta.env.VITE_ENABLE_TAX_PAYMENTS === 'true';
 
 export default function TaxReports() {
+  useDisplayCurrency();
   const [params, setParams] = useSearchParams();
   const rawTab = params.get('tab');
   const tab: TabKey =

@@ -6,6 +6,8 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import type { CustomerCredit } from '@/types/index.ts';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/axios.ts';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
 interface WriteOffModalProps {
   businessId: string;
@@ -15,10 +17,6 @@ interface WriteOffModalProps {
   onSuccess?: () => void;
 }
 
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
 export default function WriteOffModal({
   businessId,
   credit,
@@ -26,6 +24,7 @@ export default function WriteOffModal({
   onClose,
   onSuccess,
 }: WriteOffModalProps) {
+  useDisplayCurrency();
   const writeOffCredit = useCreditStore((s) => s.writeOffCredit);
 
   const [reason, setReason] = useState('');

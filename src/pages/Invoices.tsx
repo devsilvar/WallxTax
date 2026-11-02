@@ -19,6 +19,8 @@ import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import type { InvoiceStatus } from '@/types/index.ts';
 import { getErrorMessage } from '@/lib/axios.ts';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatInvoiceMoney } from '@/lib/currency';
 
 const PAGE_SIZE = 15;
 
@@ -30,10 +32,6 @@ const STATUS_TABS: Array<{ key: InvoiceStatus | ''; label: string; dot?: string 
   { key: 'paid', label: 'Paid', dot: 'bg-emerald-500' },
   { key: 'cancelled', label: 'Cancelled', dot: 'bg-gray-400' },
 ];
-
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -107,6 +105,7 @@ function urgencyMeta(row: Row) {
 }
 
 export default function Invoices() {
+  useDisplayCurrency();
   const biz = useBusinessStore((s) => s.activeBusiness);
   const navigate = useNavigate();
   const { blockIfNeeded } = useSubscriptionWriteGate();
@@ -416,11 +415,11 @@ export default function Invoices() {
 
                     <div className="w-32 shrink-0 text-right">
                       <p className={`text-sm font-semibold leading-tight tabular-nums ${urgency.amount}`}>
-                        {formatNaira(Number(inv.total))}
+                        {formatInvoiceMoney(inv, inv.total)}
                       </p>
                       {Number(inv.vatAmount) > 0 && (
                         <p className="mt-0.5 text-[10px] leading-tight text-gray-400">
-                          incl. {formatNaira(Number(inv.vatAmount))} VAT
+                          incl. {formatInvoiceMoney(inv, inv.vatAmount)} VAT
                         </p>
                       )}
                     </div>
@@ -451,7 +450,7 @@ export default function Invoices() {
                         <div className="flex items-start justify-between gap-2">
                           <p className="truncate text-sm font-semibold text-gray-900">{inv.customerName}</p>
                           <p className={`shrink-0 text-sm font-semibold tabular-nums ${urgency.amount}`}>
-                            {formatNaira(Number(inv.total))}
+                            {formatInvoiceMoney(inv, inv.total)}
                           </p>
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2">

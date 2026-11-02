@@ -6,6 +6,9 @@ import { useInvoiceStore } from '@/stores/invoice.store.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
 import type { Invoice, SalesTransaction } from '@/types/index.ts';
 import toast from 'react-hot-toast';
+import { formatNaira } from '@/lib/format';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
+import { formatInvoiceMoney } from '@/lib/currency';
 
 interface LinkDvaInvoiceModalProps {
   businessId: string;
@@ -13,10 +16,6 @@ interface LinkDvaInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-}
-
-function formatNaira(n: number) {
-  return `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function formatDate(d: string) {
@@ -30,6 +29,7 @@ export default function LinkDvaInvoiceModal({
   onClose,
   onSuccess,
 }: LinkDvaInvoiceModalProps) {
+  useDisplayCurrency();
   const reconcileDva = useInvoiceStore((s) => s.reconcileDva);
 
   const [unverifiedSales, setUnverifiedSales] = useState<SalesTransaction[]>([]);
@@ -112,7 +112,7 @@ export default function LinkDvaInvoiceModal({
 
     if (!isExactMatch) {
       toast.error(
-        `Transfer amount (${formatNaira(Number(selectedSale.amount))}) does not match invoice total (${formatNaira(invoiceTotal)})`,
+        `Transfer amount (${formatNaira(Number(selectedSale.amount))}) does not match invoice total (${formatInvoiceMoney(invoice, invoiceTotal)})`,
       );
       return;
     }
@@ -174,7 +174,7 @@ export default function LinkDvaInvoiceModal({
             <div className="text-right">
               <span className="text-gray-500 text-[11px] block">Invoice Total (Amount Due)</span>
               <span className="font-bold text-gray-900 text-base tabular-nums text-blue-900">
-                {formatNaira(invoiceTotal)}
+                {formatInvoiceMoney(invoice, invoiceTotal)}
               </span>
             </div>
           </div>
@@ -289,7 +289,7 @@ export default function LinkDvaInvoiceModal({
               <div className="text-[11px] text-amber-900 leading-relaxed">
                 <span className="font-bold">Amount Mismatch:</span> Selected transfer is{' '}
                 <span className="font-semibold">{formatNaira(Number(selectedSale.amount))}</span>, but invoice requires{' '}
-                <span className="font-semibold">{formatNaira(invoiceTotal)}</span>. Reconciliation requires an exact match to prevent tax miscalculation.
+                <span className="font-semibold">{formatInvoiceMoney(invoice, invoiceTotal)}</span>. Reconciliation requires an exact match to prevent tax miscalculation.
               </div>
             </div>
           )}
