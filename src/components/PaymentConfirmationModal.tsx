@@ -188,7 +188,7 @@ export default function PaymentConfirmationModal({
                   <div className='flex justify-between py-2 text-gray-600'>
                     <span>Applied SME Statutory Tax Rate</span>
                     <span className='font-mono font-medium text-gray-900'>
-                      7.50%
+                      {Number(report.taxRate).toFixed(2)}%
                     </span>
                   </div>
                 </div>

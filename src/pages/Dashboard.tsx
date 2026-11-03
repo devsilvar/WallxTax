@@ -53,7 +53,7 @@ import { useCreditStore } from '@/stores/credit.store.ts';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import api from '@/lib/axios.ts';
-import type { TaxReport, SalesTransaction, Expense, User, Business } from '@/types/index.ts';
+import type { TaxReport, SalesTransaction, Expense, User, Business, BusinessTaxPolicy } from '@/types/index.ts';
 import { formatNaira } from '@/lib/format';
 import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
@@ -579,7 +579,27 @@ export default function Dashboard() {
   const [recentReports, setRecentReports] = useState<TaxReport[]>(
     seed?.data.recentReports ?? [],
   );
+  const [taxPolicy, setTaxPolicy] = useState<BusinessTaxPolicy | null>(null);
   const [isLoading, setIsLoading] = useState(!seed);
+
+  useEffect(() => {
+    if (!activeBusiness?.id) {
+      setTaxPolicy(null);
+      return;
+    }
+    let isMounted = true;
+    api
+      .get(`/businesses/${activeBusiness.id}/tax-policy`)
+      .then((res) => {
+        if (isMounted) setTaxPolicy(res.data?.data ?? null);
+      })
+      .catch(() => {
+        if (isMounted) setTaxPolicy(null);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeBusiness?.id]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateBiz, setShowCreateBiz] = useState(false);
   const { blockIfNeeded } = useSubscriptionWriteGate();
@@ -1344,15 +1364,28 @@ export default function Dashboard() {
             </span>
             <Shield className='h-4 w-4 text-gray-400' />
           </div>
-          <p className='mt-2 text-lg sm:text-xl font-bold text-gray-900'>
-            7.5%{' '}
-            <span className='text-xs font-normal text-gray-500'>
-              Gross Profit
-            </span>
-          </p>
-          <p className='mt-1 text-[11px] text-gray-400 font-body'>
-            NRS VAT standard
-          </p>
+          {taxPolicy && !taxPolicy.vat.chargeable ? (
+            <>
+              <p className='mt-2 text-base sm:text-lg font-bold text-emerald-700'>
+                VAT Exempt
+              </p>
+              <p className='mt-1 text-[11px] text-gray-400 font-body'>
+                VAT exempt — no monthly remittance
+              </p>
+            </>
+          ) : (
+            <>
+              <p className='mt-2 text-lg sm:text-xl font-bold text-gray-900'>
+                {dashboard?.taxConfig?.currentRate ?? (taxPolicy?.vat.rate ?? '')}%{' '}
+                <span className='text-xs font-normal text-gray-500'>
+                  Gross Profit
+                </span>
+              </p>
+              <p className='mt-1 text-[11px] text-gray-400 font-body'>
+                NRS VAT standard
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -2125,7 +2158,7 @@ export default function Dashboard() {
             <Zap className='h-3 w-3 text-gray-300' />
             <p className='text-[11px] font-medium whitespace-nowrap'>
               {dashboard.taxConfig.authority} ·{' '}
-              {dashboard.taxConfig.currentRate}% ·{' '}
+              {taxPolicy && !taxPolicy.vat.chargeable ? '0% (Exempt)' : `${dashboard.taxConfig.currentRate}%`} ·{' '}
               {dashboard.taxConfig.currency}
             </p>
           </div>

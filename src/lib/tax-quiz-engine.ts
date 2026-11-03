@@ -86,6 +86,9 @@ export function evaluateTaxConfig(answers: QuizAnswers): TaxProfileConfiguration
     );
   }
 
+  // Enforce consistency: UNKNOWN turnover cannot leave both flags false
+  config.mustChargeVat = !config.vatExempt;
+
   // ═══════════════════════════════════════════════════════════
   // PRIORITY 4: Small Company 0% CIT (₦100M Turnover + ₦250M Assets) — NTA 2025 s56(6)
   // ═══════════════════════════════════════════════════════════

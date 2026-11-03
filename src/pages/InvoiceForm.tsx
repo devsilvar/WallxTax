@@ -9,7 +9,7 @@ import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useAuthStore } from '@/stores/auth.store.ts';
 import { useInvoiceStore } from '@/stores/invoice.store.ts';
-import type { CreateInvoicePayload } from '@/types/index.ts';
+import type { CreateInvoicePayload, BusinessTaxPolicy } from '@/types/index.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
 import { formatNaira } from '@/lib/format';
 import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
@@ -138,6 +138,37 @@ export default function InvoiceForm() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [notEditable, setNotEditable] = useState(false);
+  const [taxPolicy, setTaxPolicy] = useState<BusinessTaxPolicy | null>(null);
+
+  // Fetch business tax policy on mount (create mode defaults from policy; edit mode keeps stored rate)
+  useEffect(() => {
+    if (!biz?.id) return;
+    let isMounted = true;
+    api
+      .get(`/businesses/${biz.id}/tax-policy`)
+      .then((res) => {
+        if (!isMounted) return;
+        const policy: BusinessTaxPolicy | null = res.data?.data ?? null;
+        setTaxPolicy(policy);
+        if (!isEdit && policy) {
+          if (!policy.vat.chargeable) {
+            setVatRate('0');
+          } else if (policy.vat.rate !== undefined && policy.vat.rate !== null) {
+            setVatRate(String(policy.vat.rate));
+          }
+        }
+      })
+      .catch(() => {
+        // Fetch failed or slow: keep default '7.5', never block the form
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [biz?.id, isEdit]);
+
+  const isVatDisabled = Boolean(!isEdit && taxPolicy && !taxPolicy.vat.chargeable);
+  const vatExemptReason = taxPolicy?.vat.reason || 'VAT exempt — turnover under ₦25M';
 
   // Load invoice when editing
   useEffect(() => {
@@ -179,7 +210,7 @@ export default function InvoiceForm() {
 
   // Live totals — mirrors the backend computeTotals exactly
   const totals = useMemo(() => {
-    const rateN = Number(vatRate) || 0;
+    const rateN = isVatDisabled ? 0 : Number(vatRate) || 0;
     const discountN = Number(discount) || 0;
     const subtotal = money(
       lines.reduce((sum, l) => {
@@ -192,7 +223,7 @@ export default function InvoiceForm() {
     const vatAmount = money((taxable * rateN) / 100);
     const total = money(taxable + vatAmount);
     return { subtotal, discount: discountN, vatRate: rateN, vatAmount, total };
-  }, [lines, vatRate, discount]);
+  }, [lines, vatRate, discount, isVatDisabled]);
 
   // Pre-fill and synchronize payment terms with wallet account and totals (create mode only)
   useEffect(() => {
@@ -224,7 +255,7 @@ export default function InvoiceForm() {
       if (!Number.isFinite(q) || q <= 0) return `Line ${i + 1}: quantity must be greater than 0`;
       if (!Number.isFinite(u) || u < 0) return `Line ${i + 1}: unit price cannot be negative`;
     }
-    const rateN = Number(vatRate);
+    const rateN = isVatDisabled ? 0 : Number(vatRate);
     if (!Number.isFinite(rateN) || rateN < 0 || rateN > 100) return 'VAT rate must be between 0 and 100';
     const discountN = Number(discount);
     if (!Number.isFinite(discountN) || discountN < 0) return 'Discount cannot be negative';
@@ -239,7 +270,7 @@ export default function InvoiceForm() {
     customerTaxId: customerTaxId.trim() || undefined,
     issueDate,
     dueDate,
-    vatRate: Number(vatRate),
+    vatRate: isVatDisabled ? 0 : Number(vatRate),
     discount: Number(discount),
     notes: notes.trim() || undefined,
     paymentTerms: paymentTerms.trim() || undefined,
@@ -421,15 +452,24 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
               min={issueDate}
               required
             />
-            <Input
-              label="VAT Rate (%)"
-              type="number"
-              step="0.1"
-              min="0"
-              max="100"
-              value={vatRate}
-              onChange={(e) => setVatRate(e.target.value)}
-            />
+            <div>
+              <Input
+                label="VAT Rate (%)"
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={isVatDisabled ? '0' : vatRate}
+                disabled={isVatDisabled}
+                className={isVatDisabled ? 'cursor-not-allowed bg-gray-100 text-gray-500' : ''}
+                onChange={(e) => setVatRate(e.target.value)}
+              />
+              {isVatDisabled && (
+                <p className="mt-1 text-xs font-medium text-amber-700">
+                  {vatExemptReason}
+                </p>
+              )}
+            </div>
             <Input
               label="Discount (₦)"
               type="number"
@@ -465,10 +505,11 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
                   className="grid grid-cols-12 items-end gap-2 rounded-lg border border-gray-100 bg-gray-50/60 p-3 sm:gap-3"
                 >
                   <div className="col-span-12 sm:col-span-6">
-                    <label className="mb-1 block text-xs font-medium text-gray-500">
+                    <label htmlFor={`line-desc-${idx}`} className="mb-1 block text-xs font-medium text-gray-500">
                       Description
                     </label>
                     <input
+                      id={`line-desc-${idx}`}
                       type="text"
                       value={line.description}
                       onChange={(e) => updateLine(idx, { description: e.target.value })}
@@ -478,8 +519,9 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
                     />
                   </div>
                   <div className="col-span-4 sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-gray-500">Qty</label>
+                    <label htmlFor={`line-qty-${idx}`} className="mb-1 block text-xs font-medium text-gray-500">Qty</label>
                     <input
+                      id={`line-qty-${idx}`}
                       type="number"
                       step="0.01"
                       min="0"
@@ -489,10 +531,11 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
                     />
                   </div>
                   <div className="col-span-4 sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-gray-500">
+                    <label htmlFor={`line-price-${idx}`} className="mb-1 block text-xs font-medium text-gray-500">
                       Unit price
                     </label>
                     <input
+                      id={`line-price-${idx}`}
                       type="number"
                       step="0.01"
                       min="0"

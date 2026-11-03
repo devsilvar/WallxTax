@@ -103,6 +103,9 @@ export default function FinalizeConfirmationModal({
   const displayTaxPayable = liveData
     ? Number(liveData.taxPayable)
     : Number(report.taxPayable);
+  const displayTaxRate = liveData
+    ? Number(liveData.taxRate)
+    : Number(report.taxRate);
 
   const salesDelta = liveData
     ? Number(liveData.totalSales) - Number(report.totalSales)
@@ -295,7 +298,7 @@ export default function FinalizeConfirmationModal({
             <div className='bg-purple-50/80 px-4 py-3 border-t border-purple-200 flex items-center justify-between'>
               <div>
                 <span className='text-xs font-bold text-purple-950 uppercase tracking-wider block'>
-                  Tax Payable (7.5%)
+                  Tax Payable ({displayTaxRate}%)
                 </span>
                 <span className='text-[10px] text-purple-700 font-medium'>
                   Statutory NRS Remittance Assessment

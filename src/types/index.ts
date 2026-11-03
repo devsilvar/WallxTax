@@ -1524,3 +1524,19 @@ export interface CreateProductPayload {
 }
 
 export type UpdateProductPayload = Partial<CreateProductPayload>;
+
+// ─── Tax Policy Types ────────────────────────────────────────────────────────
+
+export interface BusinessTaxPolicy {
+  source: 'PROFILE' | 'DEFAULT';
+  vat: {
+    chargeable: boolean;
+    rate: number;
+    reason: string | null;
+  };
+  incomeTax: {
+    type: 'CIT' | 'PIT';
+    rate: number;
+    devLevyRate: number;
+  };
+}

@@ -68,7 +68,7 @@ export default function AuthLayout() {
             {/* Status indicator badge */}
             <div className='inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-purple-100 text-xs font-semibold tracking-wide shadow-sm w-fit mb-6'>
               <span className='h-2 w-2 rounded-full bg-emerald-400 animate-pulse' />
-              <span>Official NRS 7.5% Tax Engine</span>
+              <span>Official NRS Tax Compliance Engine</span>
             </div>
 
             <h2 className='text-3xl sm:text-4xl xl:text-[44px] 2xl:text-5xl font-bold text-white leading-[1.15] tracking-tight'>

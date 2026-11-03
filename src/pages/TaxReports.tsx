@@ -807,7 +807,7 @@ function TaxReportsList({
                   <div className='flex items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100'>
                     <div className='text-left md:text-right'>
                       <span className='text-[10px] text-gray-400 uppercase tracking-wider block'>
-                        Tax (7.5%)
+                        Tax ({Number(r.taxRate) || 0}%)
                       </span>
                       <span className='text-base font-extrabold text-gray-900 tabular-nums'>
                         {formatNaira(Number(r.taxPayable))}
@@ -970,7 +970,7 @@ function TaxReportsList({
                           {formatNaira(Number(r.taxPayable))}
                         </p>
                         <span className='text-[10px] text-purple-200/90'>
-                          7.5% on Gross Profit
+                          {Number(r.taxRate) > 0 ? `${Number(r.taxRate)}% on Gross Profit` : 'VAT exempt — 0%'}
                         </span>
                       </div>
                     </div>

@@ -277,12 +277,12 @@ export default function TaxAssessmentModal({
                   {
                     value: 'M25M_TO_50M' as const,
                     title: '₦25 Million to ₦50 Million',
-                    desc: 'Subject to 7.5% VAT collection. Qualifies for 0% CIT (if corporate and assets ≤ ₦250M).',
+                    desc: 'Subject to standard VAT collection. Qualifies for 0% CIT (if corporate and assets ≤ ₦250M).',
                   },
                   {
                     value: 'M50M_TO_100M' as const,
                     title: '₦50 Million to ₦100 Million',
-                    desc: 'Subject to 7.5% VAT collection. Qualifies for 0% Small Company CIT (gazetted NTA 2025 s56).',
+                    desc: 'Subject to standard VAT collection. Qualifies for 0% Small Company CIT (gazetted NTA 2025 s56).',
                   },
                   {
                     value: 'ABOVE_100M' as const,
@@ -860,7 +860,7 @@ export default function TaxAssessmentModal({
                   <div>
                     <span className="text-gray-500">VAT Status:</span>
                     <div className="font-semibold text-gray-900 mt-0.5">
-                      {computedResult.vatExempt ? 'Exempt (< ₦25M turnover)' : '7.5% Standard VAT'}
+                      {computedResult.vatExempt ? 'Exempt (< ₦25M turnover)' : 'Standard VAT'}
                     </div>
                   </div>
                   <div>

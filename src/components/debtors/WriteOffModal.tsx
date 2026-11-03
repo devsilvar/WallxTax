@@ -116,7 +116,7 @@ export default function WriteOffModal({
             <p className="text-[11px] text-emerald-800">
               A deductible expense of <span className="font-bold">{formatNaira(credit.balance)}</span> will
               be automatically created for this month. This reduces your taxable gross profit — you
-              won't pay 7.5% VAT on money you never collected.
+              won't pay tax on money you never collected.
             </p>
           </div>
 

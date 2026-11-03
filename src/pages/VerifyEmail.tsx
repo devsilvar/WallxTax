@@ -240,8 +240,8 @@ export default function VerifyEmail() {
               <FileCheck2 className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-900">Automate NRS 7.5% Tax Liability</p>
-              <p className="text-[11px] text-gray-500 font-body">Calculate Gross Profit tax with 1-click filing accuracy.</p>
+              <p className="text-xs font-semibold text-gray-900">Automate NRS Tax Liability</p>
+              <p className="text-[11px] text-gray-500 font-body">Calculate tax with 1-click filing accuracy.</p>
             </div>
           </div>
 
