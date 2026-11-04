@@ -168,6 +168,10 @@ describe('InvoiceForm - Tax Policy Enforcement (TAX-07 / Phase 4)', () => {
 
     vi.spyOn(useInvoiceStore.getState(), 'fetchInvoice').mockResolvedValue(mockInvoice as Invoice);
 
+    const updateInvoiceSpy = vi
+      .spyOn(useInvoiceStore.getState(), 'updateInvoice')
+      .mockResolvedValue({ id: 'inv-123' } as any);
+
     render(
       <MemoryRouter initialEntries={['/invoices/inv-123/edit']}>
         <Routes>
@@ -184,6 +188,16 @@ describe('InvoiceForm - Tax Policy Enforcement (TAX-07 / Phase 4)', () => {
 
     const vatInput = screen.getByLabelText(/VAT Rate \(%\)/i) as HTMLInputElement;
     expect(vatInput.value).toBe('7.5');
+
+    // The edit must reach the API carrying the stored rate, not a zeroed one
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() => {
+      expect(updateInvoiceSpy).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = updateInvoiceSpy.mock.calls[0][2];
+    expect(payload.vatRate).toBe(7.5);
   });
 
   it('computes 0 VAT amount and sends vatRate 0 on submit when VAT is disabled', async () => {

@@ -107,6 +107,27 @@ export default function FinalizeConfirmationModal({
     ? Number(liveData.taxRate)
     : Number(report.taxRate);
 
+  // The monthly charge settles net VAT (or nothing, for VAT-exempt profiles) —
+  // gross profit is the annual CIT/PIT base, not the monthly assessment base.
+  const needsReview = Boolean(report.needsManualReview);
+  const basis = report.taxBasis;
+  const payableLabel = needsReview
+    ? 'Assessment Pending'
+    : basis === 'vat'
+    ? 'Net VAT Payable'
+    : 'Monthly Remittance';
+  const grossProfitLabel =
+    needsReview || basis === 'vat'
+      ? 'Gross Profit (Reference)'
+      : 'Annual Income-Tax Base (Gross Profit)';
+  const payableCaption = needsReview
+    ? 'Complete your Tax Profile Quiz before finalizing'
+    : basis === 'vat'
+    ? `Net VAT at ${displayTaxRate}% — output VAT minus input VAT`
+    : basis === 'pit-provision'
+    ? 'VAT-exempt — PIT is assessed annually with your State IRS'
+    : 'VAT-exempt — CIT is assessed annually';
+
   const salesDelta = liveData
     ? Number(liveData.totalSales) - Number(report.totalSales)
     : 0;
@@ -269,6 +290,17 @@ export default function FinalizeConfirmationModal({
             </div>
           )}
 
+          {needsReview && (
+            <div className='flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs'>
+              <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-amber-600' />
+              <p className='font-medium text-amber-900'>
+                No completed Tax Profile Quiz exists for this business, so no
+                statutory rate applies. Complete the quiz before finalizing —
+                the server will reject this finalization.
+              </p>
+            </div>
+          )}
+
           {/* Breakdown Table */}
           <div className='rounded-xl border border-gray-200 overflow-hidden text-xs bg-white shadow-2xs'>
             <div className='divide-y divide-gray-100 px-4 py-1.5'>
@@ -288,7 +320,7 @@ export default function FinalizeConfirmationModal({
               </div>
               <div className='flex justify-between py-2 text-gray-700'>
                 <span className='font-semibold text-purple-900'>
-                  Gross Profit (Tax Base)
+                  {grossProfitLabel}
                 </span>
                 <span className='font-bold text-purple-950 font-mono'>
                   {formatNgn(displayGrossProfit)}
@@ -298,10 +330,10 @@ export default function FinalizeConfirmationModal({
             <div className='bg-purple-50/80 px-4 py-3 border-t border-purple-200 flex items-center justify-between'>
               <div>
                 <span className='text-xs font-bold text-purple-950 uppercase tracking-wider block'>
-                  Tax Payable ({displayTaxRate}%)
+                  {payableLabel}
                 </span>
                 <span className='text-[10px] text-purple-700 font-medium'>
-                  Statutory NRS Remittance Assessment
+                  {payableCaption}
                 </span>
               </div>
               <span className='text-lg font-extrabold text-purple-950 font-mono'>
@@ -348,6 +380,7 @@ export default function FinalizeConfirmationModal({
               isLoading ||
               isRecalculating ||
               Boolean(recalcError) ||
+              needsReview ||
               !userConfirmedReview
             }
           >

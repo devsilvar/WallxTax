@@ -168,7 +168,7 @@ export default function InvoiceForm() {
   }, [biz?.id, isEdit]);
 
   const isVatDisabled = Boolean(!isEdit && taxPolicy && !taxPolicy.vat.chargeable);
-  const vatExemptReason = taxPolicy?.vat.reason || 'VAT exempt — turnover under ₦25M';
+  const vatExemptReason = taxPolicy?.vat.reason || 'This business is exempt from charging VAT';
 
   // Load invoice when editing
   useEffect(() => {
@@ -461,11 +461,12 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
                 max="100"
                 value={isVatDisabled ? '0' : vatRate}
                 disabled={isVatDisabled}
+                aria-describedby={isVatDisabled ? 'vat-exempt-reason' : undefined}
                 className={isVatDisabled ? 'cursor-not-allowed bg-gray-100 text-gray-500' : ''}
                 onChange={(e) => setVatRate(e.target.value)}
               />
               {isVatDisabled && (
-                <p className="mt-1 text-xs font-medium text-amber-700">
+                <p id="vat-exempt-reason" className="mt-1 text-xs font-medium text-amber-700">
                   {vatExemptReason}
                 </p>
               )}

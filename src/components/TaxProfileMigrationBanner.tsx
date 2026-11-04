@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react';
 import { ChevronRight, FileCheck } from 'lucide-react';
 import api from '@/lib/axios.ts';
 import { useBusinessStore } from '@/stores/business.store.ts';
+import { usePermission } from '@/components/auth/PermissionGate.tsx';
 import TaxAssessmentModal from '@/components/TaxAssessmentModal.tsx';
 
 export default function TaxProfileMigrationBanner() {
   const biz = useBusinessStore((s) => s.activeBusiness);
+  const canReadTax = usePermission('tax.read');
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!biz?.id) {
+    // A 403 from this endpoint means "no tax access", not "quiz not taken".
+    if (!canReadTax || !biz?.id) {
       setHasProfile(null);
       return;
     }
@@ -33,9 +36,9 @@ export default function TaxProfileMigrationBanner() {
     return () => {
       isMounted = false;
     };
-  }, [biz?.id]);
+  }, [biz?.id, canReadTax]);
 
-  if (hasProfile !== false || !biz) return null;
+  if (!canReadTax || hasProfile !== false || !biz) return null;
 
   return (
     <>

@@ -233,10 +233,36 @@ export interface TaxReport {
   isLocked: boolean;
   lockedAt?: string | null;
   isNilReturn?: boolean;
+  /** What this charge settles — derived from the tax policy on read. */
+  taxBasis?: 'vat' | 'cit-provision' | 'pit-provision';
+  /** True when the business has no completed tax profile — ₦0 means "not calculated". */
+  needsManualReview?: boolean;
   latestPayment?: TaxPayment | null;
   payments?: TaxPayment[];
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Advisory detail returned by POST /tax/calculate. There are no DB columns for
+ * these figures (by design), so the calculate response is the only place the
+ * output/input VAT split and annual CIT/PIT provisions are available.
+ */
+export interface TaxCalculationAdvisory {
+  note: string;
+  outputVat?: number;
+  inputVat?: number;
+  citBase?: number;
+  annualCitEstimate?: number;
+  annualDevLevyEstimate?: number;
+  annualPitEstimate?: number;
+  annualTaxProvision?: number;
+}
+
+export interface TaxCalculationResult extends TaxReport {
+  advisory?: TaxCalculationAdvisory;
+  strategyUsed?: 'PROFILED' | 'REVIEW_REQUIRED';
+  warnings?: { type: string; message: string }[];
 }
 
 export interface TaxPayment {
@@ -1539,4 +1565,6 @@ export interface BusinessTaxPolicy {
     rate: number;
     devLevyRate: number;
   };
+  /** Informational only — taxes the business owes but the app does not track. */
+  advisories: string[];
 }

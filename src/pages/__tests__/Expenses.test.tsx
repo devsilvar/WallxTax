@@ -129,7 +129,7 @@ describe('Expenses Page - Race Condition & Sequence Guard Tests (Phase 4)', () =
 
     // Wait for fast Call 2 to settle on screen
     await waitFor(() => {
-      expect(screen.getByText('₦45,000')).toBeInTheDocument();
+      expect(screen.getByText('₦45,000.00')).toBeInTheDocument();
     });
 
     // Now let the older Call 1 finish late with ₦888,888
@@ -151,7 +151,7 @@ describe('Expenses Page - Race Condition & Sequence Guard Tests (Phase 4)', () =
     });
 
     // Stale ₦888,888 must be discarded by the sequence guard
-    expect(screen.queryByText('₦888,888')).not.toBeInTheDocument();
-    expect(screen.getByText('₦45,000')).toBeInTheDocument();
+    expect(screen.queryByText('₦888,888.00')).not.toBeInTheDocument();
+    expect(screen.getByText('₦45,000.00')).toBeInTheDocument();
   });
 });

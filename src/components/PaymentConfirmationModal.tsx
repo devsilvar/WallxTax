@@ -54,6 +54,15 @@ export default function PaymentConfirmationModal({
     year: 'numeric',
   });
 
+  const obligationLabel =
+    report.taxBasis === 'vat'
+      ? 'Value Added Tax'
+      : report.taxBasis === 'cit-provision'
+      ? 'Companies Income Tax (provision)'
+      : report.taxBasis === 'pit-provision'
+      ? 'Personal Income Tax (provision)'
+      : null;
+
   const handleAuthorizeClick = () => {
     if (hasPin) {
       setIsPinModalOpen(true);
@@ -191,6 +200,14 @@ export default function PaymentConfirmationModal({
                       {Number(report.taxRate).toFixed(2)}%
                     </span>
                   </div>
+                  {obligationLabel && (
+                    <div className='flex justify-between py-2 text-gray-600'>
+                      <span>Obligation</span>
+                      <span className='font-medium text-gray-900'>
+                        {obligationLabel}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Total Due Pill */}

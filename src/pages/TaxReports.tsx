@@ -39,7 +39,11 @@ import { useBusinessStore } from '@/stores/business.store.ts';
 import { useDashboardEvents } from '@/stores/dashboard.store.ts';
 import api, { getErrorMessage } from '@/lib/axios.ts';
 import toast from 'react-hot-toast';
-import type { TaxReport, Pagination } from '@/types/index.ts';
+import type {
+  TaxReport,
+  TaxCalculationResult,
+  Pagination,
+} from '@/types/index.ts';
 import { formatNaira } from '@/lib/format';
 import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 
@@ -232,6 +236,11 @@ function TaxReportsList({
     [],
   );
 
+  // Full calculation response — carries the VAT split and annual provisions
+  const [calcResult, setCalcResult] = useState<TaxCalculationResult | null>(
+    null,
+  );
+
   // Pre-Payment Confirmation Bill Modal
   const [paymentModalReport, setPaymentModalReport] =
     useState<TaxReport | null>(null);
@@ -398,6 +407,12 @@ function TaxReportsList({
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [biz, page, filterStatus, filterYear]);
 
+  // A calculation result belongs to the business it was run against.
+  useEffect(() => {
+    setCalcResult(null);
+    setWarnings([]);
+  }, [biz?.id]);
+
   // When a report ID is passed in via `?highlight=`, auto-expand it, scroll to it, and flash ring
   useEffect(() => {
     if (!highlightedReportId || isLoading) return;
@@ -422,6 +437,7 @@ function TaxReportsList({
       toast.success('Tax calculated');
       invalidateDashboard('tax_calculated');
       setWarnings(res.data.warnings || []);
+      setCalcResult(res.data.data ?? null);
       setShowCalc(false);
       fetchReports();
     } catch (err: any) {
@@ -652,6 +668,111 @@ function TaxReportsList({
         </div>
       )}
 
+      {calcResult && (
+        <Card className='border-primary-200 bg-primary-50/40'>
+          <div className='flex items-start justify-between gap-4'>
+            <div>
+              <h3 className='text-sm font-semibold text-gray-900'>
+                {formatMonth(calcResult.taxMonth)} — statutory assessment
+              </h3>
+              <p className='mt-1 text-xs leading-relaxed text-gray-600'>
+                {calcResult.advisory?.note ?? 'Calculation complete.'}
+              </p>
+            </div>
+            <button
+              type='button'
+              onClick={() => setCalcResult(null)}
+              className='shrink-0 text-xs font-medium text-gray-500 hover:text-gray-800'
+              aria-label='Dismiss calculation result'
+            >
+              Dismiss
+            </button>
+          </div>
+
+          <dl className='mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4'>
+            {calcResult.strategyUsed === 'REVIEW_REQUIRED' ? (
+              <div className='col-span-2 sm:col-span-4'>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Status
+                </dt>
+                <dd className='mt-0.5 text-sm font-bold text-amber-700'>
+                  Pending review — no statutory rate applied
+                </dd>
+              </div>
+            ) : (
+              <div>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  {calcResult.taxBasis === 'vat'
+                    ? 'Net VAT payable'
+                    : 'Monthly remittance'}
+                </dt>
+                <dd className='mt-0.5 text-sm font-bold text-primary-800 tabular-nums'>
+                  {formatNaira(Number(calcResult.taxPayable))}
+                </dd>
+              </div>
+            )}
+            {calcResult.advisory?.outputVat !== undefined && (
+              <div>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Output VAT
+                </dt>
+                <dd className='mt-0.5 text-sm font-semibold text-gray-800 tabular-nums'>
+                  {formatNaira(Number(calcResult.advisory.outputVat))}
+                </dd>
+              </div>
+            )}
+            {calcResult.advisory?.inputVat !== undefined && (
+              <div>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Input VAT
+                </dt>
+                <dd className='mt-0.5 text-sm font-semibold text-gray-800 tabular-nums'>
+                  {formatNaira(Number(calcResult.advisory.inputVat))}
+                </dd>
+              </div>
+            )}
+            {calcResult.advisory?.annualCitEstimate !== undefined && (
+              <div>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Annual CIT provision
+                </dt>
+                <dd className='mt-0.5 text-sm font-semibold text-gray-800 tabular-nums'>
+                  {formatNaira(Number(calcResult.advisory.annualCitEstimate))}
+                </dd>
+              </div>
+            )}
+            {calcResult.advisory?.annualDevLevyEstimate !== undefined && (
+              <div>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Annual dev levy
+                </dt>
+                <dd className='mt-0.5 text-sm font-semibold text-gray-800 tabular-nums'>
+                  {formatNaira(Number(calcResult.advisory.annualDevLevyEstimate))}
+                </dd>
+              </div>
+            )}
+            {calcResult.advisory?.annualPitEstimate !== undefined && (
+              <div>
+                <dt className='text-[10px] font-semibold uppercase tracking-wider text-gray-500'>
+                  Annual PIT estimate
+                </dt>
+                <dd className='mt-0.5 text-sm font-semibold text-gray-800 tabular-nums'>
+                  {formatNaira(Number(calcResult.advisory.annualPitEstimate))}
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {(calcResult.advisory?.annualCitEstimate !== undefined ||
+            calcResult.advisory?.annualPitEstimate !== undefined) && (
+            <p className='mt-3 text-[11px] text-gray-500'>
+              Annual income-tax provisions are advisory — they are not collected
+              monthly. Only the monthly figure above is remitted.
+            </p>
+          )}
+        </Card>
+      )}
+
       {error ? (
         <ErrorState message={error} onRetry={fetchReports} />
       ) : isLoading ? (
@@ -807,7 +928,11 @@ function TaxReportsList({
                   <div className='flex items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100'>
                     <div className='text-left md:text-right'>
                       <span className='text-[10px] text-gray-400 uppercase tracking-wider block'>
-                        Tax ({Number(r.taxRate) || 0}%)
+                        {r.needsManualReview
+                          ? 'Assessment pending'
+                          : r.taxBasis === 'vat'
+                          ? 'Net VAT payable'
+                          : 'Monthly remittance'}
                       </span>
                       <span className='text-base font-extrabold text-gray-900 tabular-nums'>
                         {formatNaira(Number(r.taxPayable))}
@@ -960,17 +1085,31 @@ function TaxReportsList({
                       <div className='rounded-lg bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-950 text-white p-3 border border-purple-800 shadow-2xs'>
                         <div className='flex items-center justify-between'>
                           <span className='text-[10px] font-semibold text-purple-200 uppercase tracking-wider'>
-                            Payable Tax
+                            {r.needsManualReview
+                              ? 'Assessment Pending'
+                              : r.taxBasis === 'vat'
+                              ? 'Net VAT Payable'
+                              : 'Monthly Remittance'}
                           </span>
                           <span className='text-[9px] font-bold text-purple-200 bg-purple-800/80 px-1 py-0.5 rounded'>
-                            {Number(r.taxRate)}%
+                            {r.needsManualReview
+                              ? '—'
+                              : r.taxBasis === 'vat'
+                              ? `${Number(r.taxRate)}%`
+                              : 'EXEMPT'}
                           </span>
                         </div>
                         <p className='mt-1 text-base font-extrabold text-white tabular-nums tracking-tight'>
                           {formatNaira(Number(r.taxPayable))}
                         </p>
                         <span className='text-[10px] text-purple-200/90'>
-                          {Number(r.taxRate) > 0 ? `${Number(r.taxRate)}% on Gross Profit` : 'VAT exempt — 0%'}
+                          {r.needsManualReview
+                            ? 'Complete your tax profile to determine statutory rates'
+                            : r.taxBasis === 'vat'
+                            ? `Net VAT at ${Number(r.taxRate)}% (output − input)`
+                            : r.taxBasis === 'pit-provision'
+                            ? 'VAT not chargeable — PIT is assessed annually with your State IRS'
+                            : 'VAT not chargeable — CIT is assessed annually'}
                         </span>
                       </div>
                     </div>

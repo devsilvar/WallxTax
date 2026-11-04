@@ -101,7 +101,15 @@ interface DashboardData {
     reportsCount: number;
   };
   unpaidCount: number;
-  taxConfig: { currentRate: number; currency: string; authority: string };
+  taxConfig: {
+    currentRate: number;
+    currency: string;
+    authority: string;
+    vatChargeable?: boolean;
+    vatExempt?: boolean;
+    vatReason?: string | null;
+    source?: 'PROFILE' | 'DEFAULT';
+  };
 }
 
 interface TrendItem {
@@ -1673,7 +1681,13 @@ export default function Dashboard() {
 
               <div className='border-t border-gray-100 pt-3'>
                 <MetricRow
-                  label={`Tax @ ${Number(currentMonth.taxRate)}%`}
+                  label={
+                    (dashboard?.taxConfig?.vatChargeable ??
+                      (taxPolicy ? taxPolicy.vat.chargeable : undefined)) ===
+                    false
+                      ? 'Monthly remittance (VAT-exempt)'
+                      : `Net VAT @ ${Number(currentMonth.taxRate)}%`
+                  }
                   value={formatNaira(Number(currentMonth.taxPayable))}
                   icon={
                     <CircleDollarSign className='h-3.5 w-3.5 text-rose-500' />
@@ -2158,7 +2172,10 @@ export default function Dashboard() {
             <Zap className='h-3 w-3 text-gray-300' />
             <p className='text-[11px] font-medium whitespace-nowrap'>
               {dashboard.taxConfig.authority} ·{' '}
-              {taxPolicy && !taxPolicy.vat.chargeable ? '0% (Exempt)' : `${dashboard.taxConfig.currentRate}%`} ·{' '}
+              {(dashboard.taxConfig.vatExempt ?? (taxPolicy ? !taxPolicy.vat.chargeable : false))
+                ? '0% (Exempt)'
+                : `${dashboard.taxConfig.currentRate}%`}{' '}
+              ·{' '}
               {dashboard.taxConfig.currency}
             </p>
           </div>

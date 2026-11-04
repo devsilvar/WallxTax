@@ -9,6 +9,7 @@ export const pageTitles: Record<string, string> = {
   '/invoices': 'Invoices',
   '/debtors': 'Debtors',
   '/customers': 'Customers',
+  '/inventory': 'Inventory & Marketplace',
   '/tax': 'Tax Reports',
   '/payments': 'Payments',
   '/reminders': 'Reminders',
