@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useBusinessStore } from '@/stores/business.store.ts';
 import { useMarketplaceStore } from '@/stores/marketplace.store.ts';
 import ProductModal from '@/components/marketplace/ProductModal.tsx';
+import PurchaseSlotModal from '@/components/marketplace/PurchaseSlotModal.tsx';
+import LockedSlotCard from '@/components/marketplace/LockedSlotCard.tsx';
+import ListingOptimizationPanel from '@/components/marketplace/ListingOptimizationPanel.tsx';
 import Button from '@/components/ui/Button.tsx';
 import PageLoader from '@/components/ui/PageLoader.tsx';
 import {
@@ -17,10 +20,12 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
+  Sparkles,
+  Eye,
+  MessageSquare,
 } from 'lucide-react';
 import type { MarketplaceProduct, CreateProductPayload } from '@/types/index.ts';
-
-const MAX_ACTIVE_PRODUCTS = 3;
 
 export default function Inventory() {
   const activeBusiness = useBusinessStore((s) => s.activeBusiness);
@@ -34,9 +39,12 @@ export default function Inventory() {
     updateProduct,
     submitForApproval,
     archiveProduct,
+    markAsSold,
+    renewProduct,
   } = useMarketplaceStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<MarketplaceProduct | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -47,11 +55,17 @@ export default function Inventory() {
     }
   }, [activeBusiness?.id, fetchProducts]);
 
+  // Dynamic slot allowance from activeBusiness (defaults to 3 free slots)
+  const slotAllowance = activeBusiness?.marketplaceSlotAllowance ?? 3;
+
   // Active products are any listings that are NOT archived (draft, pending_approval, approved, rejected)
   const activeProducts = products.filter((p) => p.status !== 'archived');
   const archivedProducts = products.filter((p) => p.status === 'archived');
   const activeCount = activeProducts.length;
-  const emptySlotsCount = Math.max(0, MAX_ACTIVE_PRODUCTS - activeCount);
+  const emptySlotsCount = Math.max(0, slotAllowance - activeCount);
+
+  // Evidence calculation: total recorded buyer inquiries across the business
+  const totalContacts = products.reduce((acc, p) => acc + (p.contactCount ?? 0), 0);
 
   const handleOpenCreate = () => {
     setEditingProduct(null);
@@ -71,6 +85,12 @@ export default function Inventory() {
     if (editingProduct) {
       const updated = await updateProduct(activeBusiness.id, editingProduct.id, payload);
       if (submitImmediately) {
+        if (updated.listingScore && updated.listingScore.score < 50) {
+          setActionSuccess(
+            `"${updated.name}" updated, but listing strength is ${updated.listingScore.score}/100. Minimum 50 required for approval.`
+          );
+          return;
+        }
         await submitForApproval(activeBusiness.id, updated.id);
         setActionSuccess(`"${updated.name}" updated and submitted for approval!`);
       } else {
@@ -79,6 +99,12 @@ export default function Inventory() {
     } else {
       const created = await createProduct(activeBusiness.id, payload);
       if (submitImmediately) {
+        if (created.listingScore && created.listingScore.score < 50) {
+          setActionSuccess(
+            `"${created.name}" created as draft. Listing strength is ${created.listingScore.score}/100 (minimum 50 required to submit).`
+          );
+          return;
+        }
         await submitForApproval(activeBusiness.id, created.id);
         setActionSuccess(`"${created.name}" created and submitted for review!`);
       } else {
@@ -89,10 +115,50 @@ export default function Inventory() {
 
   const handleSubmitForReview = async (product: MarketplaceProduct) => {
     if (!activeBusiness?.id) return;
+    if (product.listingScore && product.listingScore.score < 50) {
+      alert(
+        `Listing strength is currently ${product.listingScore.score}/100. WallX requires a minimum score of 50 to submit for approval. Please edit the listing to add photos, detailed description, or attributes.`
+      );
+      return;
+    }
     try {
       await submitForApproval(activeBusiness.id, product.id);
       setActionSuccess(`"${product.name}" submitted for moderation review.`);
-    } catch (err: any) {
+    } catch {
+      // Error handled in store
+    }
+  };
+
+  const handleMarkAsSold = async (product: MarketplaceProduct) => {
+    if (!activeBusiness?.id) return;
+    const confirmSold = window.confirm(
+      `Mark "${product.name}" as sold? This will move it to your archived items and free up an active showcase slot.`
+    );
+    if (!confirmSold) return;
+
+    try {
+      await markAsSold(activeBusiness.id, product.id);
+      setActionSuccess(`"${product.name}" marked as sold! An active slot has been freed.`);
+    } catch {
+      // Error handled in store
+    }
+  };
+
+  const handleRenew = async (product: MarketplaceProduct) => {
+    if (!activeBusiness?.id) return;
+    if (emptySlotsCount <= 0) {
+      alert(
+        `You have reached your showcase capacity of ${slotAllowance} active products. Archive or mark another product as sold before renewing this listing, or unlock an additional slot.`
+      );
+      return;
+    }
+
+    try {
+      await renewProduct(activeBusiness.id, product.id);
+      setActionSuccess(
+        `"${product.name}" renewed for another 90 days and restored to your active showcase!`
+      );
+    } catch {
       // Error handled in store
     }
   };
@@ -107,7 +173,7 @@ export default function Inventory() {
     try {
       await archiveProduct(activeBusiness.id, product.id);
       setActionSuccess(`"${product.name}" archived. An inventory slot has been freed!`);
-    } catch (err: any) {
+    } catch {
       // Error handled in store
     }
   };
@@ -138,7 +204,7 @@ export default function Inventory() {
             </h1>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Showcase up to 3 featured products or services directly on the public WallX Marketplace.
+            Showcase up to {slotAllowance} featured products or services directly on the public WallX Marketplace.
           </p>
         </div>
 
@@ -149,16 +215,17 @@ export default function Inventory() {
               Showcase Capacity
             </p>
             <p className="text-sm font-bold text-purple-700">
-              {activeCount} of {MAX_ACTIVE_PRODUCTS} Active Slots Used
+              {activeCount} of {slotAllowance} Active Slots Used
             </p>
           </div>
-          <div className="flex gap-1.5">
-            {[1, 2, 3].map((slot) => (
+          <div className="flex gap-1.5 flex-wrap max-w-[120px] justify-end">
+            {Array.from({ length: slotAllowance }, (_, i) => i + 1).map((slot) => (
               <span
                 key={slot}
                 className={`w-3 h-3 rounded-full ${
                   slot <= activeCount ? 'bg-purple-600' : 'bg-gray-200'
                 }`}
+                title={`Slot ${slot} of ${slotAllowance}`}
               />
             ))}
           </div>
@@ -190,16 +257,36 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* 3 Active Slot Cards Grid */}
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-          <span>Active Product Slots</span>
-          <span className="text-xs font-normal text-gray-500">
-            ({emptySlotsCount} slot{emptySlotsCount !== 1 ? 's' : ''} available)
-          </span>
-        </h2>
+      {/* Why Isn't This Selling? Optimization Panel (Placed above slots and upsell per plan §2.6) */}
+      <ListingOptimizationPanel
+        products={activeProducts}
+        onEditProduct={handleOpenEdit}
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Active Product Slots Grid */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <span>Active Product Slots</span>
+            <span className="text-xs font-normal text-gray-500">
+              ({emptySlotsCount} slot{emptySlotsCount !== 1 ? 's' : ''} available)
+            </span>
+          </h2>
+
+          {/* Quick unlock button when capacity is reached and inquiries exist */}
+          {emptySlotsCount === 0 && totalContacts >= 1 && (
+            <button
+              type="button"
+              onClick={() => setIsPurchaseModalOpen(true)}
+              className="text-xs font-semibold text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-1"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Unlock Slot #{slotAllowance + 1}</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Active Product Cards */}
           {activeProducts.map((product) => (
             <div
@@ -251,7 +338,7 @@ export default function Inventory() {
                 </div>
 
                 {/* Card Info */}
-                <div className="p-4 space-y-2">
+                <div className="p-4 space-y-2.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded capitalize">
                       {product.category}
@@ -270,7 +357,7 @@ export default function Inventory() {
                   </p>
 
                   {/* Pricing and Stock */}
-                  <div className="pt-2 flex items-baseline justify-between">
+                  <div className="pt-1 flex items-baseline justify-between">
                     <div>
                       <span className="text-lg font-bold text-gray-900">
                         ₦{Number(product.price).toLocaleString()}
@@ -303,6 +390,33 @@ export default function Inventory() {
                     </div>
                   </div>
 
+                  {/* Per-Listing Analytics: Views and Contacts (Renders "—" if not recorded, never "0" fallback) */}
+                  <div className="flex items-center gap-3 text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 border border-gray-100">
+                    <div className="flex items-center gap-1.5" title="Total public listing views">
+                      <Eye className="w-3.5 h-3.5 text-purple-600" />
+                      <span>
+                        <strong className="text-gray-900 font-semibold">
+                          {product.viewCount !== undefined && product.viewCount !== null
+                            ? product.viewCount.toLocaleString()
+                            : '—'}
+                        </strong>{' '}
+                        views
+                      </span>
+                    </div>
+                    <span className="text-gray-300">•</span>
+                    <div className="flex items-center gap-1.5" title="Buyer inquiries (WhatsApp and Phone contacts)">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>
+                        <strong className="text-gray-900 font-semibold">
+                          {product.contactCount !== undefined && product.contactCount !== null
+                            ? product.contactCount.toLocaleString()
+                            : '—'}
+                        </strong>{' '}
+                        contacts
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Rejection Notice if applicable */}
                   {product.status === 'rejected' && product.rejectionReason && (
                     <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800">
@@ -310,12 +424,54 @@ export default function Inventory() {
                       <p>{product.rejectionReason}</p>
                     </div>
                   )}
+
+                  {/* Listing Strength Meter */}
+                  {product.listingScore && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-medium text-gray-600 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                          Listing Strength:
+                          <span className="capitalize font-semibold text-gray-900">
+                            {product.listingScore.label}
+                          </span>
+                        </span>
+                        <span className="font-bold text-gray-900">
+                          {product.listingScore.score}/100
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            product.listingScore.score >= 80
+                              ? 'bg-emerald-500'
+                              : product.listingScore.score >= 50
+                              ? 'bg-amber-500'
+                              : 'bg-rose-500'
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(0, product.listingScore.score))}%` }}
+                        />
+                      </div>
+                      {product.listingScore.tips &&
+                        product.listingScore.tips.length > 0 &&
+                        product.status !== 'approved' && (
+                          <div className="mt-2 text-[11px] bg-purple-50/60 p-2 rounded border border-purple-100 text-purple-900">
+                            <p className="font-medium mb-1">To boost visibility &amp; approval:</p>
+                            <ul className="list-disc pl-3.5 space-y-0.5 text-purple-800">
+                              {product.listingScore.tips.slice(0, 2).map((tip, idx) => (
+                                <li key={idx}>{tip}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Action Buttons Bar */}
               <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <Button
                     size="sm"
                     variant="ghost"
@@ -338,14 +494,26 @@ export default function Inventory() {
                   )}
 
                   {product.status === 'approved' && (
-                    <a
-                      href={`/marketplace/products/${product.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-xs text-purple-700 hover:underline px-2 py-1 font-medium"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 mr-1" /> View Live
-                    </a>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMarkAsSold(product)}
+                        disabled={submitting}
+                        className="text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                        title="Mark this item as sold and free up a showcase slot"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Mark Sold
+                      </Button>
+                      <a
+                        href={`/marketplace/products/${product.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-xs text-purple-700 hover:underline px-2 py-1 font-medium"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 mr-1" /> View Live
+                      </a>
+                    </>
                   )}
                 </div>
 
@@ -376,10 +544,17 @@ export default function Inventory() {
                 + Add Product
               </h3>
               <p className="text-xs text-gray-400 mt-1 max-w-[200px]">
-                Slot {activeCount + index + 1} of {MAX_ACTIVE_PRODUCTS} available. Click to create a featured listing.
+                Slot {activeCount + index + 1} of {slotAllowance} available. Click to create a featured listing.
               </p>
             </button>
           ))}
+
+          {/* Locked Slot Card (Upsell for slotAllowance + 1) */}
+          <LockedSlotCard
+            slotNumber={slotAllowance + 1}
+            totalContacts={totalContacts}
+            onUnlock={() => setIsPurchaseModalOpen(true)}
+          />
         </div>
       </div>
 
@@ -390,7 +565,7 @@ export default function Inventory() {
           How WallX Marketplace Syndication Works
         </h3>
         <p className="text-sm text-gray-600 mb-6">
-          Every verified SME on WallX ERP is allocated up to 3 active showcase slots to advertise their best-selling products or services on Nigeria’s public business marketplace.
+          Every verified SME on WallX ERP is allocated up to {slotAllowance} active showcase slots to advertise their best-selling products or services on Nigeria’s public business marketplace.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -452,38 +627,81 @@ export default function Inventory() {
 
           {showArchived && (
             <div className="border-t border-gray-100 divide-y divide-gray-100">
-              {archivedProducts.map((archived) => (
-                <div
-                  key={archived.id}
-                  className="px-5 py-3 flex items-center justify-between text-sm hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {archived.images && archived.images[0] ? (
-                        <img
-                          src={archived.images[0]}
-                          alt={archived.name}
-                          className="w-full h-full object-cover"
-                        />
+              {archivedProducts.map((archived) => {
+                const isSold = Boolean(archived.soldAt);
+                const isExpired =
+                  archived.expiresAt &&
+                  new Date(archived.expiresAt) <= new Date() &&
+                  !isSold;
+                const canRenew = isExpired && emptySlotsCount > 0;
+
+                return (
+                  <div
+                    key={archived.id}
+                    className="px-5 py-3 flex items-center justify-between text-sm hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {archived.images && archived.images[0] ? (
+                          <img
+                            src={archived.images[0]}
+                            alt={archived.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Package className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{archived.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <span className="capitalize">{archived.category}</span>
+                          <span>•</span>
+                          <span>₦{Number(archived.price).toLocaleString()}</span>
+                          {archived.soldAt && (
+                            <>
+                              <span>•</span>
+                              <span>Sold on {new Date(archived.soldAt).toLocaleDateString()}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isSold ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">
+                          <CheckCircle2 className="w-3 h-3" /> Sold
+                        </span>
+                      ) : isExpired ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
+                            <Clock className="w-3 h-3" /> Expired
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!canRenew || submitting}
+                            onClick={() => handleRenew(archived)}
+                            className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50"
+                            title={
+                              emptySlotsCount === 0
+                                ? `All ${slotAllowance} active slots are in use. Free up a slot or unlock capacity to renew.`
+                                : 'Renew this listing for 90 days'
+                            }
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Renew (90d)
+                          </Button>
+                        </div>
                       ) : (
-                        <Package className="w-5 h-5 text-gray-400" />
+                        <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-600">
+                          Archived
+                        </span>
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{archived.name}</p>
-                      <p className="text-xs text-gray-400 capitalize">{archived.category}</p>
-                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-800">
-                      ₦{Number(archived.price).toLocaleString()}
-                    </p>
-                    <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-600">
-                      Archived
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -497,6 +715,16 @@ export default function Inventory() {
         onSave={handleSaveProduct}
         isSubmitting={submitting}
         businessId={activeBusiness.id}
+      />
+
+      {/* Showcase Slot Purchase Modal */}
+      <PurchaseSlotModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        businessId={activeBusiness.id}
+        currentAllowance={slotAllowance}
+        totalContacts={totalContacts}
+        onSuccess={(msg) => setActionSuccess(msg)}
       />
     </div>
   );

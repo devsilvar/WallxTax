@@ -72,6 +72,7 @@ const PLAN_DETAILS: Record<
 export default function Register() {
   const [searchParams] = useSearchParams();
   const rawPlan = searchParams.get('plan')?.toLowerCase();
+  const srcParam = searchParams.get('src');
   const initialPlan = ['starter', 'business', 'scale', 'free'].includes(
     rawPlan || '',
   )
@@ -130,7 +131,14 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      const result = await register(email, phone, password, selectedPlan);
+      const acquisitionSource = srcParam === 'marketplace' ? 'marketplace' : undefined;
+      const result = await register(
+        email,
+        phone,
+        password,
+        selectedPlan,
+        acquisitionSource,
+      );
       const userEmail = result.email || email;
       sessionStorage.setItem('pendingVerificationEmail', userEmail);
       // Trial clock is now purely backend-driven (User.trialEndsAt set on

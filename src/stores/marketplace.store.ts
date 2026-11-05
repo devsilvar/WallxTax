@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import api, { getErrorMessage } from '@/lib/axios.ts';
+import { useBusinessStore } from '@/stores/business.store.ts';
 import type {
   MarketplaceProduct,
   CreateProductPayload,
   UpdateProductPayload,
+  SlotPurchaseResponse,
+  MarketplaceSlotPurchase,
 } from '@/types/index.ts';
 
 interface MarketplaceState {
@@ -23,6 +26,11 @@ interface MarketplaceState {
   updateProduct: (businessId: string, id: string, payload: UpdateProductPayload) => Promise<MarketplaceProduct>;
   submitForApproval: (businessId: string, id: string) => Promise<MarketplaceProduct>;
   archiveProduct: (businessId: string, id: string) => Promise<MarketplaceProduct>;
+  markAsSold: (businessId: string, id: string) => Promise<MarketplaceProduct>;
+  renewProduct: (businessId: string, id: string) => Promise<MarketplaceProduct>;
+  purchaseSlotsViaWallet: (businessId: string, slots?: number) => Promise<SlotPurchaseResponse>;
+  submitSlotProof: (businessId: string, slots: number, proof: File) => Promise<{ purchase: MarketplaceSlotPurchase; status: string }>;
+  getWalletBalance: () => Promise<number>;
   uploadImage: (businessId: string, file: File) => Promise<{ url: string; publicId: string }>;
   deleteImage: (businessId: string, publicId: string) => Promise<void>;
   setActiveProduct: (product: MarketplaceProduct | null) => void;
@@ -150,6 +158,88 @@ export const useMarketplaceStore = create<MarketplaceState>((set) => ({
       throw new Error(message);
     } finally {
       set({ submitting: false });
+    }
+  },
+
+  markAsSold: async (businessId: string, id: string) => {
+    set({ submitting: true, error: null });
+    try {
+      const { data } = await api.post(`${basePath(businessId)}/${id}/mark-sold`);
+      const updated = data.data;
+      set((state) => ({
+        products: patchInList(state.products, updated),
+        activeProduct: state.activeProduct?.id === id ? updated : state.activeProduct,
+      }));
+      return updated;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Failed to mark product as sold');
+      set({ error: message });
+      throw new Error(message);
+    } finally {
+      set({ submitting: false });
+    }
+  },
+
+  renewProduct: async (businessId: string, id: string) => {
+    set({ submitting: true, error: null });
+    try {
+      const { data } = await api.post(`${basePath(businessId)}/${id}/renew`);
+      const updated = data.data;
+      set((state) => ({
+        products: patchInList(state.products, updated),
+        activeProduct: state.activeProduct?.id === id ? updated : state.activeProduct,
+      }));
+      return updated;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Failed to renew product listing');
+      set({ error: message });
+      throw new Error(message);
+    } finally {
+      set({ submitting: false });
+    }
+  },
+
+  purchaseSlotsViaWallet: async (businessId: string, slots = 1) => {
+    set({ submitting: true, error: null });
+    try {
+      const { data } = await api.post(`${basePath(businessId)}/slots`, { slots });
+      const responseData: SlotPurchaseResponse = data.data;
+      if (responseData?.allowance?.current) {
+        useBusinessStore.getState().updateSlotAllowance(businessId, responseData.allowance.current);
+      }
+      return responseData;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Failed to purchase marketplace slot');
+      set({ error: message });
+      throw new Error(message);
+    } finally {
+      set({ submitting: false });
+    }
+  },
+
+  submitSlotProof: async (businessId: string, slots: number, proof: File) => {
+    set({ submitting: true, error: null });
+    const formData = new FormData();
+    formData.append('slots', String(slots));
+    formData.append('proof', proof);
+    try {
+      const { data } = await api.post(`${basePath(businessId)}/slots/proof`, formData);
+      return data.data;
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Failed to submit payment proof');
+      set({ error: message });
+      throw new Error(message);
+    } finally {
+      set({ submitting: false });
+    }
+  },
+
+  getWalletBalance: async () => {
+    try {
+      const { data } = await api.get('/wallet');
+      return Number(data.data?.availableBalance ?? data.data?.balance ?? 0);
+    } catch {
+      return 0;
     }
   },
 

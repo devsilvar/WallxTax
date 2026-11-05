@@ -154,6 +154,7 @@ export interface Business {
   myRole?: BusinessRole;
   myPermissions?: Record<string, boolean>;
   memberCount?: number;
+  marketplaceSlotAllowance?: number;
 }
 
 
@@ -1506,6 +1507,24 @@ export type MarketplaceCategory =
   | 'services'
   | 'other';
 
+export interface ListingScoreBreakdownItem {
+  score: number;
+  max: number;
+  passed: boolean;
+}
+
+export interface ListingScore {
+  score: number;
+  label: 'poor' | 'fair' | 'good' | 'excellent';
+  tips: string[];
+  breakdown: {
+    images: ListingScoreBreakdownItem;
+    description: ListingScoreBreakdownItem;
+    attributes: ListingScoreBreakdownItem;
+    pricing: ListingScoreBreakdownItem;
+  };
+}
+
 export interface MarketplaceProduct {
   id: string;
   businessId: string;
@@ -1528,6 +1547,11 @@ export interface MarketplaceProduct {
   rejectionReason?: string | null;
   approvedAt?: string | null;
   approvedBy?: string | null;
+  expiresAt?: string | null;
+  soldAt?: string | null;
+  viewCount?: number;
+  contactCount?: number;
+  listingScore?: ListingScore;
   createdAt: string;
   updatedAt: string;
 }
@@ -1550,6 +1574,34 @@ export interface CreateProductPayload {
 }
 
 export type UpdateProductPayload = Partial<CreateProductPayload>;
+
+export interface MarketplaceSlotPurchase {
+  id: string;
+  businessId: string;
+  slots: number;
+  amount: number;
+  paymentMethod: 'wallet' | 'bank_transfer';
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  proofDocumentUrl?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  rejectionReason?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SlotPurchaseResponse {
+  purchase: MarketplaceSlotPurchase;
+  allowance?: {
+    previous: number;
+    current: number;
+    added: number;
+  };
+  wallet?: {
+    newBalance: number;
+    amountDebited: number;
+  };
+}
 
 // ─── Tax Policy Types ────────────────────────────────────────────────────────
 

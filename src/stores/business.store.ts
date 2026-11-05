@@ -21,6 +21,7 @@ interface BusinessState {
   setActiveBusiness: (business: Business) => void;
   createBusiness: (data: Partial<Business>) => Promise<Business>;
   updateVoucherAdjustmentThreshold: (businessId: string, threshold: number) => Promise<void>;
+  updateSlotAllowance: (businessId: string, allowance: number) => void;
   /**
    * Reset to initial state. Called from auth.store.logout() to prevent the
    * previous user's businesses from bleeding into the next session.
@@ -142,6 +143,18 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
       }));
       throw err;
     }
+  },
+
+  updateSlotAllowance: (businessId, allowance) => {
+    set((state) => ({
+      businesses: state.businesses.map((b) =>
+        b.id === businessId ? { ...b, marketplaceSlotAllowance: allowance } : b
+      ),
+      activeBusiness:
+        state.activeBusiness?.id === businessId
+          ? { ...state.activeBusiness, marketplaceSlotAllowance: allowance }
+          : state.activeBusiness,
+    }));
   },
 
   clear: () => {
