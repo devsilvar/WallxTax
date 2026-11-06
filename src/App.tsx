@@ -25,6 +25,7 @@ const Contact = lazy(() => import('@/pages/marketing/Contact.tsx'));
 
 const Login = lazy(() => import('@/pages/Login.tsx'));
 const Register = lazy(() => import('@/pages/Register.tsx'));
+const Terms = lazy(() => import('@/pages/Terms.tsx'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword.tsx'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword.tsx'));
 const VerifyEmailPending = lazy(() => import('@/pages/VerifyEmailPending.tsx'));
@@ -141,6 +142,7 @@ function AppRoutes() {
 
             <Route path="/invite" element={<InvitationAccept />} />
             <Route path="/verify-voucher/:requestId" element={<VerifyVoucher />} />
+            <Route path="/terms" element={<Terms />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>

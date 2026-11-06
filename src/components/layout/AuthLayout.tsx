@@ -1,6 +1,16 @@
 import { useLayoutEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { ShieldCheck, TrendingUp, Zap, BadgeCheck, Lock } from 'lucide-react';
+import {
+  ShieldCheck,
+  TrendingUp,
+  Zap,
+  BadgeCheck,
+  Lock,
+  Receipt,
+  HandCoins,
+  FileText,
+  BarChart3,
+} from 'lucide-react';
 import OptimizedLogo from '@/components/ui/OptimizedLogo.tsx';
 
 const highlights = [
@@ -15,6 +25,30 @@ const highlights = [
     title: 'Fast Tax Calculation',
     circleStyle:
       'border-2 border-amber-400/50 bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.3)] ring-1 ring-amber-300/30 group-hover:shadow-[0_0_22px_rgba(251,191,36,0.5)] group-hover:border-amber-300',
+  },
+  {
+    icon: Receipt,
+    title: 'Sales & Expense Mgt',
+    circleStyle:
+      'border-2 border-rose-400/50 bg-gradient-to-br from-rose-500/20 to-pink-500/10 text-rose-300 shadow-[0_0_14px_rgba(251,113,133,0.3)] ring-1 ring-rose-300/30 group-hover:shadow-[0_0_22px_rgba(251,113,133,0.5)] group-hover:border-rose-300',
+  },
+  {
+    icon: HandCoins,
+    title: 'Debtors Mgt',
+    circleStyle:
+      'border-2 border-sky-400/50 bg-gradient-to-br from-sky-500/20 to-indigo-500/10 text-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.3)] ring-1 ring-sky-300/30 group-hover:shadow-[0_0_22px_rgba(56,189,248,0.5)] group-hover:border-sky-300',
+  },
+  {
+    icon: FileText,
+    title: 'e-Invoice/Receipts',
+    circleStyle:
+      'border-2 border-violet-400/50 bg-gradient-to-br from-violet-500/20 to-purple-500/10 text-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.3)] ring-1 ring-violet-300/30 group-hover:shadow-[0_0_22px_rgba(167,139,250,0.5)] group-hover:border-violet-300',
+  },
+  {
+    icon: BarChart3,
+    title: 'CRM and Business Performance Reporting Tool',
+    circleStyle:
+      'border-2 border-orange-400/50 bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-300 shadow-[0_0_14px_rgba(251,146,60,0.3)] ring-1 ring-orange-300/30 group-hover:shadow-[0_0_22px_rgba(251,146,60,0.5)] group-hover:border-orange-300',
   },
   {
     icon: ShieldCheck,
@@ -64,14 +98,14 @@ export default function AuthLayout() {
           </div>
 
           {/* Center: Hero Messaging & Highlights */}
-          <div className='my-auto py-8 xl:py-10'>
+          <div className='my-auto py-5 xl:py-7'>
             {/* Status indicator badge */}
-            <div className='inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-purple-100 text-xs font-semibold tracking-wide shadow-sm w-fit mb-6'>
+            <div className='inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-purple-100 text-xs font-semibold tracking-wide shadow-sm w-fit mb-4 xl:mb-5'>
               <span className='h-2 w-2 rounded-full bg-emerald-400 animate-pulse' />
               <span>Official NRS Tax Compliance Engine</span>
             </div>
 
-            <h2 className='text-3xl sm:text-4xl xl:text-[44px] 2xl:text-5xl font-bold text-white leading-[1.15] tracking-tight'>
+            <h2 className='text-3xl sm:text-4xl xl:text-[42px] 2xl:text-5xl font-bold text-white leading-[1.15] tracking-tight'>
               Seamless Business
               <br />
               <span className='bg-gradient-to-r from-purple-200 via-white to-purple-100 bg-clip-text text-transparent'>
@@ -79,24 +113,24 @@ export default function AuthLayout() {
               </span>
             </h2>
 
-            <p className='mt-4 max-w-lg font-body text-base xl:text-lg text-purple-100/80 leading-relaxed'>
+            <p className='mt-3 xl:mt-4 max-w-lg font-body text-sm xl:text-base text-purple-100/80 leading-relaxed'>
               Join thousands of Nigerian SMEs managing sales, computing accurate
               tax liabilities, and staying penalty-free with confidence.
             </p>
 
             {/* Core Features — Clean, boxless, neatly aligned icon + title */}
-            <div className='mt-8 xl:mt-10 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 xl:gap-y-5'>
+            <div className='mt-6 xl:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-x-6 xl:gap-x-7 gap-y-3 xl:gap-y-3.5'>
               {highlights.map(({ icon: Icon, title, circleStyle }) => (
                 <div
                   key={title}
-                  className='group flex items-center gap-3.5 py-1 cursor-default transition-transform duration-200'
+                  className='group flex items-center gap-3 xl:gap-3.5 py-0.5 cursor-default transition-transform duration-200'
                 >
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full backdrop-blur-md transition-all duration-300 group-hover:scale-110 ${circleStyle}`}
+                    className={`flex h-10 w-10 xl:h-11 xl:w-11 shrink-0 items-center justify-center rounded-full backdrop-blur-md transition-all duration-300 group-hover:scale-110 ${circleStyle}`}
                   >
-                    <Icon className='h-5 w-5' strokeWidth={2.2} />
+                    <Icon className='h-4.5 w-4.5 xl:h-5 xl:w-5' strokeWidth={2.2} />
                   </div>
-                  <span className='font-semibold text-white text-sm xl:text-[15px] tracking-tight group-hover:text-purple-100 transition-colors'>
+                  <span className='font-semibold text-white text-[13px] sm:text-[13.5px] xl:text-[14px] 2xl:text-[15px] tracking-tight group-hover:text-purple-100 transition-colors leading-snug'>
                     {title}
                   </span>
                 </div>
@@ -104,7 +138,7 @@ export default function AuthLayout() {
             </div>
 
             {/* SME Trust metrics bar */}
-            <div className='mt-8 pt-6 border-t border-white/10 flex flex-wrap items-center gap-4 sm:gap-6 text-purple-200/80 text-xs sm:text-sm font-medium'>
+            <div className='mt-6 xl:mt-8 pt-5 xl:pt-6 border-t border-white/10 flex flex-wrap items-center gap-4 sm:gap-6 text-purple-200/80 text-xs sm:text-sm font-medium'>
               <span className='flex items-center gap-1.5'>
                 <span className='text-white font-bold'>₦700M+</span> Volume
                 Tracked

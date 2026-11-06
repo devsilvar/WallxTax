@@ -7,6 +7,7 @@ import type {
   UpdateProductPayload,
   SlotPurchaseResponse,
   MarketplaceSlotPurchase,
+  MarketplaceAnalyticsResponse,
 } from '@/types/index.ts';
 
 interface MarketplaceState {
@@ -18,8 +19,12 @@ interface MarketplaceState {
   detailLoading: boolean;
   detailError: string | null;
   submitting: boolean;
+  analytics: MarketplaceAnalyticsResponse | null;
+  analyticsLoading: boolean;
+  analyticsError: string | null;
 
   // Actions
+  fetchAnalytics: (businessId: string, days?: number) => Promise<MarketplaceAnalyticsResponse | null>;
   fetchProducts: (businessId: string) => Promise<void>;
   fetchProduct: (businessId: string, id: string) => Promise<MarketplaceProduct | null>;
   createProduct: (businessId: string, payload: CreateProductPayload) => Promise<MarketplaceProduct>;
@@ -59,6 +64,26 @@ export const useMarketplaceStore = create<MarketplaceState>((set) => ({
   detailLoading: false,
   detailError: null,
   submitting: false,
+  analytics: null,
+  analyticsLoading: false,
+  analyticsError: null,
+
+  fetchAnalytics: async (businessId: string, days = 30) => {
+    set({ analyticsLoading: true, analyticsError: null });
+    try {
+      const { data } = await api.get(`${basePath(businessId)}/analytics`, {
+        params: { days },
+      });
+      const res = data.data || null;
+      set({ analytics: res });
+      return res;
+    } catch (err: any) {
+      set({ analyticsError: getErrorMessage(err, "Failed to load marketplace analytics") });
+      return null;
+    } finally {
+      set({ analyticsLoading: false });
+    }
+  },
 
   fetchProducts: async (businessId: string) => {
     set({ loading: true, error: null });

@@ -1603,6 +1603,47 @@ export interface SlotPurchaseResponse {
   };
 }
 
+// ─── Marketplace Merchant Analytics (Phase 15) ──────────────────────────────
+
+export interface MarketplaceDailySeriesPoint {
+  date: string;
+  views: number;
+  contacts: number;
+  impressions: number;
+}
+
+export interface MarketplaceProductAnalyticsItem {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  status: string;
+  price: number;
+  images: string[];
+  createdAt: string;
+  viewCount: number;
+  contactCount: number;
+  impressionsCount: number;
+  rankInCategory: number | null;
+  categoryTotalApproved: number;
+}
+
+export interface MarketplaceAnalyticsSummary {
+  totalProducts: number;
+  liveProducts: number;
+  totalViews: number;
+  totalContacts: number;
+  totalImpressions: number;
+  conversionRate: number;
+}
+
+export interface MarketplaceAnalyticsResponse {
+  summary: MarketplaceAnalyticsSummary;
+  timeseries: MarketplaceDailySeriesPoint[];
+  products: MarketplaceProductAnalyticsItem[];
+  periodDays: number;
+}
+
 // ─── Tax Policy Types ────────────────────────────────────────────────────────
 
 export interface BusinessTaxPolicy {

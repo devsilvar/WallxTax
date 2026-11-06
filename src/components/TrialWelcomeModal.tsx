@@ -78,14 +78,42 @@ export default function TrialWelcomeModal({
 
   if (!isOpen) return null;
 
+  const isExpired =
+    daysLeft === 0 &&
+    hoursLeft === 0 &&
+    minutesLeft === 0 &&
+    secondsLeft === 0 &&
+    Boolean(subscriptionStatus.expiresAt);
+
+  const timeRemainingText =
+    daysLeft > 0
+      ? `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`
+      : hoursLeft > 0
+        ? `${hoursLeft} ${hoursLeft === 1 ? 'hour' : 'hours'}`
+        : minutesLeft > 0
+          ? `${minutesLeft} ${minutesLeft === 1 ? 'minute' : 'minutes'}`
+          : 'less than a minute';
+
+  const badgeText = isExpired
+    ? 'Trial expired'
+    : daysLeft > 0
+      ? `Full access — ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`
+      : hoursLeft > 0
+        ? `Full access — ${hoursLeft}h left`
+        : minutesLeft > 0
+          ? `Full access — ${minutesLeft}m left`
+          : 'Trial ending soon';
+
   const heading =
     trigger === 'registration'
       ? `Welcome, ${userName || 'there'}!`
       : `${businessName || 'Your business'} is live`;
-  const subheading =
-    trigger === 'registration'
-      ? 'Your workspace is ready — full access for 30 days, no card needed.'
-      : 'All set. You have 30 days of everything — we’ll remind you before it ends.';
+
+  const subheading = isExpired
+    ? 'Your trial has ended. Upgrade to continue.'
+    : trigger === 'registration'
+      ? `Workspace ready. You have ${timeRemainingText} left.`
+      : `All set. You have ${timeRemainingText} left.`;
 
   return createPortal(
     <div className='fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-gradient-to-br from-purple-900/30 via-black/50 to-black/60 backdrop-blur-md overflow-hidden'>
@@ -108,12 +136,26 @@ export default function TrialWelcomeModal({
             <X className='h-4 w-4' />
           </button>
 
-          <div className='inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 mb-3'>
+          <div
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset mb-3 ${
+              isExpired
+                ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+            }`}
+          >
             <span className='relative flex h-2 w-2'>
-              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' />
-              <span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500' />
+              <span
+                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isExpired ? 'bg-amber-400' : 'bg-emerald-400'
+                }`}
+              />
+              <span
+                className={`relative inline-flex rounded-full h-2 w-2 ${
+                  isExpired ? 'bg-amber-500' : 'bg-emerald-500'
+                }`}
+              />
             </span>
-            <span>Full access — 30 days free</span>
+            <span>{badgeText}</span>
           </div>
 
           <h2 className='text-xl font-bold text-gray-900 tracking-tight leading-tight'>

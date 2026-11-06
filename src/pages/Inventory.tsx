@@ -5,6 +5,7 @@ import ProductModal from '@/components/marketplace/ProductModal.tsx';
 import PurchaseSlotModal from '@/components/marketplace/PurchaseSlotModal.tsx';
 import LockedSlotCard from '@/components/marketplace/LockedSlotCard.tsx';
 import ListingOptimizationPanel from '@/components/marketplace/ListingOptimizationPanel.tsx';
+import MarketplaceAnalyticsPanel from '@/components/marketplace/MarketplaceAnalyticsPanel.tsx';
 import Button from '@/components/ui/Button.tsx';
 import PageLoader from '@/components/ui/PageLoader.tsx';
 import {
@@ -41,6 +42,9 @@ export default function Inventory() {
     archiveProduct,
     markAsSold,
     renewProduct,
+    analytics,
+    analyticsLoading,
+    fetchAnalytics,
   } = useMarketplaceStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,12 +52,14 @@ export default function Inventory() {
   const [editingProduct, setEditingProduct] = useState<MarketplaceProduct | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [analyticsDays, setAnalyticsDays] = useState<number>(30);
 
   useEffect(() => {
     if (activeBusiness?.id) {
       fetchProducts(activeBusiness.id);
+      fetchAnalytics(activeBusiness.id, analyticsDays);
     }
-  }, [activeBusiness?.id, fetchProducts]);
+  }, [activeBusiness?.id, analyticsDays, fetchProducts, fetchAnalytics]);
 
   // Dynamic slot allowance from activeBusiness (defaults to 3 free slots)
   const slotAllowance = activeBusiness?.marketplaceSlotAllowance ?? 3;
@@ -84,7 +90,9 @@ export default function Inventory() {
 
     if (editingProduct) {
       const updated = await updateProduct(activeBusiness.id, editingProduct.id, payload);
-      if (submitImmediately) {
+      if (updated.status === 'pending_approval') {
+        setActionSuccess(`"${updated.name}" updated and sent back for review. You'll be notified once approved.`);
+      } else if (submitImmediately) {
         if (updated.listingScore && updated.listingScore.score < 50) {
           setActionSuccess(
             `"${updated.name}" updated, but listing strength is ${updated.listingScore.score}/100. Minimum 50 required for approval.`
@@ -257,6 +265,14 @@ export default function Inventory() {
         </div>
       )}
 
+      {/* Marketplace Demand & Performance Analytics (Phase 15) */}
+      <MarketplaceAnalyticsPanel
+        analytics={analytics}
+        loading={analyticsLoading}
+        periodDays={analyticsDays}
+        onPeriodChange={(days) => setAnalyticsDays(days)}
+      />
+
       {/* Why Isn't This Selling? Optimization Panel (Placed above slots and upsell per plan §2.6) */}
       <ListingOptimizationPanel
         products={activeProducts}
@@ -417,9 +433,15 @@ export default function Inventory() {
                     </div>
                   </div>
 
-                  {/* Rejection Notice if applicable */}
-                  {product.status === 'rejected' && product.rejectionReason && (
-                    <div className="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800">
+                  {/* Moderator Feedback if applicable */}
+                  {(product.status === 'rejected' || product.status === 'pending_approval') && product.rejectionReason && (
+                    <div
+                      className={`mt-2 p-2.5 rounded text-xs border ${
+                        product.status === 'rejected'
+                          ? 'bg-rose-50 border-rose-200 text-rose-800'
+                          : 'bg-amber-50 border-amber-200 text-amber-900'
+                      }`}
+                    >
                       <p className="font-semibold mb-0.5">Moderator Feedback:</p>
                       <p>{product.rejectionReason}</p>
                     </div>

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store.ts';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
 import PhoneInput from '@/components/ui/PhoneInput.tsx';
+import TermsAndIndemnityModal from '@/components/legal/TermsAndIndemnityModal.tsx';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, ArrowRight, Check, X, Crown } from 'lucide-react';
 
@@ -98,6 +99,8 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const register = useAuthStore((s) => s.register);
   const navigate = useNavigate();
@@ -128,6 +131,10 @@ export default function Register() {
       toast.error('Password does not meet requirements');
       return;
     }
+    if (!acceptedTerms) {
+      toast.error('Please accept the Terms of Service & Tax Indemnity Agreement to continue');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -138,6 +145,7 @@ export default function Register() {
         password,
         selectedPlan,
         acquisitionSource,
+        acceptedTerms,
       );
       const userEmail = result.email || email;
       sessionStorage.setItem('pendingVerificationEmail', userEmail);
@@ -331,6 +339,31 @@ export default function Register() {
           </button>
         </div>
 
+        {/* Terms of Service & Tax Indemnity Checkbox */}
+        <div className='rounded-xl border border-gray-200 bg-gray-50/70 p-3.5 transition-colors hover:bg-gray-50'>
+          <label className='flex items-start gap-3 cursor-pointer select-none'>
+            <input
+              type='checkbox'
+              id='accepted-terms-checkbox'
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className='mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer shrink-0'
+              required
+            />
+            <span className='text-xs text-gray-600 leading-relaxed font-body'>
+              I agree to WallX&apos;s{' '}
+              <button
+                type='button'
+                onClick={() => setShowTermsModal(true)}
+                className='font-bold text-purple-700 underline hover:text-purple-900 transition-colors inline cursor-pointer'
+              >
+                Terms of Service &amp; Tax Indemnity Agreement
+              </button>{' '}
+              and confirm that all financial and tax data entered will be accurate under Nigerian law.
+            </span>
+          </label>
+        </div>
+
         <Button
           type='submit'
           isLoading={isLoading}
@@ -342,6 +375,12 @@ export default function Register() {
           )}
         </Button>
       </form>
+
+      <TermsAndIndemnityModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => setAcceptedTerms(true)}
+      />
 
       <div className='mt-8 border-t border-gray-100 pt-6'>
         <p className='text-center font-body text-[15px] text-gray-500'>

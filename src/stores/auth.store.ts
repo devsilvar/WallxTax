@@ -42,7 +42,8 @@ interface AuthState {
     phone: string,
     password: string,
     requestedPlan?: string,
-    acquisitionSource?: string
+    acquisitionSource?: string,
+    acceptedTerms?: boolean
   ) => Promise<{ email: string; verificationLink?: string }>;
   setAuthSession: (user: User, accessToken: string, refreshToken: string) => void;
   logout: () => void | Promise<void>;
@@ -80,13 +81,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isAuthenticated: true, isBootstrapping: false, hasCheckedAuth: true });
   },
 
-  register: async (email, phone, password, requestedPlan, acquisitionSource) => {
+  register: async (email, phone, password, requestedPlan, acquisitionSource, acceptedTerms) => {
     const { data } = await api.post('/auth/register', {
       email,
       phone,
       password,
       ...(requestedPlan ? { requestedPlan } : {}),
       ...(acquisitionSource ? { acquisitionSource } : {}),
+      acceptedTerms: acceptedTerms ?? true,
     });
     return {
       email: data.data?.user?.email || email,
