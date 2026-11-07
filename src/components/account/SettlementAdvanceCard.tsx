@@ -141,7 +141,7 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
-              Access up to 30% of unsettled customer transfers instantly to bank
+              Access up to 30% of unsettled customer transfers instantly in your wallet
             </p>
           </div>
         </div>
@@ -261,7 +261,7 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
               className="rounded-xl border border-purple-100 bg-purple-50/50 p-3 text-xs space-y-1.5"
             >
               <div className="flex justify-between items-center text-gray-600">
-                <span>Disbursed to Commercial Bank:</span>
+                <span>Credited to Wallet:</span>
                 <span className="font-bold font-mono text-gray-900">{formatNaira(numAmount)}</span>
               </div>
               <div className="flex justify-between items-center text-gray-600">
@@ -269,7 +269,7 @@ export const SettlementAdvanceCard: React.FC<SettlementAdvanceCardProps> = ({
                 <span className="font-bold font-mono text-purple-900">+{formatNaira(liveFee)}</span>
               </div>
               <div className="pt-1.5 border-t border-purple-200 flex justify-between items-center text-gray-950 font-bold">
-                <span>Total Wallet Debit:</span>
+                <span>Total Advance Cost:</span>
                 <span className="font-mono text-sm text-purple-950">{formatNaira(totalDebit)}</span>
               </div>
             </div>

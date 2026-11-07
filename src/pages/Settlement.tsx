@@ -318,7 +318,7 @@ export default function Settlement() {
                 </span>
               </div>
               <p className='text-xs text-gray-600 mt-0.5'>
-                Access up to {formatNaira(Math.floor(inSettlement * 0.3))} instantly to your connected bank account ahead of the T+1 settlement cycle.
+                Access up to {formatNaira(Math.floor(inSettlement * 0.3))} instantly in your wallet ahead of the T+1 settlement cycle.
               </p>
             </div>
           </div>

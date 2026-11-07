@@ -222,7 +222,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-xs font-bold text-gray-900 truncate group-hover:text-purple-950 transition-colors">
-                            {payout.narration || (isAdvance ? 'Settlement Advance Disbursal' : `Payout to ${payout.destinationBankName}`)}
+                            {payout.narration || (isAdvance ? 'Settlement Advance → Wallet' : `Payout to ${payout.destinationBankName}`)}
                           </p>
                           {isAdvance && (
                             <span
@@ -234,7 +234,9 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
                           )}
                         </div>
                         <p className="text-[11px] text-gray-500 truncate mt-0.5 font-medium">
-                          {payout.destinationBankName} · •••• {payout.destinationAccountNum?.slice(-4)}
+                          {isAdvance
+                            ? 'Credited to WallX Wallet'
+                            : `${payout.destinationBankName} · •••• ${payout.destinationAccountNum?.slice(-4)}`}
                         </p>
                       </div>
                     </div>
@@ -267,7 +269,7 @@ export const WithdrawalsTable: React.FC<WithdrawalsTableProps> = ({
                       )}
                       {isCompleted && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                          <CheckCheck className="h-3 w-3" /> Sent to Bank
+                          <CheckCheck className="h-3 w-3" /> {isAdvance ? 'Credited to Wallet' : 'Sent to Bank'}
                         </span>
                       )}
                       {isFailed && (

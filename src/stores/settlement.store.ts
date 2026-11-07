@@ -86,6 +86,8 @@ export interface AdvancePreviewData {
   maxAdvancePct?: number;
   minAdvanceAmount?: number;
   remainingPending: number;
+  /** Gross advance already credited to the wallet and not yet recovered. */
+  outstandingAdvance?: number;
   hasOutstandingAdvance: boolean;
   batchStartDate: string | null;
   fees: {
@@ -387,7 +389,7 @@ export const useSettlementStore = create<SettlementStore>((set, get) => ({
     const toastId = toast.loading('Submitting settlement advance request...');
     try {
       const res = await api.post(`/businesses/${businessId}/settlement/advance`, input);
-      toast.success(res.data.message || 'Settlement advance approved and disbursed to bank', { id: toastId });
+      toast.success(res.data.message || 'Settlement advance credited to your wallet', { id: toastId });
       void get().fetchAdvancePreview(businessId);
       void get().fetchHistory(businessId);
       return res.data.data;
