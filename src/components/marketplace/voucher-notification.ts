@@ -29,7 +29,6 @@ export function generateVoucherNotificationHtml(data: VoucherNotificationEmailDa
   const businessName = escapeHtml(data.businessName);
   const balanceFormatted = escapeHtml(data.balanceFormatted);
   const customerPhone = data.customerPhone ? escapeHtml(data.customerPhone) : null;
-  const businessPhone = data.businessPhone ? escapeHtml(data.businessPhone) : null;
   const notes = data.notes ? escapeHtml(data.notes) : null;
   const actionType = data.actionType ?? 'created';
 
@@ -123,7 +122,7 @@ export function generateVoucherNotificationHtml(data: VoucherNotificationEmailDa
                   <li>Ask the cashier to save any cash change to your voucher.</li>
                 </ol>
               </div>
-              ${businessPhone ? `<p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.5;">Questions about your balance? Contact ${businessName} directly at <strong>${businessPhone}</strong>.</p>` : ''}
+              <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.5;">Questions about your balance? Contact <a href="mailto:support@wallxerp.com" style="color: #7c3aed; text-decoration: none; font-weight: 600;">support@wallxerp.com</a>.</p>
             </td>
           </tr>
           <tr>
