@@ -93,6 +93,8 @@ export default function ProductModal({
 
   // Category attributes dictionary
   const [attributes, setAttributes] = useState<Record<string, any>>({});
+  const [newAttributeKey, setNewAttributeKey] = useState('');
+  const [newAttributeValue, setNewAttributeValue] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Initialize or reset form on open/edit
@@ -133,6 +135,8 @@ export default function ProductModal({
       setAttributes({ size: 'M', color: 'Black', gender: 'unisex' });
     }
     setActiveTab('details');
+    setNewAttributeKey('');
+    setNewAttributeValue('');
     setValidationError(null);
     setUploadError(null);
     setShowUrlFallback(false);
@@ -164,6 +168,14 @@ export default function ProductModal({
         setAttributes({});
       }
     }
+  };
+
+  const handleAddAttribute = () => {
+    const key = newAttributeKey.trim();
+    if (!key) return;
+    setAttributes({ ...attributes, [key]: newAttributeValue.trim() });
+    setNewAttributeKey('');
+    setNewAttributeValue('');
   };
 
   // ── Image Upload Handling (Cloudinary) ──
@@ -606,9 +618,16 @@ export default function ProductModal({
                 placeholder='Describe your item, key highlights, materials, warranty, or delivery details...'
                 className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500'
               />
-              <p className='text-xs text-gray-400 mt-1'>
-                Provide at least 10 characters detailing what you are offering
-                to buyers.
+              <p
+                className={`text-xs mt-1 ${
+                  description.trim().length >= 120
+                    ? 'text-emerald-600'
+                    : 'text-gray-400'
+                }`}
+              >
+                {description.trim().length}/120 characters — listings with a
+                120+ character description score the full 25 points for
+                description.
               </p>
             </div>
           </div>
@@ -896,9 +915,83 @@ export default function ProductModal({
               category !== 'bags' &&
               category !== 'electronics' &&
               category !== 'services' && (
-                <div className='p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600'>
-                  General product attributes. Additional custom specifications
-                  can be entered in the product description.
+                <div className='space-y-3'>
+                  <div className='p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600'>
+                    Add the specifications buyers filter on for this category.
+                    At least one specification is required for a 100/100
+                    listing strength score.
+                  </div>
+
+                  {Object.entries(attributes).map(([attrKey, attrValue]) => (
+                    <div key={attrKey} className='flex items-center gap-2'>
+                      <span className='w-32 shrink-0 truncate text-xs font-medium capitalize text-gray-700'>
+                        {attrKey}
+                      </span>
+                      <input
+                        type='text'
+                        value={
+                          attrValue === null || attrValue === undefined
+                            ? ''
+                            : String(attrValue)
+                        }
+                        onChange={(e) =>
+                          setAttributes({
+                            ...attributes,
+                            [attrKey]: e.target.value,
+                          })
+                        }
+                        className='flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500'
+                        placeholder={`Enter ${attrKey}`}
+                      />
+                      <button
+                        type='button'
+                        onClick={() => {
+                          const next = { ...attributes };
+                          delete next[attrKey];
+                          setAttributes(next);
+                        }}
+                        className='p-2 text-gray-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors'
+                        aria-label={`Remove ${attrKey}`}
+                      >
+                        <Trash2 className='h-4 w-4' />
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className='flex items-end gap-2'>
+                    <div className='w-32 flex-shrink-0'>
+                      <label className='mb-1 block text-[11px] font-medium text-gray-500'>
+                        Spec name
+                      </label>
+                      <input
+                        type='text'
+                        value={newAttributeKey}
+                        onChange={(e) => setNewAttributeKey(e.target.value)}
+                        className='w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500'
+                        placeholder='e.g. Material'
+                      />
+                    </div>
+                    <div className='flex-1'>
+                      <label className='mb-1 block text-[11px] font-medium text-gray-500'>
+                        Spec value
+                      </label>
+                      <input
+                        type='text'
+                        value={newAttributeValue}
+                        onChange={(e) => setNewAttributeValue(e.target.value)}
+                        className='w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500'
+                        placeholder='e.g. Leather'
+                      />
+                    </div>
+                    <Button
+                      type='button'
+                      variant='secondary'
+                      onClick={handleAddAttribute}
+                      disabled={!newAttributeKey.trim()}
+                    >
+                      Add
+                    </Button>
+                  </div>
                 </div>
               )}
           </div>
@@ -912,8 +1005,13 @@ export default function ProductModal({
                 <label className='block text-sm font-medium text-gray-900'>
                   Product Images (Max 3) <span className='text-red-500'>*</span>
                 </label>
-                <span className='text-xs text-purple-700 font-medium'>
+                <span
+                  className={`text-xs font-medium ${
+                    images.length >= 2 ? 'text-emerald-600' : 'text-purple-700'
+                  }`}
+                >
                   {images.length} of 3 images uploaded
+                  {images.length < 2 && ' — 2 required for full strength'}
                 </span>
               </div>
 
