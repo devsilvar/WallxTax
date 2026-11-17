@@ -47,6 +47,13 @@ function formatDate(d: string | null | undefined) {
   });
 }
 
+function lineRangeLabel(start?: string | null, end?: string | null) {
+  if (start && end) return `${formatDate(start)} – ${formatDate(end)}`;
+  if (start) return `From ${formatDate(start)}`;
+  if (end) return `Until ${formatDate(end)}`;
+  return null;
+}
+
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',
   sent: 'Sent',
@@ -676,7 +683,12 @@ export default function InvoiceDetail() {
                   }`}
                 >
                   <td className='px-4 py-3 text-gray-700 sm:px-6'>
-                    {line.description}
+                    <div>{line.description}</div>
+                    {(line.lineStartDate || line.lineEndDate) && (
+                      <div className='mt-0.5 text-xs text-gray-400'>
+                        {lineRangeLabel(line.lineStartDate, line.lineEndDate)}
+                      </div>
+                    )}
                   </td>
                   <td className='px-4 py-3 text-right tabular-nums text-gray-600'>
                     {Number(line.quantity)}
