@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Lock, Wallet } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Lock, Wallet, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
@@ -20,6 +20,7 @@ interface LineRow {
   unitPrice: string;
   lineStartDate: string; // YYYY-MM-DD or empty
   lineEndDate: string; // YYYY-MM-DD or empty
+  showDates: boolean; // UI state - whether date fields are expanded
 }
 
 interface WalletAccountInfo {
@@ -63,7 +64,8 @@ const emptyLine = (): LineRow => ({
   quantity: '1', 
   unitPrice: '',
   lineStartDate: '',
-  lineEndDate: ''
+  lineEndDate: '',
+  showDates: false
 });
 
 export default function InvoiceForm() {
@@ -212,6 +214,7 @@ export default function InvoiceForm() {
             unitPrice: String(Number(l.unitPrice)),
             lineStartDate: l.lineStartDate ? l.lineStartDate.slice(0, 10) : '',
             lineEndDate: l.lineEndDate ? l.lineEndDate.slice(0, 10) : '',
+            showDates: Boolean(l.lineStartDate || l.lineEndDate), // auto-expand if dates exist
           })),
         );
       })
@@ -512,99 +515,128 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
               const q = Number(line.quantity) || 0;
               const u = Number(line.unitPrice) || 0;
               const lineTotal = money(q * u);
+              const hasDates = line.lineStartDate || line.lineEndDate;
+              
               return (
                 <div
                   key={idx}
-                  className="grid grid-cols-12 items-end gap-2 rounded-lg border border-gray-100 bg-gray-50/60 p-3 sm:gap-3"
+                  className="rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-sm"
                 >
-                  <div className="col-span-12 sm:col-span-6">
-                    <label htmlFor={`line-desc-${idx}`} className="mb-1 block text-xs font-medium text-gray-500">
-                      Description
+                  {/* Main Line Item Row */}
+                  <div className="grid grid-cols-12 items-end gap-2 p-3 sm:gap-3">
+                    <div className="col-span-12 sm:col-span-6">
+                      <label htmlFor={`line-desc-${idx}`} className="mb-1 block text-xs font-medium text-gray-700">
+                        Description
+                      </label>
+                      <input
+                        id={`line-desc-${idx}`}
+                        type="text"
+                        value={line.description}
+                        onChange={(e) => updateLine(idx, { description: e.target.value })}
+                        placeholder="e.g. Consulting services, monthly retainer"
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-colors"
+                        maxLength={500}
+                      />
+                    </div>
+                    <div className="col-span-4 sm:col-span-2">
+                      <label htmlFor={`line-qty-${idx}`} className="mb-1 block text-xs font-medium text-gray-700">
+                        Qty
+                      </label>
+                      <input
+                        id={`line-qty-${idx}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={line.quantity}
+                        onChange={(e) => updateLine(idx, { quantity: e.target.value })}
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-colors"
+                      />
+                    </div>
+                    <div className="col-span-4 sm:col-span-2">
+                      <label htmlFor={`line-price-${idx}`} className="mb-1 block text-xs font-medium text-gray-700">
+                        Unit price
+                      </label>
+                      <input
+                        id={`line-price-${idx}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={line.unitPrice}
+                        onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-colors"
+                      />
+                    </div>
+                    <div className="col-span-4 flex flex-col justify-end sm:col-span-2">
+                      <label className="mb-1 block text-right text-xs font-medium text-gray-700">
+                        Amount
                     </label>
-                    <input
-                      id={`line-desc-${idx}`}
-                      type="text"
-                      value={line.description}
-                      onChange={(e) => updateLine(idx, { description: e.target.value })}
-                      placeholder="e.g. Consulting services, hours 1-10"
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                      maxLength={500}
-                    />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3">
-                    <label htmlFor={`line-start-${idx}`} className="mb-1 block text-xs font-medium text-gray-400">
-                      Start Date (optional)
-                    </label>
-                    <input
-                      id={`line-start-${idx}`}
-                      type="date"
-                      value={line.lineStartDate}
-                      onChange={(e) => updateLine(idx, { lineStartDate: e.target.value })}
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3">
-                    <label htmlFor={`line-end-${idx}`} className="mb-1 block text-xs font-medium text-gray-400">
-                      End Date (optional)
-                    </label>
-                    <input
-                      id={`line-end-${idx}`}
-                      type="date"
-                      value={line.lineEndDate}
-                      onChange={(e) => updateLine(idx, { lineEndDate: e.target.value })}
-                      min={line.lineStartDate || undefined}
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    />
-                  </div>
-                  <div className="col-span-4 sm:col-span-2">
-                    <label htmlFor={`line-qty-${idx}`} className="mb-1 block text-xs font-medium text-gray-500">Qty</label>
-                    <input
-                      id={`line-qty-${idx}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={line.quantity}
-                      onChange={(e) => updateLine(idx, { quantity: e.target.value })}
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    />
-                  </div>
-                  <div className="col-span-4 sm:col-span-2">
-                    <label htmlFor={`line-price-${idx}`} className="mb-1 block text-xs font-medium text-gray-500">
-                      Unit price
-                    </label>
-                    <input
-                      id={`line-price-${idx}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={line.unitPrice}
-                      onChange={(e) => updateLine(idx, { unitPrice: e.target.value })}
-                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                    />
-                  </div>
-                  <div className="col-span-4 flex flex-col justify-end sm:col-span-2">
-                    <label className="mb-1 block text-right text-xs font-medium text-gray-500">
-                      Amount
-                    </label>
-                    <div className="flex items-center justify-end gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold tabular-nums text-gray-900">
-                      <span className="truncate">{formatNaira(lineTotal)}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeLine(idx)}
-                        disabled={lines.length === 1}
-                        title={
-                          lines.length === 1
-                            ? 'An invoice needs at least one line'
-                            : 'Remove line'
-                        }
-                        className="shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400"
-                        aria-label="Remove line"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="flex h-10 items-center justify-end rounded-lg bg-gray-50 px-3 text-right text-sm font-semibold tabular-nums text-gray-900">
+                      {formatNaira(lineTotal)}
                     </div>
                   </div>
                 </div>
+                
+                {/* Date Range Section - Collapsible */}
+                {line.showDates && (
+                  <div className="grid grid-cols-1 gap-3 border-t border-gray-100 bg-blue-50/30 px-3 pb-3 pt-2.5 sm:grid-cols-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div>
+                      <label htmlFor={`line-start-${idx}`} className="mb-1.5 block text-xs font-medium text-gray-700">
+                        Start Date
+                      </label>
+                      <input
+                        id={`line-start-${idx}`}
+                        type="date"
+                        value={line.lineStartDate}
+                        onChange={(e) => updateLine(idx, { lineStartDate: e.target.value })}
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`line-end-${idx}`} className="mb-1.5 block text-xs font-medium text-gray-700">
+                        End Date
+                      </label>
+                      <input
+                        id={`line-end-${idx}`}
+                        type="date"
+                        value={line.lineEndDate}
+                        onChange={(e) => updateLine(idx, { lineEndDate: e.target.value })}
+                        min={line.lineStartDate || undefined}
+                        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Action Bar */}
+                <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50/60 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => updateLine(idx, { showDates: !line.showDates })}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+                      line.showDates || hasDates
+                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    {line.showDates ? 'Hide' : 'Add'} service period
+                    {hasDates && !line.showDates && (
+                      <span className="ml-0.5 flex h-1.5 w-1.5 rounded-full bg-blue-600" />
+                    )}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => removeLine(idx)}
+                    disabled={lines.length === 1}
+                    title={lines.length === 1 ? 'Invoice needs at least one line' : 'Remove this line'}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-white disabled:hover:text-gray-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </button>
+                </div>
+              </div>
               );
             })}
           </div>
