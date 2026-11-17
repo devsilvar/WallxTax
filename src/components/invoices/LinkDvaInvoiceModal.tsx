@@ -80,8 +80,9 @@ export default function LinkDvaInvoiceModal({
   if (!isOpen || !invoice) return null;
 
   const invoiceTotal = Number(invoice.total);
+  const invoiceBalance = Number(invoice.total) - Number(invoice.amountPaid || 0);
 
-  // Filter and sort: Exact matches first
+  // Filter and sort: Matches within balance first
   const filteredSales = unverifiedSales
     .filter((s) => {
       if (!search.trim()) return true;
@@ -94,15 +95,18 @@ export default function LinkDvaInvoiceModal({
       );
     })
     .sort((a, b) => {
-      const aExact = Math.abs(Number(a.amount) - invoiceTotal) < 0.01 ? 1 : 0;
-      const bExact = Math.abs(Number(b.amount) - invoiceTotal) < 0.01 ? 1 : 0;
-      return bExact - aExact;
+      const aWithinBalance = Number(a.amount) <= invoiceBalance + 0.005 ? 1 : 0;
+      const bWithinBalance = Number(b.amount) <= invoiceBalance + 0.005 ? 1 : 0;
+      return bWithinBalance - aWithinBalance;
     });
 
   const selectedSale = unverifiedSales.find((s) => s.id === selectedSaleId);
+  const isWithinBalance =
+    selectedSale !== undefined &&
+    Number(selectedSale.amount) <= invoiceBalance + 0.005;
   const isExactMatch =
     selectedSale !== undefined &&
-    Math.abs(Number(selectedSale.amount) - invoiceTotal) < 0.01;
+    Math.abs(Number(selectedSale.amount) - invoiceBalance) < 0.01;
 
   const handleReconcile = async () => {
     if (!selectedSaleId || !selectedSale) {
@@ -110,9 +114,9 @@ export default function LinkDvaInvoiceModal({
       return;
     }
 
-    if (!isExactMatch) {
+    if (!isWithinBalance) {
       toast.error(
-        `Transfer amount (${formatNaira(Number(selectedSale.amount))}) does not match invoice total (${formatInvoiceMoney(invoice, invoiceTotal)})`,
+        `Transfer amount (${formatNaira(Number(selectedSale.amount))}) exceeds outstanding balance (${formatInvoiceMoney(invoice, invoiceBalance)})`,
       );
       return;
     }
@@ -120,8 +124,11 @@ export default function LinkDvaInvoiceModal({
     setSubmitting(true);
     try {
       await reconcileDva(businessId, invoice.id, selectedSaleId);
+      const willSettle = isExactMatch;
       toast.success(
-        `Invoice ${invoice.invoiceNumber} successfully matched with ${formatNaira(Number(selectedSale.amount))} DVA transfer`,
+        willSettle
+          ? `Invoice ${invoice.invoiceNumber} fully settled with ${formatNaira(Number(selectedSale.amount))} DVA transfer`
+          : `Partial payment of ${formatNaira(Number(selectedSale.amount))} recorded against invoice ${invoice.invoiceNumber}`,
       );
       onSuccess?.();
       onClose();
@@ -170,11 +177,18 @@ export default function LinkDvaInvoiceModal({
             <div>
               <span className="font-bold text-gray-900 text-sm">{invoice.invoiceNumber}</span>
               <p className="text-gray-600 text-xs mt-0.5">{invoice.customerName}</p>
+              {invoice.amountPaid > 0 && (
+                <p className="text-amber-700 text-[11px] mt-1 font-semibold">
+                  Partially paid: {formatInvoiceMoney(invoice, invoice.amountPaid)}
+                </p>
+              )}
             </div>
             <div className="text-right">
-              <span className="text-gray-500 text-[11px] block">Invoice Total (Amount Due)</span>
+              <span className="text-gray-500 text-[11px] block">
+                {invoice.amountPaid > 0 ? 'Outstanding Balance' : 'Invoice Total'}
+              </span>
               <span className="font-bold text-gray-900 text-base tabular-nums text-blue-900">
-                {formatInvoiceMoney(invoice, invoiceTotal)}
+                {formatInvoiceMoney(invoice, invoiceBalance)}
               </span>
             </div>
           </div>
@@ -221,7 +235,8 @@ export default function LinkDvaInvoiceModal({
               filteredSales.map((sale) => {
                 const isSelected = selectedSaleId === sale.id;
                 const saleAmount = Number(sale.amount);
-                const isItemExact = Math.abs(saleAmount - invoiceTotal) < 0.01;
+                const isItemWithinBalance = saleAmount <= invoiceBalance + 0.005;
+                const isItemExact = Math.abs(saleAmount - invoiceBalance) < 0.01;
 
                 return (
                   <div
@@ -229,10 +244,10 @@ export default function LinkDvaInvoiceModal({
                     onClick={() => setSelectedSaleId(sale.id)}
                     className={`cursor-pointer rounded-none p-3 border transition-all flex items-center justify-between ${
                       isSelected
-                        ? isItemExact
+                        ? isItemWithinBalance
                           ? 'border-blue-600 bg-blue-50/60 ring-1 ring-blue-600'
                           : 'border-amber-500 bg-amber-50/60 ring-1 ring-amber-500'
-                        : isItemExact
+                        : isItemWithinBalance
                           ? 'border-emerald-300 bg-emerald-50/30 hover:border-emerald-400'
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
@@ -241,7 +256,7 @@ export default function LinkDvaInvoiceModal({
                       <div
                         className={`h-4 w-4 rounded-none border flex items-center justify-center shrink-0 ${
                           isSelected
-                            ? isItemExact
+                            ? isItemWithinBalance
                               ? 'border-blue-600 bg-blue-600 text-white'
                               : 'border-amber-500 bg-amber-500 text-white'
                             : 'border-gray-300'
@@ -259,7 +274,12 @@ export default function LinkDvaInvoiceModal({
                           </span>
                           {isItemExact && (
                             <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-semibold rounded-none border border-emerald-300">
-                              <ShieldCheck className="h-3 w-3" /> Exact match
+                              <ShieldCheck className="h-3 w-3" /> Full settlement
+                            </span>
+                          )}
+                          {isItemWithinBalance && !isItemExact && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-800 font-semibold rounded-none border border-blue-300">
+                              <CheckCircle2 className="h-3 w-3" /> Partial OK
                             </span>
                           )}
                         </div>
@@ -271,7 +291,7 @@ export default function LinkDvaInvoiceModal({
 
                     {isSelected && (
                       <span className={`text-xs font-bold flex items-center gap-1 shrink-0 ml-2 ${
-                        isItemExact ? 'text-blue-700' : 'text-amber-700'
+                        isItemWithinBalance ? 'text-blue-700' : 'text-amber-700'
                       }`}>
                         Selected <CheckCircle2 className="h-4 w-4" />
                       </span>
@@ -282,14 +302,28 @@ export default function LinkDvaInvoiceModal({
             )}
           </div>
 
-          {/* Amount mismatch warning if selected is not exact */}
-          {selectedSale && !isExactMatch && (
+          {/* Amount mismatch warning if selected exceeds balance */}
+          {selectedSale && !isWithinBalance && (
             <div className="rounded-none bg-amber-50 p-3 border border-amber-300 flex items-start gap-2.5">
               <AlertCircle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
               <div className="text-[11px] text-amber-900 leading-relaxed">
-                <span className="font-bold">Amount Mismatch:</span> Selected transfer is{' '}
-                <span className="font-semibold">{formatNaira(Number(selectedSale.amount))}</span>, but invoice requires{' '}
-                <span className="font-semibold">{formatInvoiceMoney(invoice, invoiceTotal)}</span>. Reconciliation requires an exact match to prevent tax miscalculation.
+                <span className="font-bold">Amount Exceeds Balance:</span> Selected transfer is{' '}
+                <span className="font-semibold">{formatNaira(Number(selectedSale.amount))}</span>, but outstanding balance is only{' '}
+                <span className="font-semibold">{formatInvoiceMoney(invoice, invoiceBalance)}</span>. 
+                Partial payments are supported — select a transfer within the balance, or record an overpayment manually to credit the excess to a voucher.
+              </div>
+            </div>
+          )}
+
+          {/* Partial payment info */}
+          {selectedSale && isWithinBalance && !isExactMatch && (
+            <div className="rounded-none bg-blue-50/60 p-3 border border-blue-200 flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-blue-900 leading-relaxed">
+                <span className="font-bold">Partial Payment:</span> This transfer of{' '}
+                <span className="font-semibold">{formatNaira(Number(selectedSale.amount))}</span> will be recorded as an installment.
+                Invoice status will change to <span className="font-semibold">Partial</span>, and the remaining balance will be{' '}
+                <span className="font-semibold">{formatNaira(invoiceBalance - Number(selectedSale.amount))}</span>.
               </div>
             </div>
           )}
@@ -320,10 +354,10 @@ export default function LinkDvaInvoiceModal({
             variant="primary"
             size="sm"
             onClick={handleReconcile}
-            disabled={submitting || !selectedSaleId || !isExactMatch}
+            disabled={submitting || !selectedSaleId || !isWithinBalance}
             className="rounded-none bg-blue-600 hover:bg-blue-700 text-white shadow-sm text-xs"
           >
-            {submitting ? 'Matching...' : 'Confirm Reconciliation'}
+            {submitting ? 'Matching...' : isExactMatch ? 'Settle Invoice' : 'Record Partial Payment'}
           </Button>
         </div>
       </div>

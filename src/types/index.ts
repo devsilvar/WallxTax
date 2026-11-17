@@ -325,6 +325,8 @@ export interface InvoiceLine {
   unitPrice: number;
   lineTotal?: number;
   sortOrder?: number;
+  lineStartDate?: string | null;
+  lineEndDate?: string | null;
 }
 
 export interface Invoice {
@@ -379,7 +381,7 @@ export interface CreateInvoicePayload {
   currency?: string;
   notes?: string;
   paymentTerms?: string;
-  lines: Array<Pick<InvoiceLine, 'description' | 'quantity' | 'unitPrice'>>;
+  lines: Array<Pick<InvoiceLine, 'description' | 'quantity' | 'unitPrice' | 'lineStartDate' | 'lineEndDate'>>;
 }
 
 export type UpdateInvoicePayload = Partial<CreateInvoicePayload>;
