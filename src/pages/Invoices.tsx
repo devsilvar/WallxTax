@@ -28,6 +28,7 @@ const STATUS_TABS: Array<{ key: InvoiceStatus | ''; label: string; dot?: string 
   { key: '', label: 'All' },
   { key: 'draft', label: 'Draft', dot: 'bg-amber-500' },
   { key: 'sent', label: 'Sent', dot: 'bg-blue-500' },
+  { key: 'partial', label: 'Partial', dot: 'bg-amber-500' },
   { key: 'overdue', label: 'Overdue', dot: 'bg-rose-500' },
   { key: 'paid', label: 'Paid', dot: 'bg-emerald-500' },
   { key: 'cancelled', label: 'Cancelled', dot: 'bg-gray-400' },

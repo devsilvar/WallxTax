@@ -287,7 +287,7 @@ export type RemittanceStatus = 'collected' | 'remitting' | 'remitted';
 
 // ─── Invoices ───────────────────────────────────────────────
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'cancelled';
 
 export type InvoicePaymentMethod =
   | 'cash'
@@ -352,6 +352,10 @@ export interface Invoice {
   vatAmount: number;
   discount: number;
   total: number;
+  /** Sum of settled InvoicePayment rows. Server-derived, never sent on write. */
+  amountPaid: number;
+  /** `total - amountPaid`, derived server-side in `serializeInvoice`. */
+  balance: number;
   currency: string;
 
   notes: string | null;

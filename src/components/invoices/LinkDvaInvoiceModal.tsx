@@ -79,8 +79,7 @@ export default function LinkDvaInvoiceModal({
 
   if (!isOpen || !invoice) return null;
 
-  const invoiceTotal = Number(invoice.total);
-  const invoiceBalance = Number(invoice.total) - Number(invoice.amountPaid || 0);
+  const invoiceBalance = Number(invoice.balance ?? Number(invoice.total) - Number(invoice.amountPaid || 0));
 
   // Filter and sort: Matches within balance first
   const filteredSales = unverifiedSales

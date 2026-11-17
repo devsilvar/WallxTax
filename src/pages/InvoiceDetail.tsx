@@ -50,6 +50,7 @@ function formatDate(d: string | null | undefined) {
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: 'Draft',
   sent: 'Sent',
+  partial: 'Partially Paid',
   paid: 'Paid',
   overdue: 'Overdue',
   cancelled: 'Cancelled',
@@ -59,6 +60,7 @@ function statusPill(s: InvoiceStatus) {
   const m: Record<InvoiceStatus, string> = {
     draft: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
     sent: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20',
+    partial: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20',
     paid: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
     overdue: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20',
     cancelled: 'bg-gray-100 text-gray-500 ring-1 ring-inset ring-gray-500/20',
@@ -66,6 +68,7 @@ function statusPill(s: InvoiceStatus) {
   const dot: Record<InvoiceStatus, string> = {
     draft: 'bg-amber-500',
     sent: 'bg-blue-500',
+    partial: 'bg-amber-500',
     paid: 'bg-emerald-500',
     overdue: 'bg-rose-500',
     cancelled: 'bg-gray-400',
