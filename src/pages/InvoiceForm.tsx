@@ -18,6 +18,8 @@ interface LineRow {
   description: string;
   quantity: string; // keep as string while user is typing; coerce on submit
   unitPrice: string;
+  lineStartDate: string; // YYYY-MM-DD or empty
+  lineEndDate: string; // YYYY-MM-DD or empty
 }
 
 interface WalletAccountInfo {
@@ -56,7 +58,13 @@ function buildPaymentTerms(
   return parts.join('\n');
 }
 
-const emptyLine = (): LineRow => ({ description: '', quantity: '1', unitPrice: '' });
+const emptyLine = (): LineRow => ({ 
+  description: '', 
+  quantity: '1', 
+  unitPrice: '',
+  lineStartDate: '',
+  lineEndDate: ''
+});
 
 export default function InvoiceForm() {
   useDisplayCurrency();
@@ -202,6 +210,8 @@ export default function InvoiceForm() {
             description: l.description,
             quantity: String(Number(l.quantity)),
             unitPrice: String(Number(l.unitPrice)),
+            lineStartDate: l.lineStartDate ? l.lineStartDate.slice(0, 10) : '',
+            lineEndDate: l.lineEndDate ? l.lineEndDate.slice(0, 10) : '',
           })),
         );
       })
@@ -278,6 +288,8 @@ export default function InvoiceForm() {
       description: l.description.trim(),
       quantity: Number(l.quantity),
       unitPrice: Number(l.unitPrice),
+      lineStartDate: l.lineStartDate || undefined,
+      lineEndDate: l.lineEndDate || undefined,
     })),
   });
 
@@ -517,6 +529,31 @@ if (!biz) return <p className="py-20 text-center text-gray-400">Select a busines
                       placeholder="e.g. Consulting services, hours 1-10"
                       className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                       maxLength={500}
+                    />
+                  </div>
+                  <div className="col-span-6 sm:col-span-3">
+                    <label htmlFor={`line-start-${idx}`} className="mb-1 block text-xs font-medium text-gray-400">
+                      Start Date (optional)
+                    </label>
+                    <input
+                      id={`line-start-${idx}`}
+                      type="date"
+                      value={line.lineStartDate}
+                      onChange={(e) => updateLine(idx, { lineStartDate: e.target.value })}
+                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    />
+                  </div>
+                  <div className="col-span-6 sm:col-span-3">
+                    <label htmlFor={`line-end-${idx}`} className="mb-1 block text-xs font-medium text-gray-400">
+                      End Date (optional)
+                    </label>
+                    <input
+                      id={`line-end-${idx}`}
+                      type="date"
+                      value={line.lineEndDate}
+                      onChange={(e) => updateLine(idx, { lineEndDate: e.target.value })}
+                      min={line.lineStartDate || undefined}
+                      className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                     />
                   </div>
                   <div className="col-span-4 sm:col-span-2">
