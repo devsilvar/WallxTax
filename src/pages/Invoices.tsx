@@ -91,6 +91,17 @@ function urgencyMeta(row: Row) {
   if (status === 'draft') {
     return { label: 'Draft', pill: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20', rail: 'bg-amber-400', amount: 'text-gray-900' };
   }
+  // Partially paid is a settlement fact, not a schedule fact — it must not be
+  // overwritten by the due-date label. When the invoice is also late, both
+  // facts share the pill rather than one hiding the other.
+  if (status === 'partial') {
+    const diff = daysUntil(row.dueDate);
+    if (diff < 0) {
+      return { label: `Partially paid · ${Math.abs(diff)}d overdue`, pill: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20', rail: 'bg-rose-500', amount: 'text-rose-600' };
+    }
+    return { label: 'Partially paid', pill: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20', rail: 'bg-amber-500', amount: 'text-gray-900' };
+  }
+
 
   const diff = daysUntil(row.dueDate);
   if (diff < 0) {

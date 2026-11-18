@@ -9,6 +9,10 @@ import type {
   CreateInvoicePayload,
   UpdateInvoicePayload,
   MarkInvoicePaidPayload,
+ RecordInvoicePaymentPayload,
+ ResolveOverpaymentPayload,
+ OverpaymentVoucherCredit,
+ VoidInvoicePaymentPayload,
   SendInvoiceWhatsAppResult,
   SendInvoiceEmailResult,
 } from '@/types/index.ts';
@@ -59,6 +63,22 @@ interface InvoiceState {
   sendInvoiceByEmail: (businessId: string, id: string) => Promise<SendInvoiceEmailResult>;
   sendInvoiceByWhatsApp: (businessId: string, id: string) => Promise<SendInvoiceWhatsAppResult>;
   markInvoicePaid: (businessId: string, id: string, payload: MarkInvoicePaidPayload) => Promise<Invoice>;
+ recordPayment: (
+ businessId: string,
+ id: string,
+ payload: RecordInvoicePaymentPayload,
+ ) => Promise<Invoice>;
+ voidPayment: (
+ businessId: string,
+ id: string,
+ paymentId: string,
+ payload: VoidInvoicePaymentPayload,
+ ) => Promise<Invoice>;
+ resolveOverpayment: (
+ businessId: string,
+ id: string,
+ payload: ResolveOverpaymentPayload,
+ ) => Promise<{ invoice: Invoice; voucher: OverpaymentVoucherCredit }>;
   reconcileDva: (businessId: string, id: string, saleId: string) => Promise<Invoice>;
   cancelInvoice: (businessId: string, id: string, reason?: string) => Promise<Invoice>;
   downloadInvoicePdf: (businessId: string, id: string, invoiceNumber: string) => Promise<void>;
@@ -244,6 +264,67 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     useDashboardEvents.getState().invalidateDashboard('invoice_paid');
     return updated;
   },
+
+ /**
+ * Record a partial (or final) payment against an invoice.
+ *
+ * The list cache is dropped rather than patched: a payment can move an
+ * invoice between the All / Partial / Paid tabs, so a cached page would
+ * list it under the wrong filter.
+ */
+ recordPayment: async (businessId, id, payload) => {
+ const { data } = await api.post(`${basePath(businessId)}/${id}/payments`, payload);
+ const updated = data.data as Invoice;
+ set((s) => ({
+ activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
+ invoices: patchInList(s.invoices, updated),
+ listCacheKey: null,
+ listFetchedAt: null,
+ }));
+ useDashboardEvents.getState().invalidateDashboard('invoice_paid');
+ return updated;
+ },
+
+ /**
+ * Void a payment. The row is kept and stamped, the linked sale is reversed,
+ * and the invoice falls back to `partial` or `sent`.
+ */
+ voidPayment: async (businessId, id, paymentId, payload) => {
+ const { data } = await api.post(
+ `${basePath(businessId)}/${id}/payments/${paymentId}/void`,
+ payload,
+ );
+ const updated = data.data as Invoice;
+ set((s) => ({
+ activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
+ invoices: patchInList(s.invoices, updated),
+ listCacheKey: null,
+ listFetchedAt: null,
+ }));
+ useDashboardEvents.getState().invalidateDashboard('invoice_payment_voided');
+ return updated;
+ },
+
+ /**
+ * Settle the invoice for its balance and credit the excess to the customer
+ * voucher. One server transaction: the settlement and the credit cannot
+ * land separately.
+ */
+ resolveOverpayment: async (businessId, id, payload) => {
+  const { data } = await api.post(
+   `${basePath(businessId)}/${id}/payments/overpayment`,
+   payload,
+  );
+  const updated = data.data as Invoice;
+  set((s) => ({
+   activeInvoice: s.activeInvoice?.id === id ? updated : s.activeInvoice,
+   invoices: patchInList(s.invoices, updated),
+   listCacheKey: null,
+   listFetchedAt: null,
+  }));
+  useDashboardEvents.getState().invalidateDashboard('invoice_paid');
+  return { invoice: updated, voucher: data.voucher as OverpaymentVoucherCredit };
+ },
 
   reconcileDva: async (businessId, id, saleId) => {
     const { data } = await api.post(`${basePath(businessId)}/${id}/reconcile-dva/${saleId}`);

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,6 +8,7 @@ import {
   CheckCircle2,
   XCircle,
   Trash2,
+Wallet,
   Loader2,
   ExternalLink,
   Copy,
@@ -18,12 +18,14 @@ import {
   Landmark,
   Mail,
   MapPin,
-  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Card from '@/components/ui/Card.tsx';
 import Button from '@/components/ui/Button.tsx';
 import Input from '@/components/ui/Input.tsx';
+import InvoicePaymentsCard from '@/components/invoices/InvoicePaymentsCard.tsx';
+import RecordPaymentModal from '@/components/invoices/RecordPaymentModal.tsx';
+import Modal from '@/components/ui/Modal.tsx';
 import LinkDvaInvoiceModal from '@/components/invoices/LinkDvaInvoiceModal.tsx';
 import { useSubscriptionWriteGate } from '@/hooks/useSubscriptionWriteGate';
 import { useBusinessStore } from '@/stores/business.store.ts';
@@ -135,6 +137,7 @@ export default function InvoiceDetail() {
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
   const [payMethod, setPayMethod] = useState<InvoicePaymentMethod | ''>('');
   const [dvaMatchOpen, setDvaMatchOpen] = useState(false);
+const [recordOpen, setRecordOpen] = useState(false);
 
   // Cancel modal state
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -223,9 +226,24 @@ export default function InvoiceDetail() {
   // can be re-shared as receipts; the message body adapts on the backend.
   const canShare = inv.status !== 'cancelled';
   const hasPhone = Boolean(inv.customerPhone);
-  const canMarkPaid =
-    inv.status === 'sent' || inv.status === 'overdue' || eff === 'overdue';
-  const canCancel = inv.status !== 'paid' && inv.status !== 'cancelled';
+ // One-click full settlement stays for untouched invoices. Once money has
+
+ // landed, 'Record payment' takes over so the amount can be a partial.
+
+ const hasPayments = Number(inv.amountPaid) > 0;
+
+ const canMarkPaid =
+
+ !hasPayments && (inv.status === 'sent' || inv.status === 'overdue' || eff === 'overdue');
+
+ const canRecordPayment =
+
+ !hasPayments || (inv.status !== 'paid' && inv.status !== 'cancelled');
+
+ const canCancel =
+
+ inv.status !== 'paid' && inv.status !== 'cancelled' && !hasPayments;
+
   const canEmail = inv.status !== 'paid' && inv.status !== 'cancelled';
   const isPaid = inv.status === 'paid';
 
@@ -534,28 +552,46 @@ export default function InvoiceDetail() {
         </div>
 
         {/* Lifecycle — a quiet timeline of what has happened so far */}
-        <div className='grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-4'>
-          {[
-            { label: 'Issued', value: formatDate(inv.issueDate) },
-            { label: 'Due', value: formatDate(inv.dueDate), tone: eff === 'overdue' ? 'text-rose-600' : undefined },
-            { label: 'Sent', value: inv.sentAt ? formatDate(inv.sentAt) : '—' },
-            {
-              label: inv.status === 'paid' ? 'Paid' : 'Status',
-              value:
-                inv.status === 'paid'
-                  ? inv.paidAt
-                    ? formatDate(inv.paidAt)
-                    : '—'
-                  : STATUS_LABEL[eff],
-              tone: inv.status === 'paid' ? 'text-emerald-600' : undefined,
-            },
-          ].map((cell) => (
-            <div key={cell.label} className='bg-white px-4 py-2.5'>
-              <p className='text-[10px] font-semibold uppercase tracking-wider text-gray-400'>{cell.label}</p>
-              <p className={`mt-0.5 truncate text-xs font-semibold ${cell.tone ?? 'text-gray-900'}`}>{cell.value}</p>
-            </div>
-          ))}
-        </div>
+      <div
+        className={`grid grid-cols-2 gap-px border-t border-gray-100 bg-gray-100 ${
+          hasPayments ? 'sm:grid-cols-3 lg:grid-cols-6' : 'sm:grid-cols-4'
+        }`}
+      >
+        {[
+          { label: 'Issued', value: formatDate(inv.issueDate) },
+          { label: 'Due', value: formatDate(inv.dueDate), tone: eff === 'overdue' ? 'text-rose-600' : undefined },
+          { label: 'Sent', value: inv.sentAt ? formatDate(inv.sentAt) : '—' },
+          {
+            label: inv.status === 'paid' ? 'Paid' : 'Status',
+            value:
+              inv.status === 'paid'
+                ? inv.paidAt
+                  ? formatDate(inv.paidAt)
+                  : '—'
+                : STATUS_LABEL[eff],
+            tone: inv.status === 'paid' ? 'text-emerald-600' : undefined,
+          },
+          ...(hasPayments
+            ? [
+                {
+                  label: 'Amount paid',
+                  value: formatInvoiceMoney(inv, inv.amountPaid),
+                  tone: 'text-emerald-600',
+                },
+                {
+                  label: 'Balance due',
+                  value: formatInvoiceMoney(inv, inv.balance),
+                  tone: 'text-amber-600',
+                },
+              ]
+            : []),
+        ].map((cell) => (
+          <div key={cell.label} className='bg-white px-4 py-2.5'>
+            <p className='text-[10px] font-semibold uppercase tracking-wider text-gray-400'>{cell.label}</p>
+            <p className={`mt-0.5 truncate text-xs font-semibold ${cell.tone ?? 'text-gray-900'}`}>{cell.value}</p>
+          </div>
+        ))}
+      </div>
 
         {/* Actions — secondary on the left, destructive right, primary far right */}
         <div className='flex flex-wrap items-center gap-2 border-t border-gray-100 bg-gray-50/60 px-4 py-3 sm:px-5'>
@@ -604,6 +640,17 @@ export default function InvoiceDetail() {
               <Send className='h-3.5 w-3.5' /> Mark as sent
             </Button>
           )}
+      {canRecordPayment && (
+        <Button
+          variant='secondary'
+          size='sm'
+          onClick={() => setRecordOpen(true)}
+          title='Record a partial payment against this invoice'
+        >
+          <Wallet className='h-3.5 w-3.5' /> Record payment
+        </Button>
+      )}
+
           {canMarkPaid && (
             <Button
               variant='secondary'
@@ -711,6 +758,15 @@ export default function InvoiceDetail() {
         </div>
       </Card>
 
+      {/* Payment ledger */}
+      {hasPayments && (
+        <InvoicePaymentsCard
+          businessId={biz.id}
+          invoice={inv}
+          onChanged={() => void fetchInvoice(biz.id, inv.id)}
+        />
+      )}
+
       {/* Notes + terms */}
       {(inv.paymentTerms || inv.notes) && (
         <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
@@ -738,7 +794,8 @@ export default function InvoiceDetail() {
       )}
 
       {/* Linked sale */}
-      {inv.linkedSaleId && (
+      {isPaid && inv.linkedSaleId && (
+
         <Card className='border-emerald-200 bg-emerald-50/50'>
           <div className='flex items-start justify-between gap-3'>
             <div>
@@ -761,8 +818,11 @@ export default function InvoiceDetail() {
       )}
 
       {/* ─── Mark paid modal ─────────────────────── */}
-      {payOpen && (
-        <Modal onClose={() => setPayOpen(false)} title='Mark invoice as paid'>
+      <Modal
+        isOpen={payOpen}
+        onClose={() => setPayOpen(false)}
+        title='Mark invoice as paid'
+      >
           <p className='font-body text-xs text-gray-600'>
             This will record a sale for {formatInvoiceMoney(inv, inv.total)} on the
             payment date. The payment month cannot be finalized or locked.
@@ -817,11 +877,13 @@ export default function InvoiceDetail() {
             </Button>
           </div>
         </Modal>
-      )}
 
       {/* ─── Cancel modal ────────────────────────── */}
-      {cancelOpen && (
-        <Modal onClose={() => setCancelOpen(false)} title='Cancel invoice'>
+      <Modal
+        isOpen={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        title='Cancel invoice'
+      >
           <p className='font-body text-xs text-gray-600'>
             Cancelling an invoice is permanent. The record is preserved (status
             becomes "cancelled"), but you can't reopen it — create a new invoice
@@ -854,7 +916,18 @@ export default function InvoiceDetail() {
             </Button>
           </div>
         </Modal>
-      )}
+
+      {/* Record payment modal */}
+      <RecordPaymentModal
+        businessId={biz.id}
+        invoice={inv}
+        isOpen={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        onSuccess={() => {
+          setRecordOpen(false);
+          void fetchInvoice(biz.id, inv.id);
+        }}
+      />
 
       {/* ─── Match DVA bank transfer modal ─────────── */}
       <LinkDvaInvoiceModal
@@ -998,48 +1071,3 @@ function ShareCard(props: {
   );
 }
 
-/** Minimal inline modal — no separate component file needed for 2 modals on one page. */
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
-  return createPortal(
-    <div
-      className='fixed inset-0 z-[9999] w-screen h-screen min-h-screen flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-hidden'
-      onClick={onClose}
-    >
-      <div
-        className='relative z-10 w-full max-w-md max-h-[88vh] flex flex-col rounded-none bg-white shadow-2xl border border-gray-300 animate-in fade-in zoom-in-95 duration-150'
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className='flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-gray-50/50 shrink-0'>
-          <h3 className='text-sm font-semibold tracking-tight text-gray-900'>{title}</h3>
-          <button
-            type='button'
-            onClick={onClose}
-            className='rounded-none border border-transparent p-1.5 text-gray-400 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 transition-colors'
-          >
-            <X className='h-4 w-4' />
-          </button>
-        </div>
-        <div className='flex-1 overflow-y-auto px-5 py-4'>
-          {children}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}

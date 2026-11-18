@@ -329,6 +329,23 @@ export interface InvoiceLine {
   lineEndDate?: string | null;
 }
 
+/** One cash event against an invoice. Rows are voided, never deleted. */
+export interface InvoicePayment {
+ id: string;
+ invoiceId: string;
+ amount: number;
+ /** `YYYY-MM-DD` — a @db.Date column, not a timestamp. */
+ paymentDate: string;
+ method: InvoicePaymentMethod;
+ reference: string | null;
+ notes: string | null;
+ voidedAt: string | null;
+ voidReason?: string | null;
+ linkedSaleId?: string | null;
+ createdAt: string;
+}
+
+
 export interface Invoice {
   id: string;
   businessId: string;
@@ -362,6 +379,10 @@ export interface Invoice {
   paymentTerms: string | null;
 
   linkedSaleId: string | null;
+ /** Payment ledger. Present on detail responses, not on list rows. */
+ payments?: InvoicePayment[];
+ /** Set once the overdue sweep has stamped this invoice. */
+ overdueAt?: string | null;
   linkedSale?: SalesTransaction | null;
 
   lines?: InvoiceLine[];
@@ -403,6 +424,40 @@ export interface MarkInvoicePaidPayload {
   paymentMethod: InvoicePaymentMethod;
   paymentDate?: string;
 }
+
+export interface RecordInvoicePaymentPayload {
+ amount: number;
+ paymentMethod: InvoicePaymentMethod;
+ /** `YYYY-MM-DD`. */
+ paymentDate?: string;
+ reference?: string;
+ notes?: string;
+ /**
+ * One key per payment intent, generated when the form opens and reused
+ * across retries. The server books one payment for a repeated key, so a
+ * double-click cannot charge the invoice twice.
+ */
+ idempotencyKey?: string;
+}
+
+export interface VoidInvoicePaymentPayload {
+ reason: string;
+}
+
+export interface ResolveOverpaymentPayload extends RecordInvoicePaymentPayload {
+ resolution: 'voucher';
+}
+
+/** What the server credited to the customer voucher for the excess. */
+export interface OverpaymentVoucherCredit {
+ cardId: string;
+ cardCode: string;
+ ledgerId: string;
+ requestId: string;
+ amount: string;
+ balanceAfter: string;
+}
+
 
 export interface SendInvoiceWhatsAppResult {
   invoice: Invoice;
