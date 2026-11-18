@@ -44,6 +44,7 @@ export default function Inventory() {
     renewProduct,
     analytics,
     analyticsLoading,
+    analyticsError,
     fetchAnalytics,
   } = useMarketplaceStore();
 
@@ -269,8 +270,10 @@ export default function Inventory() {
       <MarketplaceAnalyticsPanel
         analytics={analytics}
         loading={analyticsLoading}
+ analyticsError={analyticsError}
         periodDays={analyticsDays}
         onPeriodChange={(days) => setAnalyticsDays(days)}
+ onRetry={() => activeBusiness?.id && fetchAnalytics(activeBusiness.id, analyticsDays)}
       />
 
       {/* Why Isn't This Selling? Optimization Panel (Placed above slots and upsell per plan §2.6) */}

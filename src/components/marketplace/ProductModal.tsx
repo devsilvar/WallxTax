@@ -80,6 +80,16 @@ export default function ProductModal({
   const [trackInventory, setTrackInventory] = useState(true);
   const [stockQuantity, setStockQuantity] = useState<string>('1');
 
+ // Live discount preview derived from the two prices (same maths as the public site)
+ const priceNum = Number(price);
+ const compareNum = Number(compareAtPrice);
+ const hasOldPrice = compareAtPrice.trim() !== '' && compareNum > 0;
+ const discountPct =
+   hasOldPrice && priceNum > 0 && compareNum > priceNum
+     ? Math.round(((compareNum - priceNum) / compareNum) * 100)
+     : null;
+ const savings = discountPct !== null ? compareNum - priceNum : null;
+ const oldPriceTooLow = hasOldPrice && priceNum > 0 && compareNum <= priceNum;
   // Images state
   const [images, setImages] = useState<string[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -286,7 +296,7 @@ export default function ProductModal({
         const numCompare = Number(compareAtPrice);
         if (numCompare < numPrice) {
           setValidationError(
-            'Compare-at price cannot be lower than the selling price.',
+            'Old price must be higher than your price.',
           );
           setActiveTab('pricing');
           return false;
@@ -335,7 +345,7 @@ export default function ProductModal({
       const numCompare = Number(compareAtPrice);
       if (numCompare < numPrice) {
         setValidationError(
-          'Compare-at price cannot be lower than the selling price.',
+          'Old price must be higher than your price.',
         );
         setActiveTab('pricing');
         return false;
@@ -636,35 +646,50 @@ export default function ProductModal({
         {/* ── TAB 2: PRICING & STOCK ── */}
         {activeTab === 'pricing' && (
           <div className='space-y-4'>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Selling Price (NGN) <span className='text-red-500'>*</span>
-                </label>
-                <Input
-                  type='number'
-                  placeholder='e.g. 25000'
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                />
-              </div>
+ <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+ <div>
+ <label className='block text-sm font-medium text-gray-700 mb-1'>
+ Price (₦) <span className='text-red-500'>*</span>
+ </label>
+ <Input
+ type='number'
+ placeholder='e.g. 25000'
+ value={price}
+ onChange={(e) => setPrice(e.target.value)}
+ required
+ />
+ <p className='text-xs text-gray-400 mt-1'>
+ What your buyer will pay.
+ </p>
+ </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>
-                  Compare-at Price (NGN){' '}
-                  <span className='text-gray-400 font-normal'>
-                    (Optional Strikethrough)
-                  </span>
-                </label>
-                <Input
-                  type='number'
-                  placeholder='e.g. 35000'
-                  value={compareAtPrice}
-                  onChange={(e) => setCompareAtPrice(e.target.value)}
-                />
-              </div>
-            </div>
+ <div>
+ <label className='block text-sm font-medium text-gray-700 mb-1'>
+ Old Price (₦) <span className='text-gray-400 font-normal'>— optional</span>
+ </label>
+ <Input
+ type='number'
+ placeholder='e.g. 35000'
+ value={compareAtPrice}
+ onChange={(e) => setCompareAtPrice(e.target.value)}
+ />
+ <p className='text-xs text-gray-400 mt-1'>
+ What it used to cost. We'll cross it out so buyers see a discount.
+ </p>
+ {discountPct !== null && savings !== null && (
+ <div className='mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800'>
+ <span className='font-semibold'>Buyers will see: {discountPct}% OFF</span>
+ <span className='text-emerald-700'>· They save ₦{savings.toLocaleString()}</span>
+ <span className='ml-auto text-gray-400 line-through'>₦{compareNum.toLocaleString()}</span>
+ </div>
+ )}
+ {oldPriceTooLow && (
+ <p className='text-xs text-amber-600 mt-1'>
+ Old price must be higher than your price — otherwise no discount shows.
+ </p>
+ )}
+ </div>
+ </div>
 
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-1'>

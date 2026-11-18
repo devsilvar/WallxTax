@@ -15,6 +15,8 @@ interface MarketplaceAnalyticsPanelProps {
   loading: boolean;
   periodDays: number;
   onPeriodChange: (days: number) => void;
+ analyticsError?: string | null;
+ onRetry?: () => void;
 }
 
 export default function MarketplaceAnalyticsPanel({
@@ -22,6 +24,8 @@ export default function MarketplaceAnalyticsPanel({
   loading,
   periodDays,
   onPeriodChange,
+ analyticsError,
+ onRetry,
 }: MarketplaceAnalyticsPanelProps) {
   const [activeMetric, setActiveMetric] = useState<'all' | 'views' | 'contacts'>('all');
 
@@ -96,6 +100,15 @@ export default function MarketplaceAnalyticsPanel({
           </button>
         </div>
       </div>
+
+      {analyticsError && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+          <span>Couldn't load your views right now. {analyticsError}</span>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="font-semibold text-amber-900 hover:underline">Retry</button>
+          )}
+        </div>
+      )}
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
